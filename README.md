@@ -1,1 +1,58 @@
-⌀ 一漀爀琀栀猀琀愀爀 䄀䴀匀਀਀䄀渀 椀渀猀甀爀愀渀挀攀 愀最攀渀挀礀 洀愀渀愀最攀洀攀渀琀 猀礀猀琀攀洀 ⠀䄀䴀匀⤀ 眀椀琀栀 愀 戀甀椀氀琀ⴀ椀渀 挀漀洀瀀愀爀愀琀椀瘀攀 爀愀琀攀爀Ⰰ 洀漀搀攀氀攀搀 漀渀 琀栀攀 昀攀愀琀甀爀攀 猀攀琀 漀昀 䔀娀䰀礀渀砀ⴀ猀琀礀氀攀 瀀氀愀琀昀漀爀洀猀⸀ 䤀琀✀猀 戀甀椀氀琀 眀椀琀栀 刀攀愀挀琀Ⰰ 吀礀瀀攀匀挀爀椀瀀琀Ⰰ 吀愀椀氀眀椀渀搀 愀渀搀 匀甀瀀愀戀愀猀攀⸀਀਀⌀⌀ 䴀漀搀甀氀攀猀਀਀簀 䄀爀攀愀 簀 圀栀愀琀 椀琀 搀漀攀猀 簀਀簀 ⴀⴀⴀ 簀 ⴀⴀⴀ 簀਀簀 ⨀⨀圀漀爀欀猀瀀愀挀攀⨀⨀ 簀 䰀椀瘀攀 搀愀猀栀戀漀愀爀搀㨀 䬀倀䤀猀Ⰰ 甀瀀挀漀洀椀渀最 爀攀渀攀眀愀氀猀Ⰰ 瀀漀氀椀挀礀 愀挀琀椀瘀椀琀礀 ⠀㜀 搀愀礀猀⤀Ⰰ 愀氀攀爀琀猀Ⰰ 琀攀砀琀椀渀最 愀渀搀 攀匀椀最渀愀琀甀爀攀 挀漀甀渀琀攀爀猀Ⰰ 洀礀 琀愀猀欀猀 簀਀簀 ⨀⨀䄀挀挀漀甀渀琀猀⨀⨀ 簀 倀攀爀猀漀渀愀氀 愀渀搀 挀漀洀洀攀爀挀椀愀氀 挀氀椀攀渀琀猀 愀渀搀 瀀爀漀猀瀀攀挀琀猀㬀 搀爀椀瘀攀爀猀Ⰰ 瘀攀栀椀挀氀攀猀 愀渀搀 瀀爀漀瀀攀爀琀椀攀猀㬀 愀 琀愀戀戀攀搀 爀攀挀漀爀搀 眀椀琀栀 瀀漀氀椀挀椀攀猀Ⰰ 焀甀漀琀攀猀Ⰰ 愀挀琀椀瘀椀琀椀攀猀Ⰰ 挀氀愀椀洀猀Ⰰ 搀漀挀甀洀攀渀琀猀Ⰰ 洀攀猀猀愀最攀猀 愀渀搀 戀椀氀氀椀渀最 簀਀簀 ⨀⨀儀甀漀琀攀猀 ☀ 刀愀琀椀渀最⨀⨀ 簀 䴀甀氀琀椀ⴀ猀琀攀瀀 挀漀洀瀀愀爀愀琀椀瘀攀 爀愀琀攀爀⸀ 刀愀琀椀渀最 搀愀琀愀 椀猀 瀀爀攀ⴀ昀椀氀氀攀搀 昀爀漀洀 琀栀攀 愀挀挀漀甀渀琀Ⰰ 礀漀甀 瀀椀挀欀 挀愀爀爀椀攀爀猀Ⰰ 爀攀猀甀氀琀猀 愀爀攀 挀漀洀瀀愀爀攀搀 猀椀搀攀 戀礀 猀椀搀攀Ⰰ 琀栀攀渀 礀漀甀 戀椀渀搀 琀漀 愀 瀀漀氀椀挀礀⸀ 刀愀琀攀猀 愀爀攀 ⨀⨀猀椀洀甀氀愀琀攀搀⨀⨀ 戀礀 愀 搀攀琀攀爀洀椀渀椀猀琀椀挀 爀愀琀椀渀最 攀渀最椀渀攀⸀ 簀਀簀 ⨀⨀倀漀氀椀挀椀攀猀⨀⨀ 簀 䈀漀漀欀 漀昀 戀甀猀椀渀攀猀猀Ⰰ 爀攀渀攀眀愀氀猀 焀甀攀甀攀Ⰰ 挀漀瘀攀爀愀最攀猀Ⰰ 琀攀爀洀 栀椀猀琀漀爀礀Ⰰ 瀀氀甀猀 琀栀攀 琀爀愀渀猀愀挀琀椀漀渀猀㨀 攀渀搀漀爀猀攀Ⰰ 爀攀渀攀眀Ⰰ 挀愀渀挀攀氀 ⠀瀀爀漀ⴀ爀愀琀愀 爀攀琀甀爀渀 瀀爀攀洀椀甀洀⤀Ⰰ 爀攀椀渀猀琀愀琀攀Ⰰ 渀漀渀ⴀ爀攀渀攀眀Ⰰ 愀甀搀椀琀Ⰰ 爀攀洀愀爀欀攀琀 簀਀簀 ⨀⨀䄀挀琀椀瘀椀琀椀攀猀⨀⨀ 簀 䄀最攀渀挀礀 眀漀爀欀 焀甀攀甀攀 椀渀 氀椀猀琀Ⰰ 戀漀愀爀搀 愀渀搀 挀愀氀攀渀搀愀爀 瘀椀攀眀猀Ⰰ 眀椀琀栀 漀瘀攀爀搀甀攀 愀渀搀 搀甀攀ⴀ琀漀搀愀礀 琀爀愀挀欀椀渀最 愀渀搀 戀甀氀欀 挀漀洀瀀氀攀琀攀Ⰰ 爀攀愀猀猀椀最渀 愀渀搀 搀攀氀攀琀攀㬀 攀愀挀栀 愀挀挀漀甀渀琀 愀渀搀 瀀漀氀椀挀礀 栀愀猀 愀 琀椀洀攀氀椀渀攀 簀਀簀 ⨀⨀䌀氀愀椀洀猀⨀⨀ 簀 䘀椀爀猀琀 渀漀琀椀挀攀 漀昀 氀漀猀猀 ⠀䘀一伀䰀⤀ 椀渀琀愀欀攀Ⰰ 猀琀愀琀甀猀 眀漀爀欀昀氀漀眀Ⰰ 爀攀猀攀爀瘀攀猀 愀渀搀 瀀愀礀洀攀渀琀猀Ⰰ 愀搀樀甀猀琀攀爀 搀攀琀愀椀氀猀 簀਀簀 ⨀⨀䴀攀猀猀愀最攀猀⨀⨀ 簀 吀攀砀琀椀渀最 愀渀搀 攀洀愀椀氀 挀漀渀猀漀氀攀 眀椀琀栀 琀攀洀瀀氀愀琀攀猀⸀ 䐀攀氀椀瘀攀爀礀 椀猀 ⨀⨀猀椀洀甀氀愀琀攀搀⨀⨀⸀ 簀਀簀 ⨀⨀䐀漀挀甀洀攀渀琀猀⨀⨀ 簀 唀瀀氀漀愀搀Ⰰ 搀漀眀渀氀漀愀搀Ⰰ 挀愀琀攀最漀爀椀稀攀 愀渀搀 最攀渀攀爀愀琀攀 ⠀䤀䐀 挀愀爀搀Ⰰ 瀀爀漀漀昀 漀昀 椀渀猀甀爀愀渀挀攀Ⰰ 瀀漀氀椀挀礀 猀甀洀洀愀爀礀⤀⸀ 䤀渀挀氀甀搀攀猀 愀渀 攀匀椀最渀愀琀甀爀攀 攀渀瘀攀氀漀瀀攀 搀愀猀栀戀漀愀爀搀㬀 猀椀最渀椀渀最 椀猀 ⨀⨀猀椀洀甀氀愀琀攀搀⨀⨀⸀ 簀਀簀 ⨀⨀䄀挀挀漀甀渀琀椀渀最⨀⨀ 簀 䄀最攀渀挀礀ⴀ戀椀氀氀 爀攀挀攀椀瘀愀戀氀攀猀 眀椀琀栀 愀最椀渀最Ⰰ 瀀愀礀洀攀渀琀猀Ⰰ 挀漀洀洀椀猀猀椀漀渀 琀爀愀挀欀椀渀最 簀਀簀 ⨀⨀刀攀瀀漀爀琀猀⨀⨀ 簀 ㄀㈀ 爀攀瀀漀爀琀猀 眀椀琀栀 昀椀氀琀攀爀猀Ⰰ 挀栀愀爀琀猀Ⰰ 䌀匀嘀 攀砀瀀漀爀琀 愀渀搀 瀀爀椀渀琀 簀਀簀 ⨀⨀匀攀琀琀椀渀最猀⨀⨀ 簀 䄀最攀渀挀礀 瀀爀漀昀椀氀攀Ⰰ 甀猀攀爀猀Ⰰ 挀愀爀爀椀攀爀 愀瀀瀀漀椀渀琀洀攀渀琀猀Ⰰ 搀愀琀愀 椀洀瀀漀爀琀⼀攀砀瀀漀爀琀Ⰰ 猀愀洀瀀氀攀 搀愀琀愀 簀਀਀⌀⌀ 刀甀渀渀椀渀最 椀琀਀਀怀怀怀戀愀猀栀਀渀瀀洀 椀渀猀琀愀氀氀਀渀瀀洀 爀甀渀 搀攀瘀਀怀怀怀਀਀怀⸀攀渀瘀怀 渀攀攀搀猀 怀嘀䤀吀䔀开匀唀倀䄀䈀䄀匀䔀开唀刀䰀怀 愀渀搀 怀嘀䤀吀䔀开匀唀倀䄀䈀䄀匀䔀开䄀一伀一开䬀䔀夀怀⸀਀਀⌀⌀⌀ 匀琀漀爀愀最攀 洀漀搀攀猀਀਀圀栀攀渀 椀琀 猀琀愀爀琀猀Ⰰ 琀栀攀 愀瀀瀀 挀栀攀挀欀猀 眀栀攀琀栀攀爀 琀栀攀 䄀䴀匀 猀挀栀攀洀愀 攀砀椀猀琀猀 椀渀 琀栀攀 挀漀渀渀攀挀琀攀搀 匀甀瀀愀戀愀猀攀 瀀爀漀樀攀挀琀㨀਀਀ⴀ ⨀⨀匀甀瀀愀戀愀猀攀 洀漀搀攀㨀⨀⨀ 琀栀攀 猀挀栀攀洀愀 攀砀椀猀琀猀⸀ 䄀氀氀 搀愀琀愀 椀猀 猀琀漀爀攀搀 椀渀 倀漀猀琀最爀攀猀 愀渀搀 搀漀挀甀洀攀渀琀猀 椀渀 琀栀攀 怀搀漀挀甀洀攀渀琀猀怀 猀琀漀爀愀最攀 戀甀挀欀攀琀⸀ 吀栀攀 昀椀爀猀琀 爀甀渀 愀猀欀猀 眀栀攀琀栀攀爀 琀漀 氀漀愀搀 愀 猀愀洀瀀氀攀 愀最攀渀挀礀 漀爀 猀琀愀爀琀 攀洀瀀琀礀⸀਀ⴀ ⨀⨀䈀爀漀眀猀攀爀ⴀ猀琀漀爀愀最攀 ⠀搀攀洀漀⤀ 洀漀搀攀㨀⨀⨀ 琀栀攀 猀挀栀攀洀愀 椀猀 洀椀猀猀椀渀最 漀爀 匀甀瀀愀戀愀猀攀 挀愀渀✀琀 戀攀 爀攀愀挀栀攀搀⸀ 䐀愀琀愀 氀椀瘀攀猀 椀渀 怀氀漀挀愀氀匀琀漀爀愀最攀怀 愀渀搀 愀 猀愀洀瀀氀攀 愀最攀渀挀礀 椀猀 氀漀愀搀攀搀 愀甀琀漀洀愀琀椀挀愀氀氀礀⸀ 吀栀攀 昀漀漀琀攀爀 猀栀漀眀猀 眀栀椀挀栀 洀漀搀攀 椀猀 愀挀琀椀瘀攀⸀਀਀吀漀 猀眀椀琀挀栀 琀漀 匀甀瀀愀戀愀猀攀Ⰰ 爀甀渀 怀猀甀瀀愀戀愀猀攀⼀洀椀最爀愀琀椀漀渀猀⼀㈀　㈀㘀　㤀㈀㐀㄀㘀　　　　开挀爀攀愀琀攀开愀洀猀开猀挀栀攀洀愀⸀猀焀氀怀 椀渀 琀栀攀 匀甀瀀愀戀愀猀攀 匀儀䰀 攀搀椀琀漀爀 ⠀漀爀 眀椀琀栀 怀猀甀瀀愀戀愀猀攀 搀戀 瀀甀猀栀怀⤀Ⰰ 琀栀攀渀 爀攀氀漀愀搀⸀਀਀⌀⌀⌀ 匀攀挀甀爀椀琀礀 渀漀琀攀਀਀吀漀 洀愀琀挀栀 琀栀攀 漀爀椀最椀渀愀氀 怀愀挀挀漀甀渀琀猀怀 琀愀戀氀攀Ⰰ 琀栀攀 洀椀最爀愀琀椀漀渀 最椀瘀攀猀 琀栀攀 怀愀渀漀渀怀 爀漀氀攀 昀甀氀氀 爀攀愀搀 愀渀搀 眀爀椀琀攀 愀挀挀攀猀猀 琀漀 攀瘀攀爀礀 琀愀戀氀攀 愀渀搀 琀漀 琀栀攀 搀漀挀甀洀攀渀琀猀 戀甀挀欀攀琀⸀ 吀栀愀琀✀猀 昀椀渀攀 昀漀爀 愀 猀椀渀最氀攀ⴀ琀攀渀愀渀琀 搀攀洀漀Ⰰ 戀甀琀 ⨀⨀渀漀琀 昀漀爀 爀攀愀氀 挀氀椀攀渀琀 搀愀琀愀⨀⨀⸀ 䈀攀昀漀爀攀 瀀爀漀搀甀挀琀椀漀渀Ⰰ 愀搀搀 匀甀瀀愀戀愀猀攀 䄀甀琀栀 愀渀搀 爀攀瀀氀愀挀攀 琀栀攀 瀀漀氀椀挀椀攀猀 眀椀琀栀 漀渀攀猀 猀挀漀瀀攀搀 琀漀 琀栀攀 甀猀攀爀 漀爀 愀最攀渀挀礀⸀਀਀⌀⌀ 圀栀愀琀 椀猀 渀漀琀 爀攀愀氀 ⠀渀攀攀搀猀 琀栀椀爀搀ⴀ瀀愀爀琀礀 椀渀琀攀最爀愀琀椀漀渀猀⤀਀਀ⴀ 䌀愀爀爀椀攀爀 爀愀琀椀渀最 愀渀搀 戀椀渀搀 䄀倀䤀猀Ⰰ 愀渀搀 挀愀爀爀椀攀爀 瀀漀氀椀挀礀 搀漀眀渀氀漀愀搀猀 ⠀䤀嘀䄀一匀 ⼀ 吀䔀䄀䴀ⴀ唀倀⤀਀ⴀ 匀䴀匀 愀渀搀 攀洀愀椀氀 搀攀氀椀瘀攀爀礀 ⠀攀⸀最⸀ 吀眀椀氀椀漀Ⰰ 匀攀渀搀䜀爀椀搀⤀਀ⴀ 攀匀椀最渀愀琀甀爀攀 ⠀攀⸀最⸀ 䐀漀挀甀匀椀最渀⤀਀ⴀ 倀愀礀洀攀渀琀 瀀爀漀挀攀猀猀椀渀最਀ⴀ 唀猀攀爀 猀椀最渀ⴀ椀渀 ⠀琀栀攀 ∀挀甀爀爀攀渀琀 甀猀攀爀∀ 椀猀 瀀椀挀欀攀搀 椀渀 匀攀琀琀椀渀最猀 鈡 䄀最攀渀挀礀 瀀爀漀昀椀氀攀⤀਀਀⌀⌀ 䌀漀搀攀 氀愀礀漀甀琀਀਀怀怀怀਀猀爀挀⼀氀椀戀⼀          琀礀瀀攀猀Ⰰ 搀愀琀愀 氀愀礀攀爀 ⠀搀戀⸀琀猀㨀 匀甀瀀愀戀愀猀攀 漀爀 氀漀挀愀氀匀琀漀爀愀最攀⤀Ⰰ 栀漀漀欀猀Ⰰ 爀漀甀琀攀爀Ⰰ 昀漀爀洀愀琀琀椀渀最Ⰰ 搀漀洀愀椀渀 漀瀀猀Ⰰ 猀攀攀搀 搀愀琀愀਀猀爀挀⼀挀漀洀瀀漀渀攀渀琀猀⼀   唀䤀 欀椀琀 ⠀甀椀⸀琀猀砀⤀Ⰰ 瀀椀挀欀攀爀猀Ⰰ 愀瀀瀀 猀栀攀氀氀 ⠀䰀愀礀漀甀琀⸀琀猀砀⤀਀猀爀挀⼀洀漀搀甀氀攀猀⼀      漀渀攀 昀漀氀搀攀爀 瀀攀爀 洀漀搀甀氀攀㬀 攀愀挀栀 椀渀搀攀砀⸀琀猀砀 攀砀瀀漀爀琀猀 椀琀猀 瀀愀最攀猀 愀渀搀 攀洀戀攀搀搀愀戀氀攀 瀀愀渀攀氀猀਀猀甀瀀愀戀愀猀攀⼀         匀儀䰀 洀椀最爀愀琀椀漀渀猀਀怀怀怀਀
+# Northstar AMS
+
+An insurance agency management system (AMS) with a built-in comparative rater, modeled on the feature set of EZLynx-style platforms. It's built with React, TypeScript, Tailwind and Supabase.
+
+## Modules
+
+| Area | What it does |
+| --- | --- |
+| **Workspace** | Live dashboard: KPIs, upcoming renewals, policy activity (7 days), alerts, texting and eSignature counters, my tasks |
+| **Accounts** | Personal and commercial clients and prospects; drivers, vehicles and properties; a tabbed record with policies, quotes, activities, claims, documents, messages and billing |
+| **Quotes & Rating** | Multi-step comparative rater. Rating data is pre-filled from the account, you pick carriers, results are compared side by side, then you bind to a policy. Rates are **simulated** by a deterministic rating engine. |
+| **Policies** | Book of business, renewals queue, coverages, term history, plus the transactions: endorse, renew, cancel (pro-rata return premium), reinstate, non-renew, audit, remarket |
+| **Activities** | Agency work queue in list, board and calendar views, with overdue and due-today tracking and bulk complete, reassign and delete; each account and policy has a timeline |
+| **Claims** | First notice of loss (FNOL) intake, status workflow, reserves and payments, adjuster details |
+| **Messages** | Texting and email console with templates. Delivery is **simulated**. |
+| **Documents** | Upload, download, categorize and generate (ID card, proof of insurance, policy summary). Includes an eSignature envelope dashboard; signing is **simulated**. |
+| **Accounting** | Agency-bill receivables with aging, payments, commission tracking |
+| **Reports** | 12 reports with filters, charts, CSV export and print |
+| **Settings** | Agency profile, users, carrier appointments, data import/export, sample data |
+
+## Running it
+
+```bash
+npm install
+npm run dev
+```
+
+`.env` needs `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+
+### Storage modes
+
+When it starts, the app checks whether the AMS schema exists in the connected Supabase project:
+
+- **Supabase mode:** the schema exists. All data is stored in Postgres and documents in the `documents` storage bucket. The first run asks whether to load a sample agency or start empty.
+- **Browser-storage (demo) mode:** the schema is missing or Supabase can't be reached. Data lives in `localStorage` and a sample agency is loaded automatically. The footer shows which mode is active.
+
+To switch to Supabase, run `supabase/migrations/20260924160000_create_ams_schema.sql` in the Supabase SQL editor (or with `supabase db push`), then reload.
+
+### Security note
+
+To match the original `accounts` table, the migration gives the `anon` role full read and write access to every table and to the documents bucket. That's fine for a single-tenant demo, but **not for real client data**. Before production, add Supabase Auth and replace the policies with ones scoped to the user or agency.
+
+## What is not real (needs third-party integrations)
+
+- Carrier rating and bind APIs, and carrier policy downloads (IVANS / TEAM-UP)
+- SMS and email delivery (e.g. Twilio, SendGrid)
+- eSignature (e.g. DocuSign)
+- Payment processing
+- User sign-in (the "current user" is picked in Settings → Agency profile)
+
+## Code layout
+
+```
+src/lib/          types, data layer (db.ts: Supabase or localStorage), hooks, router, formatting, domain ops, seed data
+src/components/   UI kit (ui.tsx), pickers, app shell (Layout.tsx)
+src/modules/      one folder per module; each index.tsx exports its pages and embeddable panels
+supabase/         SQL migrations
+```
