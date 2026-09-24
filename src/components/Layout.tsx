@@ -5,6 +5,8 @@ import {
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo } from '@/components/Logo';
 import { SideNav } from '@/components/SideNav';
+import { AutomationTicker } from '@/modules/admin';
+import { SupportChatHost } from '@/modules/support';
 import { Avatar, cx } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
@@ -24,6 +26,8 @@ export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickA
       <SideNav mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">{children}</main>
+      <SupportChatHost />
+      <AutomationTicker />
       <StatusFooter />
     </div>
   );

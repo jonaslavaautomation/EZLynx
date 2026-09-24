@@ -1,11 +1,12 @@
 import { CheckSquare, CornerUpRight, Mail, Phone, RefreshCw, StickyNote, Trash2, Users } from 'lucide-react';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccountPicker, PolicySelect, StaffSelect } from '@/components/pickers';
 import { Button, ErrorBanner, Field, Input, Modal, Select, Textarea, cx, useFeedback, useForm } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
-import { fmtDateTime, today } from '@/lib/format';
+import { addDays, fmtDateTime, today } from '@/lib/format';
 import type { Activity, ActivityStatus, ActivityType, Priority } from '@/lib/types';
+import { defaultAssignee, useActivitySettings } from '@/modules/admin/integration';
 import { ACTIVITY_STATUSES, ACTIVITY_TYPES, PRIORITIES, isDone, statusPatch } from './constants';
 
 const TYPE_META: Record<ActivityType, { icon: (s: number) => ReactNode; cls: string }> = {
@@ -75,7 +76,7 @@ export function ActivityFormModal({ activity, defaults, onClose, onSaved }: { ac
   const { me } = useAppData();
   const { toast, confirm } = useFeedback();
   const src: Partial<Activity> = activity ?? defaults ?? {};
-  const [v, set] = useForm<FormValues>({
+  const [v, set, setAll] = useForm<FormValues>({
     type: src.type ?? 'Task',
     subject: src.subject ?? '',
     description: src.description ?? '',
@@ -89,6 +90,31 @@ export function ActivityFormModal({ activity, defaults, onClose, onSaved }: { ac
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Settings → Activity Settings defaults for new activities (explicit `defaults` from the caller win).
+  const actSettings = useActivitySettings();
+  const cfg = actSettings.config;
+  const applied = useRef(false);
+  const assigneeTouched = useRef(false);
+  useEffect(() => {
+    if (activity || applied.current || !actSettings.loaded) return;
+    applied.current = true;
+    setAll((s) => ({
+      ...s,
+      priority: src.priority ?? cfg.default_priority,
+      due_date: src.due_date ?? addDays(today(), cfg.due_in_days),
+      type: src.type ?? (cfg.enabled_types.includes(s.type) ? s.type : cfg.enabled_types[0] ?? s.type),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actSettings.loaded]);
+  useEffect(() => {
+    if (activity || !actSettings.loaded || src.assigned_to !== undefined || assigneeTouched.current || cfg.assignee_rule === 'me') return;
+    let live = true;
+    defaultAssignee(cfg.assignee_rule, v.account_id, me?.name ?? null).then((name) => { if (live && !assigneeTouched.current) set('assigned_to')(name); }).catch(() => {});
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actSettings.loaded, v.account_id]);
+  const typeOptions = ACTIVITY_TYPES.filter((t) => !actSettings.loaded || cfg.enabled_types.includes(t) || t === v.type);
 
   const save = async () => {
     if (busy) return; // Enter-to-submit bypasses the loading button
@@ -151,7 +177,7 @@ export function ActivityFormModal({ activity, defaults, onClose, onSaved }: { ac
       <form className="grid grid-cols-1 sm:grid-cols-2 gap-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
         {error && <div className="sm:col-span-2"><ErrorBanner message={error} /></div>}
         <Field label="Type">
-          <Select value={v.type} onChange={(e) => set('type')(e.target.value as ActivityType)} options={ACTIVITY_TYPES} />
+          <Select value={v.type} onChange={(e) => set('type')(e.target.value as ActivityType)} options={typeOptions} />
         </Field>
         <Field label="Status">
           <Select value={v.status} onChange={(e) => set('status')(e.target.value as ActivityStatus)} options={ACTIVITY_STATUSES} />
@@ -175,7 +201,7 @@ export function ActivityFormModal({ activity, defaults, onClose, onSaved }: { ac
           <Select value={v.priority} onChange={(e) => set('priority')(e.target.value as Priority)} options={PRIORITIES} />
         </Field>
         <Field label="Assigned To" className="sm:col-span-2">
-          <StaffSelect value={v.assigned_to} onChange={set('assigned_to')} />
+          <StaffSelect value={v.assigned_to} onChange={(name) => { assigneeTouched.current = true; set('assigned_to')(name); }} />
         </Field>
         <button type="submit" className="hidden" aria-hidden />
       </form>

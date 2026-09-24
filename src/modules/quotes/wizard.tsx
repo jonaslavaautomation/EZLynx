@@ -6,6 +6,7 @@ import {
 } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
+import { enqueueAutomation } from '@/modules/admin/automation-engine';
 import { logActivity } from '@/lib/domain';
 import { accountName, addDays, fmtMoney, today } from '@/lib/format';
 import { href, navigate, useRoute } from '@/lib/router';
@@ -18,6 +19,7 @@ import {
 } from './inputs';
 import { bestRate, rateQuote, type RatedCarrier } from './rating';
 import { CoverageStep, RiskStep, type SetSection } from './steps';
+import { useCarrierQuoting, useLineSettings } from '@/modules/admin/integration';
 
 const STEPS = ['Applicant', 'Risk details', 'Coverages', 'Carriers', 'Results'];
 const EMPTY_RISK: AccountRisk = { account: null, drivers: [], vehicles: [], properties: [] };
@@ -94,7 +96,12 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editId]);
 
-  const eligible = useMemo(() => carriersForLine(lob, appointedCarriers), [lob, appointedCarriers]);
+  // Settings → Carrier Quoting Setup: once any carrier is set up, only carriers Ready for the line are rated.
+  const quoting = useCarrierQuoting();
+  const lineSettings = useLineSettings();
+  const writers = useMemo(() => carriersForLine(lob, appointedCarriers), [lob, appointedCarriers]);
+  const eligible = useMemo(() => writers.filter((c) => quoting.isReady(c.name, lob)), [writers, quoting, lob]);
+  const loginBlocked = useMemo(() => writers.filter((c) => !quoting.isReady(c.name, lob)), [writers, quoting, lob]);
   const notAppointed = useMemo(() => carriers.filter((c) => !c.appointed && c.lines.includes(lob)), [carriers, lob]);
 
   const set = useCallback(<K extends SectionKey>(key: K, patch: Partial<NonNullable<QuoteInput[K]>>) => {
@@ -120,7 +127,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
   const changeLine = (l: LineOfBusiness) => {
     setLob(l);
     setDirty(true);
-    setInput((i) => ({ ...i, carriers: carriersForLine(l, appointedCarriers).map((c) => c.name) }));
+    setInput((i) => ({ ...i, carriers: carriersForLine(l, appointedCarriers).filter((c) => quoting.isReady(c.name, l)).map((c) => c.name) }));
     setMaxStep((m) => Math.min(m, 0));
   };
 
@@ -347,13 +354,13 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Field label="Line of business" required>
-                <Select value={lob} onChange={(e) => changeLine(e.target.value as LineOfBusiness)} options={QUOTE_LINES} />
+                <Select value={lob} onChange={(e) => changeLine(e.target.value as LineOfBusiness)} options={lineSettings.filter(QUOTE_LINES, lob)} />
               </Field>
               <Field label="Effective date" required error={errors.effective || undefined}>
                 <Input type="date" value={effective} min={today()} onChange={(e) => { setEffective(e.target.value); setDirty(true); }} />
               </Field>
             </div>
-            <div className="text-xs text-ink-400">{eligible.length} appointed carrier{eligible.length === 1 ? '' : 's'} write {lob}.</div>
+            <div className="text-xs text-ink-400">{eligible.length} appointed carrier{eligible.length === 1 ? '' : 's'} ready to rate {lob}.{loginBlocked.length > 0 && <> {loginBlocked.length} more need setup in <a className="text-brand-600 hover:underline" href={href('/admin/carrier-quoting')}>Carrier Quoting Setup</a>.</>}</div>
           </div>
         )}
 
@@ -378,7 +385,11 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
         {step === 3 && (
           <div className="space-y-3">
             {eligible.length === 0 ? (
-              <EmptyState title={`No appointed carriers write ${lob}`} message={<>Appoint a carrier for this line in <a className="text-brand-600 hover:underline" href={href('/settings')}>Settings</a>, or choose another line of business.</>} />
+              loginBlocked.length ? (
+                <EmptyState title={`No carriers are ready to rate ${lob}`} message={<>{loginBlocked.map((c) => c.name).join(', ')} {loginBlocked.length === 1 ? 'needs' : 'need'} a login or this line enabled in <a className="text-brand-600 hover:underline" href={href('/admin/carrier-quoting')}>Carrier Quoting Setup</a>.</>} />
+              ) : (
+                <EmptyState title={`No appointed carriers write ${lob}`} message={<>Appoint a carrier for this line in <a className="text-brand-600 hover:underline" href={href('/settings')}>Settings</a>, or choose another line of business.</>} />
+              )
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -404,6 +415,19 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
                     );
                   })}
                 </div>
+                {loginBlocked.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {loginBlocked.map((c) => (
+                      <div key={c.id} className="flex items-start gap-3 border border-dashed border-ink-200 rounded p-3 opacity-60" title="Not rated until set up">
+                        <input type="checkbox" className="w-4 h-4 mt-0.5" disabled checked={false} readOnly aria-label={`${c.name} unavailable`} />
+                        <span className="min-w-0">
+                          <span className="block text-[13px] font-semibold text-ink-700">{c.name}</span>
+                          <span className="block text-[11px] text-ink-500">{quoting.statusOf(c.name, lob)} · <a className="text-brand-600 hover:underline" href={href('/admin/carrier-quoting')}>Set up</a></span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 {notAppointed.length > 0 && <div className="text-[11px] text-ink-400">Not appointed (not rated): {notAppointed.map((c) => c.name).join(', ')}</div>}
               </>
             )}
@@ -508,6 +532,7 @@ function ProspectForm({ commercial, producer, onCreated }: { commercial: boolean
         status: 'Prospect', account_type: commercial ? 'Commercial' : 'Personal', business_name: commercial ? v.business_name.trim() : null,
         policy_type: null, dob: null, marital_status: null, occupation: null, mobile_phone: null, producer, csr: null, lead_source: 'Quote', notes: null,
       });
+      try { await enqueueAutomation('Applicant Created', { account_id: a.id }); } catch { /* automations never block creating the prospect */ }
       onCreated(a);
     } catch (err) {
       toast((err as Error).message, 'error');

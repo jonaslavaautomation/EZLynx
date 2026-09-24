@@ -15,6 +15,8 @@ import { ComparisonTable, CoverageMatrix, InputSummary, SimulatedNote } from './
 import { carriersForLine, loadAccountRisk } from './data';
 import { buildDefaultInput, hasSection, mergeInput, pruneInput, readInput, sectionOf, validateRisk, type QuoteInput } from './inputs';
 import { bestRate, monthlyEstimate, rateQuote, sortRates } from './rating';
+import { useCarrierQuoting, useDefaultProposalTemplate } from '@/modules/admin/integration';
+import { mergeFields } from '@/modules/comm/shared';
 
 const LOST_REASONS = ['Price too high', 'Coverage not competitive', 'Went with another agency', 'Stayed with current carrier', 'No response from client', 'Risk ineligible', 'Other'];
 const PAYMENT_PLANS = ['Paid in Full', 'Semi-Annual', 'Quarterly', 'Monthly'];
@@ -27,6 +29,7 @@ export function QuoteDetail({ id }: { id: string }) {
   const account = useRow('accounts', q?.account_id ?? null);
   const { appointedCarriers, me } = useAppData();
   const { toast, confirm } = useFeedback();
+  const quoting = useCarrierQuoting();
   const [tab, setTab] = useState<TabKey>('compare');
   const [bindRate, setBindRate] = useState<CarrierRate | null>(null);
   const [lostOpen, setLostOpen] = useState(false);
@@ -69,10 +72,10 @@ export function QuoteDetail({ id }: { id: string }) {
         navigate(`/quotes/new?quote=${q.id}`);
         return;
       }
-      const eligible = carriersForLine(q.line_of_business, appointedCarriers);
+      const eligible = carriersForLine(q.line_of_business, appointedCarriers).filter((c) => quoting.isReady(c.name, q.line_of_business));
       const chosen = eligible.filter((c) => inp.carriers.includes(c.name));
       const use = chosen.length ? chosen : eligible;
-      if (!use.length) { toast(`No appointed carriers write ${q.line_of_business}`, 'error'); return; }
+      if (!use.length) { toast(quoting.active ? `No carriers are ready to rate ${q.line_of_business} — check Carrier Quoting Setup` : `No appointed carriers write ${q.line_of_business}`, 'error'); return; }
       await new Promise((r) => setTimeout(r, 700 + use.length * 150));
       const next = rateQuote(q.line_of_business, inp, use);
       const nb = bestRate(next);
@@ -318,6 +321,14 @@ function ProposalView({ quote, account, onClose }: { quote: Quote; account: Acco
   const quoted = results.filter((r) => r.status === 'Quoted');
   const declined = results.filter((r) => r.status !== 'Quoted');
   const best = bestRate(results);
+  // Settings → Proposal / SOI Templates: the default Proposal template supplies intro, closing and disclaimer.
+  const tpl = useDefaultProposalTemplate('Proposal');
+  const tplText = (s: string | null | undefined) => (s?.trim() ? mergeFields(s, account, settings, account?.producer ?? me?.name) : null);
+  const intro = tplText(tpl?.intro);
+  const closing = tplText(tpl?.closing);
+  const disclaimer = tplText(tpl?.disclaimer);
+  const showPremium = tpl ? tpl.include_premium : true;
+  const showCoverages = tpl ? tpl.include_coverages : true;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -369,27 +380,34 @@ function ProposalView({ quote, account, onClose }: { quote: Quote; account: Acco
           </div>
         </div>
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-600 mb-2">Premium comparison</h2>
+        {intro && <p className="text-[13px] text-ink-700 mb-6 whitespace-pre-wrap">{intro}</p>}
+
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-600 mb-2">{showPremium ? 'Premium comparison' : 'Carriers offering terms'}</h2>
         <table className="w-full text-[13px] mb-6 border border-ink-100">
           <thead>
             <tr className="bg-ink-50 text-[11px] uppercase tracking-wide text-ink-500">
-              <th className="text-left px-3 py-2">Carrier</th><th className="text-right px-3 py-2">Term premium</th><th className="text-right px-3 py-2">Est. monthly</th><th className="text-left px-3 py-2">Notes</th>
+              <th className="text-left px-3 py-2">Carrier</th>{showPremium && <><th className="text-right px-3 py-2">Term premium</th><th className="text-right px-3 py-2">Est. monthly</th></>}<th className="text-left px-3 py-2">Notes</th>
             </tr>
           </thead>
           <tbody>
             {quoted.map((r) => (
               <tr key={r.carrier} className="border-t border-ink-100">
                 <td className="px-3 py-2 font-semibold">{r.carrier} {best?.carrier === r.carrier && <Badge tone="teal">Best value</Badge>}</td>
-                <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(r.premium)}</td>
-                <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(monthlyEstimate(r), true)}</td>
+                {showPremium && <>
+                  <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmtMoney(r.premium)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(monthlyEstimate(r), true)}</td>
+                </>}
                 <td className="px-3 py-2 text-xs text-ink-500">{r.term_months} months{r.message ? ` · ${r.message}` : ''}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-600 mb-2">Coverage comparison</h2>
-        <div className="border border-ink-100 mb-6"><CoverageMatrix rates={quoted} /></div>
+        {showCoverages && <>
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-ink-600 mb-2">Coverage comparison</h2>
+          <div className="border border-ink-100 mb-6"><CoverageMatrix rates={quoted} /></div>
+        </>}
+        {closing && <p className="text-[13px] text-ink-700 mb-6 whitespace-pre-wrap">{closing}</p>}
 
         {declined.length > 0 && (
           <div className="text-xs text-ink-500 mb-6">
@@ -399,7 +417,7 @@ function ProposalView({ quote, account, onClose }: { quote: Quote; account: Acco
         )}
 
         <div className="text-[11px] text-ink-400 border-t border-ink-100 pt-3 space-y-1">
-          <p>This proposal is a summary for comparison only and does not bind coverage. Coverage is subject to underwriting approval and the terms, conditions and exclusions of the policy issued.</p>
+          <p className="whitespace-pre-wrap">{disclaimer ?? 'This proposal is a summary for comparison only and does not bind coverage. Coverage is subject to underwriting approval and the terms, conditions and exclusions of the policy issued.'}</p>
           <p>Simulated rates — not bindable carrier quotes. Premiums shown were produced by the agency's rating model for illustration and may differ from final carrier pricing.</p>
         </div>
       </div>

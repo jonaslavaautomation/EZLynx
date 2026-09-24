@@ -1,7 +1,10 @@
 import { db, uuid } from '@/lib/db';
+import { buildAdminSample } from '@/modules/admin/sample';
 import { buildCommSample } from '@/modules/comm/sample';
+import { buildMarketplaceSample } from '@/modules/marketplace/sample';
 import { buildPolicyMgmtSample } from '@/modules/policymgmt/sample';
 import { buildReportsSample } from '@/modules/reports/sample';
+import { buildSupportSample } from '@/modules/support/sample';
 import { addDays, addMonths, today } from '@/lib/format';
 import type {
   Account, Activity, Carrier, Claim, Coverage, DocumentRow, Driver, Invoice, LineOfBusiness, Message, Policy, PolicyTransaction,
@@ -135,7 +138,7 @@ export function buildSeed(seed = 42): SeedData {
       status, account_type: commercial ? 'Commercial' : 'Personal', business_name: commercial ? BUSINESSES[Math.floor(i / 6) % BUSINESSES.length] : null,
       dob: commercial ? null : `${int(1955, 2001)}-${String(int(1, 12)).padStart(2, '0')}-${String(int(1, 28)).padStart(2, '0')}`,
       marital_status: commercial ? null : pick(['Married', 'Single', 'Married', 'Divorced']), occupation: commercial ? null : pick(['Engineer', 'Teacher', 'Nurse', 'Sales Manager', 'Retired', 'Accountant', 'Contractor']),
-      mobile_phone: `(737) 555-${String(2000 + i * 53).slice(-4)}`, producer: pick(producers), csr: pick(csrs), lead_source: pick(SOURCES), notes: null,
+      mobile_phone: `(737) 555-${String(2000 + i * 53).slice(-4)}`, producer: pick(producers), csr: pick(csrs), lead_source: pick(SOURCES), notes: null, labels: [],
     };
     out.accounts.push(a);
 
@@ -217,6 +220,9 @@ function buildExtras(d: Base): Partial<Record<TableName, { id: string }[]>> {
     ...buildPolicyMgmtSample(d),
     ...buildCommSample(d),
     ...buildReportsSample(d),
+    ...buildAdminSample(d),
+    ...buildSupportSample(d),
+    ...buildMarketplaceSample(d),
   };
 }
 
@@ -224,6 +230,8 @@ function buildExtras(d: Base): Partial<Record<TableName, { id: string }[]>> {
 const EXTRA_ORDER: TableName[] = [
   'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns',
   'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports',
+  'app_config', 'labels', 'lead_sources', 'automation_workflows', 'billing_companies', 'departments', 'carrier_rating_setup', 'form_templates',
+  'proposal_templates', 'support_tickets', 'training_progress', 'training_registrations', 'integrations',
 ];
 
 async function insertTables(order: TableName[], data: Partial<Record<TableName, { id: string }[]>>, onProgress?: (msg: string) => void) {

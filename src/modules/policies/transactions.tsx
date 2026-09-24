@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { addTransaction, createInvoice, logActivity } from '@/lib/domain';
 import { addMonths, fmtDate, fmtMoney, today } from '@/lib/format';
 import type { Policy, PolicyTransaction } from '@/lib/types';
+import { enqueueAutomation } from '@/modules/admin/automation-engine';
 import { CANCEL_REASONS, TERM_OPTIONS, parseAmount, proRataReturn, signedMoney } from './shared';
 
 import type { PolicyAction as TxKind } from './shared';
@@ -162,6 +163,7 @@ function CancelModal({ policy, onClose }: Props) {
       await addTransaction(policy, 'Cancellation', date, -r!, desc);
       await db.update('policies', policy.id, { status: 'Cancelled' });
       await log(`Policy cancelled — ${policy.policy_number}`, desc);
+      try { await enqueueAutomation('Policy Cancelled', { account_id: policy.account_id, policy_id: policy.id, line: policy.line_of_business }); } catch { /* automations never block the cancellation */ }
       return 'Policy cancelled';
     }}>
       <Summary items={[['Term', `${fmtDate(policy.effective_date)} – ${fmtDate(policy.expiration_date)}`], ['Term premium', fmtMoney(policy.premium, true)], ['Pro-rata return', fmtMoney(date ? proRataReturn(policy, date) : 0, true)], ['Earned', fmtMoney(Number(policy.premium) - (r ?? 0), true)]]} />

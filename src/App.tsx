@@ -14,7 +14,10 @@ import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
 import { Dashboard } from '@/modules/dashboard/Dashboard';
 import { DocumentsPage } from '@/modules/documents';
 import { HelpPage } from '@/modules/help';
+import { AdminRoutes } from '@/modules/admin';
 import { CommRoutes } from '@/modules/comm';
+import { MarketplaceRoutes } from '@/modules/marketplace';
+import { SupportRoutes } from '@/modules/support';
 import { PolicyMgmtRoutes } from '@/modules/policymgmt';
 import { MessagesPage } from '@/modules/messages';
 import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies';
@@ -65,6 +68,9 @@ function Routes() {
     case 'help': page = <HelpPage />; break;
     case 'policy-mgmt': page = <PolicyMgmtRoutes segments={segments.slice(1)} />; break;
     case 'comm': page = <CommRoutes segments={segments.slice(1)} />; break;
+    case 'admin': page = <AdminRoutes segments={segments.slice(1)} />; break;
+    case 'support': page = <SupportRoutes segments={segments.slice(1)} />; break;
+    case 'marketplace': page = <MarketplaceRoutes segments={segments.slice(1)} />; break;
     default: page = <EmptyState title="Page not found" message="That page doesn't exist." action={<Button onClick={() => navigate('/')}>Go to Workspace</Button>} />;
   }
   // Remount per path so page-local state (filters, wizards) resets between records.

@@ -34,7 +34,13 @@ When it starts, the app checks whether the AMS schema exists in the connected Su
 - **Supabase mode:** the schema exists. All data is stored in Postgres and documents in the `documents` storage bucket. The first run asks whether to load a sample agency or start empty.
 - **Browser-storage (demo) mode:** the schema is missing or Supabase can't be reached. Data lives in `localStorage` and a sample agency is loaded automatically. The footer shows which mode is active.
 
-To switch to Supabase, run `supabase/migrations/20260924160000_create_ams_schema.sql` in the Supabase SQL editor (or with `supabase db push`), then reload.
+To switch to Supabase, run these migrations in order in the Supabase SQL editor (or with `supabase db push`), then reload:
+
+1. `supabase/migrations/20260924160000_create_ams_schema.sql`
+2. `supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql`
+3. `supabase/migrations/20260926120000_settings_support_marketplace.sql`
+
+The app stays in browser-storage mode until all of them have been applied.
 
 ### Security note
 

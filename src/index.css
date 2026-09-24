@@ -71,6 +71,9 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #dc2626; text-d
 .nav-flyout h3 { margin: 0 0 4px; padding: 0 18px; font-size: 16px; font-weight: 700; color: #fff; }
 .nav-flyout a { display: block; padding: 2px 18px; font-size: 13px; line-height: 20px; color: #eceff1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .nav-flyout a:hover, .nav-flyout a:focus-visible { color: #fff; background: #37474f; text-decoration: underline; outline: none; }
+.nav-flyout-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 14px !important; }
+.nav-chat { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: #fff; border: 1px solid #fff; border-radius: 3px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
+.nav-chat:hover, .nav-chat:focus-visible { background: #fff; color: #263238; outline: none; }
 .nav-flyout-empty { margin: 0; padding: 2px 18px; font-size: 12px; color: #90a4ae; font-style: italic; }
 .nav-tooltip { position: fixed; left: calc(var(--sidebar-w) + 4px); transform: translateY(-50%); z-index: 45; background: #fff; color: #1c1414; font-size: 12px; padding: 3px 8px; border: 1px solid #cfd8dc; border-radius: 2px; box-shadow: 0 2px 6px #0003; pointer-events: none; white-space: nowrap; }
 .sidebar-scrim { display: none; }
