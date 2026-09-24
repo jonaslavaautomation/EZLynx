@@ -1,10 +1,10 @@
 import {
-  AlertTriangle, BarChart3, Bell, BriefcaseBusiness, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
-  FileText, FolderOpen, Grid2X2, HelpCircle, Loader2, Menu as MenuIcon, MessageSquare, PanelLeft, PanelLeftClose, Plus, Receipt,
-  Search, Settings, ShieldAlert, User, UserPlus, X,
+  AlertTriangle, Bell, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
+  FolderOpen, HelpCircle, Loader2, Menu as MenuIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo } from '@/components/Logo';
+import { SideNav } from '@/components/SideNav';
 import { Avatar, cx } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
@@ -13,68 +13,15 @@ import { useDebounced, useTable } from '@/lib/hooks';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, Policy } from '@/lib/types';
 
-export const NAV = [
-  { path: '/', label: 'Workspace', icon: Grid2X2 },
-  { path: '/accounts', label: 'Accounts', icon: BriefcaseBusiness },
-  { path: '/quotes', label: 'Quotes & Rating', icon: Calculator },
-  { path: '/policies', label: 'Policies', icon: FolderOpen },
-  { path: '/activities', label: 'Activities', icon: ClipboardList },
-  { path: '/claims', label: 'Claims', icon: ShieldAlert },
-  { path: '/messages', label: 'Messages', icon: MessageSquare },
-  { path: '/documents', label: 'Documents', icon: FileText },
-  { path: '/accounting', label: 'Accounting', icon: Receipt },
-  { path: '/reports', label: 'Reports', icon: BarChart3 },
-];
-
-function isActive(current: string, path: string) {
-  return path === '/' ? current === '/' : current === path || current.startsWith(path + '/');
-}
-
-function readPref(key: string) {
-  try { return localStorage.getItem(key); } catch { return null; }
-}
-
 export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickAdd: (kind: QuickAddKind) => void }) {
   const route = useRoute();
-  const [expanded, setExpanded] = useState(() => readPref('northstar-ams:sidebar') === 'wide');
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [route.path]);
 
-  const toggle = () => {
-    setExpanded((v) => {
-      try { localStorage.setItem('northstar-ams:sidebar', v ? 'narrow' : 'wide'); } catch { /* ignore */ }
-      return !v;
-    });
-  };
-
   return (
-    <div className={cx('app-shell', expanded && 'sidebar-wide')}>
+    <div className="app-shell">
       <TopBar onMenu={() => setMobileOpen(true)} onQuickAdd={onQuickAdd} />
-      <aside className={cx('sidebar', mobileOpen && 'mobile-open')}>
-        <div className="sidebar-top">
-          <button className="sb-toggle hidden-mobile" onClick={toggle} aria-label={expanded ? 'Collapse sidebar' : 'Expand sidebar'} title={expanded ? 'Collapse' : 'Expand'}>
-            {expanded ? <PanelLeftClose size={20} /> : <PanelLeft size={20} />}
-          </button>
-          <button className="sb-toggle show-mobile" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={20} /></button>
-          {expanded && <span className="sidebar-title">Northstar AMS</span>}
-        </div>
-        <nav>
-          {NAV.map(({ path, label, icon: Icon }) => {
-            const active = isActive(route.path, path);
-            return (
-              <a key={path} href={href(path)} className={cx('nav-item', active && 'selected')} title={label} aria-current={active ? 'page' : undefined}>
-                <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
-                <span className="nav-label">{label}</span>
-              </a>
-            );
-          })}
-        </nav>
-        <div className="sidebar-bottom">
-          <a href={href('/settings')} className={cx('nav-item', isActive(route.path, '/settings') && 'selected')} title="Settings">
-            <Settings size={21} strokeWidth={1.8} /><span className="nav-label">Settings</span>
-          </a>
-        </div>
-      </aside>
+      <SideNav mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">{children}</main>
       <StatusFooter />
@@ -111,7 +58,7 @@ function TopBar({ onMenu, onQuickAdd }: { onMenu: () => void; onQuickAdd: (k: Qu
         <QuickAddMenu onPick={onQuickAdd} />
         <a className="top-icon hide-sm" href={href('/activities')} aria-label="My activities" title="My activities"><ClipboardList size={20} /></a>
         <NotificationsMenu />
-        <a className="top-icon hide-sm" href={href('/settings?tab=data')} aria-label="Help & data" title="Help & data"><HelpCircle size={20} /></a>
+        <a className="top-icon hide-sm" href={href('/help')} aria-label="Help & training" title="Help & training"><HelpCircle size={20} /></a>
         <a className="avatar-link" href={href('/settings?tab=agency')} title={me ? `Acting as ${me.name} (${me.role})` : 'Choose user'}>
           <Avatar name={me?.name ?? '?'} color={me?.color} size={30} />
         </a>
