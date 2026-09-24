@@ -6,8 +6,8 @@ import {
 import { db } from '@/lib/db';
 import { accountName, fmtDate, fmtMoney, fmtRelative, parseDate } from '@/lib/format';
 import { useDebounced, useRow, useTable } from '@/lib/hooks';
-import { href, navigate } from '@/lib/router';
-import type { Account, Quote, QuoteStatus } from '@/lib/types';
+import { href, navigate, setParam, useRoute } from '@/lib/router';
+import { COMMERCIAL_LINES, type Account, type LineOfBusiness, type Quote, type QuoteStatus } from '@/lib/types';
 import { QUOTE_LINES, readInput } from './inputs';
 import { bestRate } from './rating';
 
@@ -48,7 +48,12 @@ function rowMenu(q: Quote, label: string, remove: (q: Quote, label: string) => v
 export function QuotesPage() {
   const quotes = useTable('quotes', { order: { column: 'created_at', ascending: false } });
   const accounts = useTable('accounts', {});
-  const [status, setStatus] = useState<StatusFilter>('All');
+  const { params } = useRoute();
+  // Filters live in the URL so the navigation menu can link straight to a view.
+  const rawStatus = params.get('status') as StatusFilter | null;
+  const status: StatusFilter = rawStatus && ['Draft', 'Rated', 'Bound', 'Lost'].includes(rawStatus) ? rawStatus : 'All';
+  const setStatus = (v: StatusFilter) => setParam('status', v === 'All' ? null : v);
+  const submissions = params.get('group') === 'commercial';
   const [line, setLine] = useState('');
   const [search, setSearch] = useState('');
   const term = useDebounced(search, 150).trim().toLowerCase();
@@ -83,6 +88,7 @@ export function QuotesPage() {
   }, [quotes.data]);
 
   const rows = useMemo(() => quotes.data.filter((q) => {
+    if (submissions && !COMMERCIAL_LINES.includes(q.line_of_business as LineOfBusiness)) return false;
     if (status !== 'All' && q.status !== status) return false;
     if (line && q.line_of_business !== line) return false;
     if (term) {
@@ -91,7 +97,7 @@ export function QuotesPage() {
       if (!hay.includes(term)) return false;
     }
     return true;
-  }), [quotes.data, status, line, term, byId]);
+  }), [quotes.data, status, line, term, byId, submissions]);
 
   const columns: Column<Quote>[] = [
     {
@@ -118,10 +124,10 @@ export function QuotesPage() {
   return (
     <div>
       <PageHeader
-        title="Quotes"
-        subtitle="Comparative rater — enter the risk once, rate every appointed carrier, compare and bind."
+        title={submissions ? 'Submission Center' : 'Quotes'}
+        subtitle={submissions ? 'Commercial lines submissions — track each risk from draft to bound.' : 'Comparative rater — enter the risk once, rate every appointed carrier, compare and bind.'}
         icon={<Calculator size={20} />}
-        actions={<Button variant="primary" icon={<FilePlus2 size={15} />} onClick={() => navigate('/quotes/new')}>New Quote</Button>}
+        actions={<Button variant="primary" icon={<FilePlus2 size={15} />} onClick={() => navigate(submissions ? `/quotes/new?line=${encodeURIComponent('General Liability')}` : '/quotes/new')}>{submissions ? 'New Submission' : 'New Quote'}</Button>}
       />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <StatCard label="Open quotes" value={stats.open} hint={`${stats.drafts} draft${stats.drafts === 1 ? '' : 's'}`} icon={<Calculator size={18} />} onClick={() => setStatus('Rated')} />

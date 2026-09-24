@@ -13,6 +13,7 @@ import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
 import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
 import { Dashboard } from '@/modules/dashboard/Dashboard';
 import { DocumentsPage } from '@/modules/documents';
+import { HelpPage } from '@/modules/help';
 import { MessagesPage } from '@/modules/messages';
 import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies';
 import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
@@ -56,6 +57,7 @@ function Routes() {
     case 'accounting': page = <AccountingPage />; break;
     case 'reports': page = <ReportsPage />; break;
     case 'settings': page = <SettingsPage />; break;
+    case 'help': page = <HelpPage />; break;
     default: page = <EmptyState title="Page not found" message="That page doesn't exist." action={<Button onClick={() => navigate('/')}>Go to Workspace</Button>} />;
   }
   // Remount per path so page-local state (filters, wizards) resets between records.

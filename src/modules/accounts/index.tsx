@@ -1,5 +1,5 @@
 import {
-  Building2, Calculator, Calendar, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, User, Users,
+  Building2, Calculator, Calendar, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, Upload, User, Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -16,6 +16,8 @@ import { PolicyList } from '@/modules/policies';
 import { QuoteList } from '@/modules/quotes';
 import { AccountFormModal } from '@/modules/accounts/AccountFormModal';
 import { DriversPanel, PropertiesPanel, VehiclesPanel } from '@/modules/accounts/HouseholdPanels';
+import { ImportModal } from '@/modules/accounts/ImportModal';
+import { trackRecentAccount } from '@/lib/recent';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { commissionOf } from '@/lib/domain';
@@ -45,6 +47,14 @@ export function AccountsPage() {
   const newParam = params.get('new');
   const [creating, setCreating] = useState<AccountType | null>(null);
   useEffect(() => { if (newParam) setCreating(newParam === 'Commercial' ? 'Commercial' : 'Personal'); }, [newParam]);
+  const importing = params.get('import') === '1';
+  // "Search Applicants" in the navigation lands here with ?focus=search.
+  const focusSearch = params.get('focus') === 'search';
+  useEffect(() => {
+    if (!focusSearch) return;
+    document.querySelector<HTMLInputElement>('[data-applicant-search] input')?.focus();
+    setParam('focus', null);
+  }, [focusSearch]);
 
   const policyStats = useMemo(() => {
     const m = new Map<string, { count: number; premium: number }>();
@@ -104,11 +114,12 @@ export function AccountsPage() {
   return (
     <div>
       <PageHeader
-        title="Accounts"
+        title="Applicants"
         subtitle="Personal and commercial clients, prospects and former clients"
         icon={<Users size={20} />}
         actions={<>
           <Button icon={<Download size={15} />} onClick={exportCsv} disabled={!filtered.length}>Export</Button>
+          <Button icon={<Upload size={15} />} onClick={() => setParam('import', '1')}>Import</Button>
           <Button icon={<Building2 size={15} />} onClick={() => setCreating('Commercial')}>New commercial</Button>
           <Button variant="primary" icon={<Plus size={15} />} onClick={() => setCreating('Personal')}>New personal</Button>
         </>}
@@ -116,7 +127,7 @@ export function AccountsPage() {
       <Panel bodyClassName="p-0">
         <div className="flex flex-wrap items-center gap-2 p-3 border-b border-ink-100">
           <Pills value={type} onChange={(v) => setParam('type', v === 'all' ? null : v)} options={[{ value: 'all', label: 'All', count: counts.all }, { value: 'Personal', label: 'Personal', count: counts.Personal }, { value: 'Commercial', label: 'Commercial', count: counts.Commercial }]} />
-          <SearchInput value={q} onChange={setQ} placeholder="Name, email, phone, city, ZIP…" className="w-full sm:w-72" />
+          <div data-applicant-search className="w-full sm:w-72"><SearchInput value={q} onChange={setQ} placeholder="Name, email, phone, city, ZIP…" /></div>
           <Select className="w-36" value={status} onChange={(e) => setParam('status', e.target.value || null)} placeholder="Any status" options={['Prospect', 'Active', 'Pending', 'Inactive']} />
           <StaffSelect className="w-48" value={producer} onChange={(v) => setParam('producer', v)} placeholder="Any producer" />
           <span className="ml-auto text-xs text-ink-400">{filtered.length} account{filtered.length === 1 ? '' : 's'}</span>
@@ -131,6 +142,7 @@ export function AccountsPage() {
           empty={<EmptyState icon={<Users size={22} />} title={accounts.data.length ? 'No accounts match your filters' : 'No accounts yet'} message={accounts.data.length ? 'Try a different search or clear filters.' : 'Create your first account or load sample data from Settings.'} action={<Button variant="primary" icon={<Plus size={15} />} onClick={() => setCreating('Personal')}>New account</Button>} />}
         />
       </Panel>
+      {importing && <ImportModal onClose={() => setParam('import', null)} />}
       {creating && <AccountFormModal defaultType={creating} onClose={() => { setCreating(null); if (params.get('new')) setParam('new', null); }} onSaved={(a) => navigate(`/accounts/${a.id}`)} />}
     </div>
   );
@@ -145,6 +157,8 @@ export function AccountDetail({ id }: { id: string }) {
   const { staffColor } = useAppData();
   const { confirm, toast } = useFeedback();
   const account = useRow('accounts', id);
+  const found = !!account.data;
+  useEffect(() => { if (found) trackRecentAccount(id); }, [found, id]);
   const policies = useTable('policies', { eq: { account_id: id } });
   const quotes = useTable('quotes', { eq: { account_id: id } });
   const activities = useTable('activities', { eq: { account_id: id } });
@@ -207,7 +221,7 @@ export function AccountDetail({ id }: { id: string }) {
   return (
     <div>
       <PageHeader
-        breadcrumb={[{ label: 'Accounts', href: href('/accounts') }]}
+        breadcrumb={[{ label: 'Applicants', href: href('/accounts') }]}
         title={<span className="flex items-center gap-2">{accountName(a)} <StatusBadge status={a.status} /></span>}
         subtitle={commercial ? `Commercial · Contact: ${a.first_name} ${a.last_name}` : `Personal lines${a.dob ? ` · Age ${age(a.dob)}` : ''}${a.occupation ? ` · ${a.occupation}` : ''}`}
         icon={commercial ? <Building2 size={20} /> : <User size={20} />}
