@@ -1,4 +1,4 @@
-import { BarChart3, BookOpenText, Folder, Gift, LayoutDashboard, Network, Plug, Settings, SquareUser, type LucideIcon } from 'lucide-react';
+import { BarChart3, BookOpenText, Folder, Gift, HelpCircle, LayoutDashboard, Network, Plug, Settings, SquareUser, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cx } from '@/components/ui';
 import { accountName } from '@/lib/format';
@@ -13,7 +13,11 @@ import type { Account, Driver, LineOfBusiness, Quote } from '@/lib/types';
  */
 
 type Link = { label: string; to: string };
-type Section = { title: string; links: Link[]; empty?: string };
+/** `chat` renders the Support flyout's "? Chat" button next to the section header. */
+type Section = { title: string; links: Link[]; empty?: string; action?: 'chat' };
+
+/** Opens the support chat panel (mounted once in the app shell by the Support module). */
+export const OPEN_CHAT_EVENT = 'northstar:open-support-chat';
 type MenuKey = 'dashboard' | 'applicants' | 'policy' | 'communication' | 'reports' | 'settings' | 'help' | 'marketplace' | 'updates';
 
 /** Bump when the What's New page gets new entries; shows the badge until the user opens it. */
@@ -31,8 +35,8 @@ const MENU: { key: MenuKey; label: string; icon: LucideIcon; paths: string[] }[]
   { key: 'policy', label: 'Policy & Commissions', icon: Folder, paths: ['/policy-mgmt', '/policies', '/activities', '/claims', '/accounting', '/documents'] },
   { key: 'communication', label: 'Communication Center', icon: Network, paths: ['/comm', '/messages'] },
   { key: 'reports', label: 'Reports', icon: BarChart3, paths: ['/reports'] },
-  { key: 'settings', label: 'Settings', icon: Settings, paths: ['/settings'] },
-  { key: 'help', label: 'Help & Training', icon: BookOpenText, paths: ['/help'] },
+  { key: 'settings', label: 'Settings', icon: Settings, paths: ['/admin', '/settings'] },
+  { key: 'help', label: 'Support', icon: BookOpenText, paths: ['/support', '/help'] },
   { key: 'marketplace', label: 'Marketplace', icon: Plug, paths: ['/marketplace'] },
   { key: 'updates', label: "What's New", icon: Gift, paths: ['/whats-new'] },
 ];
@@ -132,39 +136,75 @@ const STATIC: Partial<Record<MenuKey, Section[]>> = {
     ] },
     { title: 'Help', links: [{ label: 'Instructions', to: '/help?section=reports' }] },
   ],
-  settings: [{
-    title: 'Settings',
-    links: [
+  // Settings (admin): agency-wide configuration. Labels drive filters and Automation Center triggers; lead sources
+  // can be hidden but not renamed once added; each carrier needs a saved login under Carrier Quoting Setup before
+  // it can return quotes in the rater.
+  settings: [
+    { title: 'Agency Management', links: [
+      { label: 'Activity Settings', to: '/admin/activity' },
+      { label: 'Automation Center', to: '/admin/automation' },
+      { label: 'Certificate Settings', to: '/admin/certificates' },
+      { label: 'Plugins', to: '/admin/plugins' },
+      { label: 'Manage Email Subscriptions', to: '/admin/email-subscriptions' },
+      { label: 'Manage Labels', to: '/admin/labels' },
+      { label: 'Manage Lead Sources', to: '/admin/lead-sources' },
+    ] },
+    { title: 'Carriers and Lines of Business', links: [
+      { label: 'Manage Billing Companies', to: '/admin/billing-companies' },
+      { label: 'Manage Carriers/Markets', to: '/settings?tab=carriers' },
+      { label: 'Manage Departments', to: '/admin/departments' },
+      { label: 'Manage Lines of Business', to: '/admin/lines' },
+    ] },
+    { title: 'Rating', links: [{ label: 'Carrier Quoting Setup', to: '/admin/carrier-quoting' }] },
+    { title: 'Templates', links: [
+      { label: 'Manage Form Templates', to: '/admin/form-templates' },
+      { label: 'Proposal / SOI Templates', to: '/admin/proposal-templates' },
+    ] },
+    { title: 'Administration', links: [{ label: 'Product Usage Report', to: '/admin/usage' }] },
+    // Not in the reference menu; keeps agency profile, users and data tools reachable.
+    { title: 'Agency', links: [
       { label: 'Agency Profile', to: '/settings?tab=agency' },
       { label: 'Users', to: '/settings?tab=users' },
-      { label: 'Carriers', to: '/settings?tab=carriers' },
       { label: 'Data & Integrations', to: '/settings?tab=data' },
-    ],
-  }],
-  help: [{
-    title: 'Help & Training',
-    links: [
-      { label: 'Help Center', to: '/help' },
-      { label: 'Getting Started', to: '/help?section=getting-started' },
-      { label: 'Navigating the System', to: '/help?section=navigation' },
-      { label: 'Quoting Walkthrough', to: '/help?section=quoting' },
-      { label: 'Servicing Policies', to: '/help?section=servicing' },
-      { label: 'Glossary', to: '/help?section=glossary' },
-    ],
-  }],
+    ] },
+  ],
+  // Support: knowledge base + tickets (Solution Center), carrier contacts, product news, training with progress
+  // tracking, and API documentation for this system's data endpoints.
+  help: [
+    { title: 'Support', action: 'chat', links: [
+      { label: 'Solution Center', to: '/support' },
+      { label: 'Carrier Library', to: '/support/carriers' },
+    ] },
+    { title: 'Product News & Updates', links: [
+      { label: "What's New?", to: '/support/whats-new' },
+      { label: 'Product Blog', to: '/support/blog' },
+    ] },
+    { title: 'Training', links: [
+      { label: 'Agency University', to: '/support/university' },
+      { label: 'Knowledge Base', to: '/support/kb' },
+      { label: 'Instructor-Led Trainings', to: '/support/instructor-led' },
+    ] },
+    { title: 'API Documentation', links: [
+      { label: 'Platform API', to: '/support/api' },
+      { label: 'Policy API', to: '/support/api/policy' },
+      { label: 'Discussion API', to: '/support/api/discussion' },
+      { label: 'Applicant API', to: '/support/api/applicant' },
+      { label: 'Connect Web Services API', to: '/support/api/web-services' },
+    ] },
+  ],
+  // Marketplace: an integration store — browse partners and activate them; My Integrations manages active ones.
   marketplace: [{
     title: 'Marketplace',
     links: [
-      { label: 'Browse Integrations', to: '/help?section=marketplace' },
-      { label: 'Carrier Downloads', to: '/settings?tab=data' },
-      { label: 'Carrier Appointments', to: '/settings?tab=carriers' },
+      { label: 'Home', to: '/marketplace' },
+      { label: 'My Integrations', to: '/marketplace/mine' },
     ],
   }],
   updates: [{
     title: "What's New",
     links: [
-      { label: 'Latest Updates', to: '/help?section=whats-new' },
-      { label: 'Training: Quoting Walkthrough', to: '/help?section=quoting' },
+      { label: 'Latest Updates', to: '/support/whats-new' },
+      { label: 'Agency University', to: '/support/university' },
     ],
   }],
 };
@@ -300,7 +340,14 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
         <div className={cx('nav-flyout', mobileOpen && 'mobile-open')} role="menu" aria-label={MENU.find((m) => m.key === open)?.label}>
           {sections.map((s) => (
             <section key={s.title}>
-              <h3>{s.title}</h3>
+              <h3 className={cx(s.action && 'nav-flyout-head')}>
+                {s.title}
+                {s.action === 'chat' && (
+                  <button type="button" className="nav-chat" onClick={() => { setOpen(null); setTip(null); onNavigate(); window.dispatchEvent(new Event(OPEN_CHAT_EVENT)); }}>
+                    <HelpCircle size={13} /> Chat
+                  </button>
+                )}
+              </h3>
               {s.links.length === 0 && s.empty && <p className="nav-flyout-empty">{s.empty}</p>}
               {s.links.map((l) => (
                 <a

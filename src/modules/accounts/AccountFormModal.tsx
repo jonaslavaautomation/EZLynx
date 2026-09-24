@@ -6,6 +6,8 @@ import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { fmtPhone, today } from '@/lib/format';
 import { US_STATES, type Account, type AccountStatus, type AccountType } from '@/lib/types';
+import { enqueueAutomation } from '@/modules/admin/automation-engine';
+import { useLeadSourceOptions } from '@/modules/admin/integration';
 
 export const LEAD_SOURCES = ['Referral', 'Website', 'Walk-in', 'Google Ads', 'Facebook', 'Existing Client', 'Cold Call', 'Other'];
 const STATUSES: AccountStatus[] = ['Prospect', 'Active', 'Pending', 'Inactive'];
@@ -35,6 +37,7 @@ export function AccountFormModal({ account, defaultType = 'Personal', onClose, o
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const commercial = v.account_type === 'Commercial';
+  const leadSources = useLeadSourceOptions(account?.lead_source, LEAD_SOURCES);
 
   const validate = () => {
     const e: typeof errors = {};
@@ -71,6 +74,9 @@ export function AccountFormModal({ account, defaultType = 'Personal', onClose, o
         } catch (e) {
           toast(`Account created, but the insured could not be added as a driver: ${(e as Error).message}`, 'error');
         }
+      }
+      if (!account) {
+        try { await enqueueAutomation('Applicant Created', { account_id: saved.id }); } catch { /* automations never block saving */ }
       }
       toast(account ? 'Account updated' : 'Account created');
       onSaved?.(saved);
@@ -141,7 +147,7 @@ export function AccountFormModal({ account, defaultType = 'Personal', onClose, o
           <h3 className="text-xs font-semibold text-ink-900 mb-2">Agency</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Status"><Select value={v.status} onChange={(e) => set('status')(e.target.value as AccountStatus)} options={STATUSES} /></Field>
-            <Field label="Lead source"><Select value={v.lead_source} onChange={(e) => set('lead_source')(e.target.value)} placeholder="—" options={LEAD_SOURCES} /></Field>
+            <Field label="Lead source"><Select value={v.lead_source} onChange={(e) => set('lead_source')(e.target.value)} placeholder="—" options={leadSources} /></Field>
             <Field label="Producer"><StaffSelect value={v.producer} onChange={set('producer')} /></Field>
             <Field label="CSR / Account manager"><StaffSelect value={v.csr} onChange={set('csr')} /></Field>
             <Field label="Notes" className="sm:col-span-2"><Textarea value={v.notes} onChange={(e) => set('notes')(e.target.value)} rows={3} /></Field>

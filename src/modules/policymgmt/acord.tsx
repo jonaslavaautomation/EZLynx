@@ -1,5 +1,5 @@
 import { ExternalLink, FileText, Library } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Checkbox, DataTable, EmptyState, ErrorBanner, Field, IconButton, Modal, PageHeader, Panel, SearchInput, Select, Textarea, useFeedback, type Column } from '@/components/ui';
 import { AccountPicker } from '@/components/pickers';
 import { useAppData } from '@/lib/app-context';
@@ -10,6 +10,8 @@ import { useTable } from '@/lib/hooks';
 import { href } from '@/lib/router';
 import type { DocumentRow } from '@/lib/types';
 import { openDocumentFile } from '@/modules/documents/shared';
+import { useCertificateSettings, useFormTemplates } from '@/modules/admin/integration';
+import { fieldLabel } from '@/modules/admin/templates';
 import { ACORD_FORMS, acordDocTitle, buildAcordHtml, type AcordForm } from './acord-html';
 
 export function AcordPage() {
@@ -88,7 +90,31 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
   const [policyId, setPolicyId] = useState('');
   const [showAll, setShowAll] = useState(false);
   const [holder, setHolder] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [openAfter, setOpenAfter] = useState(true);
+  // Settings → Certificate Settings pre-fill the holder and remarks; a chosen form template overrides them.
+  const cert = useCertificateSettings();
+  const templates = useFormTemplates(`ACORD ${form.code}`);
+  const template = templates.find((t) => t.id === templateId) ?? null;
+  const certDefaults = useMemo(() => ({
+    holder: [cert.config.holder_name, cert.config.holder_address].map((s) => s.trim()).filter(Boolean).join('\n'),
+    remarks: [cert.config.remarks, cert.config.include_ai_wording ? cert.config.ai_wording : ''].map((s) => s.trim()).filter(Boolean).join('\n\n'),
+  }), [cert.config]);
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!form.certificate || prefilled.current || !cert.loaded) return;
+    prefilled.current = true;
+    setHolder((h) => h || certDefaults.holder);
+    setRemarks((r) => r || certDefaults.remarks);
+  }, [form.certificate, cert.loaded, certDefaults]);
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const t = templates.find((x) => x.id === id);
+    if (!t) { setHolder(certDefaults.holder); setRemarks(certDefaults.remarks); return; }
+    if (t.fields.certificate_holder) setHolder(t.fields.certificate_holder);
+    if (t.fields.remarks) setRemarks(t.fields.remarks);
+  };
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const policies = useTable('policies', accountId ? { eq: { account_id: accountId }, order: { column: 'effective_date', ascending: false } } : null);
@@ -117,6 +143,8 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
       ]);
       const html = buildAcordHtml({
         form, account, policy, drivers, vehicles, properties, settings, holder, preparedBy: me?.name ?? null,
+        remarks, authorizedRep: template?.fields.authorized_representative || cert.config.authorized_rep || null,
+        templateFields: template ? Object.entries(template.fields).filter(([k, val]) => val && !['certificate_holder', 'remarks', 'authorized_representative'].includes(k)).map(([k, val]) => [fieldLabel(k), val] as [string, string]) : undefined,
         carrier: policy ? carriers.find((c) => c.name === policy.carrier) : undefined,
       });
       const name = `ACORD ${form.code} data - ${accountName(account)}${policy ? ` - ${policy.policy_number}` : ''}.html`;
@@ -143,6 +171,11 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
     </>}>
       <div className="space-y-3">
         <ErrorBanner message={error} />
+        {templates.length > 0 && (
+          <Field label="Template" hint={template ? `Pre-fills ${Object.keys(template.fields).map(fieldLabel).join(', ').toLowerCase()}` : 'Optional — saved defaults from Settings → Manage Form Templates'}>
+            <Select value={templateId} onChange={(e) => applyTemplate(e.target.value)} placeholder="No template" options={templates.map((t) => ({ value: t.id, label: t.name }))} />
+          </Field>
+        )}
         <Field label={form.certificate ? 'Named insured' : 'Applicant'} required>
           <AccountPicker value={accountId} onChange={(id) => { setAccountId(id); setPolicyId(''); setError(null); }} />
         </Field>
@@ -155,6 +188,11 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
         {form.certificate && (
           <Field label={form.code === '27' ? 'Additional interest / mortgagee' : 'Certificate holder'} required>
             <Textarea rows={3} value={holder} onChange={(e) => setHolder(e.target.value)} placeholder={'Name\nStreet address\nCity, State ZIP'} />
+          </Field>
+        )}
+        {form.certificate && (
+          <Field label={form.code === '27' ? 'Remarks' : 'Description of operations / remarks'} hint="Defaults come from Settings → Certificate Settings.">
+            <Textarea rows={3} value={remarks} onChange={(e) => setRemarks(e.target.value)} />
           </Field>
         )}
         <div className="text-xs text-ink-500 bg-ink-50 border border-ink-100 rounded px-3 py-2">

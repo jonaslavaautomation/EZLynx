@@ -17,6 +17,7 @@ import { QuoteList } from '@/modules/quotes';
 import { AccountFormModal } from '@/modules/accounts/AccountFormModal';
 import { DriversPanel, PropertiesPanel, VehiclesPanel } from '@/modules/accounts/HouseholdPanels';
 import { ImportModal } from '@/modules/accounts/ImportModal';
+import { AccountLabels, LabelFilterSelect } from '@/modules/admin/integration';
 import { trackRecentAccount } from '@/lib/recent';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
@@ -42,6 +43,7 @@ export function AccountsPage() {
   const type: TypeFilter = rawType === 'Personal' || rawType === 'Commercial' ? rawType : 'all';
   const status = params.get('status') ?? '';
   const producer = params.get('producer');
+  const label = params.get('label');
   const accounts = useTable('accounts', { order: { column: 'created_at', ascending: false } });
   const policies = useTable('policies', { eq: { status: 'Active' } });
   const newParam = params.get('new');
@@ -72,10 +74,11 @@ export function AccountsPage() {
       if (type !== 'all' && (a.account_type ?? 'Personal') !== type) return false;
       if (status && a.status !== status) return false;
       if (producer && a.producer !== producer) return false;
+      if (label && !(a.labels ?? []).includes(label)) return false;
       if (!t) return true;
       return [accountName(a), a.first_name + ' ' + a.last_name, a.email, a.phone, a.mobile_phone, a.city, a.zip, a.address].some((f) => f?.toLowerCase().includes(t));
     });
-  }, [accounts.data, q, type, status, producer]);
+  }, [accounts.data, q, type, status, producer, label]);
 
   const counts = useMemo(() => ({
     all: accounts.data.length,
@@ -130,6 +133,7 @@ export function AccountsPage() {
           <div data-applicant-search className="w-full sm:w-72"><SearchInput value={q} onChange={setQ} placeholder="Name, email, phone, city, ZIP…" /></div>
           <Select className="w-36" value={status} onChange={(e) => setParam('status', e.target.value || null)} placeholder="Any status" options={['Prospect', 'Active', 'Pending', 'Inactive']} />
           <StaffSelect className="w-48" value={producer} onChange={(v) => setParam('producer', v)} placeholder="Any producer" />
+          <LabelFilterSelect className="w-44" value={label} onChange={(v) => setParam('label', v)} />
           <span className="ml-auto text-xs text-ink-400">{filtered.length} account{filtered.length === 1 ? '' : 's'}</span>
         </div>
         <ErrorBanner message={accounts.error} />
@@ -242,6 +246,7 @@ export function AccountDetail({ id }: { id: string }) {
           ]} />
         </>}
       />
+      <AccountLabels account={a} />
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-4">
         <StatCard label="Active policies" value={active.length} icon={<FolderOpen size={17} />} onClick={() => setTab('policies')} />

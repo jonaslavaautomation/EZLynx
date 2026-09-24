@@ -36,13 +36,15 @@ const IN_CHUNK = 100; // keeps `in.(…)` request URLs well under server limits
 // When a row in the key table is deleted, rows in these tables pointing at it are deleted (cascade)
 // or have the reference cleared (set null). Mirrors the FK rules in the migration for local mode.
 const CASCADES: Partial<Record<TableName, { table: TableName; column: string; action: 'delete' | 'null' }[]>> = {
-  accounts: (['drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'mail_items'] as TableName[])
+  accounts: (['drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'mail_items', 'automation_runs'] as TableName[])
     .map((table) => ({ table, column: 'account_id', action: 'delete' as const })),
   policies: [
     { table: 'policy_transactions', column: 'policy_id', action: 'delete' },
     ...(['quotes', 'activities', 'claims', 'documents', 'invoices', 'commission_statement_lines'] as TableName[]).map((table) => ({ table, column: 'policy_id', action: 'null' as const })),
     { table: 'policies', column: 'rewritten_from_policy_id', action: 'null' },
+    { table: 'automation_runs', column: 'policy_id', action: 'delete' },
   ],
+  automation_workflows: [{ table: 'automation_runs', column: 'workflow_id', action: 'delete' }],
   claims: [{ table: 'claim_transactions', column: 'claim_id', action: 'delete' }],
   commission_statements: [{ table: 'commission_statement_lines', column: 'statement_id', action: 'delete' }],
   recipient_lists: [{ table: 'email_campaigns', column: 'recipient_list_id', action: 'null' }],
@@ -57,7 +59,7 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
   accounts: {
     id: 'u', created_at: 'ts', first_name: 't', last_name: 't', email: 't', phone: 't', address: 't', city: 't', state: 't', zip: 't', policy_type: 't',
     status: ['t', 'Active'], account_type: ['t', 'Personal'], business_name: 't', dob: 'd', marital_status: 't', occupation: 't', mobile_phone: 't',
-    producer: 't', csr: 't', lead_source: 't', notes: 't',
+    producer: 't', csr: 't', lead_source: 't', notes: 't', labels: ['j', []],
   },
   drivers: {
     id: 'u', created_at: 'ts', account_id: 'u', first_name: 't', last_name: 't', dob: 'd', gender: 't', marital_status: 't', relationship: 't',
@@ -137,6 +139,29 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
   saved_reports: {
     id: 'u', created_at: 'ts', name: 't', report_key: 't', owner: 't', favorite: ['b', false], shared: ['b', false], schedule: 't', schedule_email: 't',
   },
+  app_config: { id: 'u', created_at: 'ts', key: 't', value: ['j', {}] },
+  labels: { id: 'u', created_at: 'ts', name: 't', color: ['t', '#dc2626'], description: 't' },
+  lead_sources: { id: 'u', created_at: 'ts', name: 't', is_default: ['b', false], hidden: ['b', false] },
+  automation_workflows: { id: 'u', created_at: 'ts', name: 't', trigger: 't', trigger_config: ['j', {}], steps: ['j', []], active: ['b', true] },
+  automation_runs: {
+    id: 'u', created_at: 'ts', workflow_id: 'u', account_id: 'u', policy_id: 'u', step_index: ['i', 0], due_at: 'ts', status: ['t', 'Pending'], result: 't',
+  },
+  billing_companies: { id: 'u', created_at: 'ts', name: 't', company_type: ['t', 'Premium Finance'], phone: 't', email: 't', address: 't', notes: 't' },
+  departments: { id: 'u', created_at: 'ts', name: 't', description: 't', members: ['j', []] },
+  carrier_rating_setup: {
+    id: 'u', created_at: 'ts', carrier: 't', username: 't', agency_code: 't', login_set: ['b', false], enabled_lines: ['j', []], active: ['b', true],
+  },
+  form_templates: { id: 'u', created_at: 'ts', name: 't', form_type: 't', fields: ['j', {}] },
+  proposal_templates: {
+    id: 'u', created_at: 'ts', name: 't', template_type: ['t', 'Proposal'], intro: 't', closing: 't', disclaimer: 't', include_coverages: ['b', true],
+    include_premium: ['b', true], is_default: ['b', false],
+  },
+  support_tickets: {
+    id: 'u', created_at: 'ts', subject: 't', category: ['t', 'General'], priority: ['t', 'Normal'], status: ['t', 'Open'], requester: 't', messages: ['j', []],
+  },
+  training_progress: { id: 'u', created_at: 'ts', staff_name: 't', lesson_key: 't', completed_at: 'ts' },
+  training_registrations: { id: 'u', created_at: 'ts', session_key: 't', staff_name: 't' },
+  integrations: { id: 'u', created_at: 'ts', integration_key: 't', status: ['t', 'Setup Required'], config: ['j', {}], activated_by: 't' },
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -297,7 +322,7 @@ export function initDb(): Promise<DbMode> {
       // `agency_settings` only exists once the full AMS migration is applied; a project that only has
       // the original `accounts` table fails this probe and falls back to local mode.
       // Probe the newest migration's table: if any migration is missing, stay in browser-storage mode.
-      const probe = supabase.from('saved_reports').select('id').limit(1);
+      const probe = supabase.from('integrations').select('id').limit(1);
       const { error } = await Promise.race([
         probe,
         new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),

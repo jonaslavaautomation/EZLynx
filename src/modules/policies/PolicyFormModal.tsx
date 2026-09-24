@@ -7,6 +7,7 @@ import { db } from '@/lib/db';
 import { createPolicy, generatePolicyNumber, logActivity } from '@/lib/domain';
 import { addMonths, fmtMoney, today } from '@/lib/format';
 import { LINES_OF_BUSINESS, type LineOfBusiness, type Policy, type PolicyStatus } from '@/lib/types';
+import { useLineSettings } from '@/modules/admin/integration';
 import { CoverageEditor } from './coverages';
 import { BILLING_TYPES, PAYMENT_PLANS, POLICY_STATUSES, TERM_OPTIONS, defaultCoverages, fromDrafts, parseAmount, toDrafts, type CoverageDraft } from './shared';
 
@@ -60,10 +61,17 @@ export function PolicyFormModal({ accountId, policy, onClose, onSaved }: { accou
   const [busy, setBusy] = useState(false);
 
   const carrierRate = (name: string) => carriers.find((c) => c.name === name)?.commission_rate;
+  const lineSettings = useLineSettings();
+  const lineOptions = lineSettings.filter(LINES_OF_BUSINESS, v.line_of_business);
 
   const changeLine = (line: LineOfBusiness) => {
     const carrierWritesLine = carriers.find((c) => c.name === v.carrier)?.lines.includes(line) ?? false;
-    setAll((s) => ({ ...s, line_of_business: line, carrier: carrierWritesLine ? s.carrier : '' }));
+    // New policies take the line's default term (Settings → Manage Lines of Business).
+    const term = editing ? null : String(lineSettings.defaultTerm(line));
+    setAll((s) => ({
+      ...s, line_of_business: line, carrier: carrierWritesLine ? s.carrier : '',
+      ...(term ? { term_months: term, expiration_date: s.effective_date ? addMonths(s.effective_date, Number(term)) : s.expiration_date } : {}),
+    }));
     if (!coveragesTouched) setCoverages(toDrafts(defaultCoverages(line)));
   };
 
@@ -157,7 +165,7 @@ export function PolicyFormModal({ accountId, policy, onClose, onSaved }: { accou
             <AccountPicker value={v.account_id} onChange={(id) => set('account_id')(id)} disabled={editing || !!accountId} />
           </Field>
           <Field label="Line of business" required error={errors.line_of_business}>
-            <Select value={v.line_of_business} onChange={(e) => changeLine(e.target.value as LineOfBusiness)} options={LINES_OF_BUSINESS} />
+            <Select value={v.line_of_business} onChange={(e) => changeLine(e.target.value as LineOfBusiness)} options={lineOptions} />
           </Field>
           <Field label="Carrier" required error={errors.carrier} hint={v.line_of_business ? `Appointed carriers writing ${v.line_of_business}` : undefined}>
             <CarrierSelect value={v.carrier} onChange={changeCarrier} line={v.line_of_business} />

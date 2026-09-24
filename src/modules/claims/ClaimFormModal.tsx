@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
 import { addDays, fmtDate, fmtMoney, today } from '@/lib/format';
 import type { Claim, ClaimStatus } from '@/lib/types';
+import { enqueueAutomation } from '@/modules/admin/automation-engine';
 import { CLAIM_STATUSES, LOSS_TYPES, claimLabel } from './constants';
 
 type FormValues = {
@@ -120,6 +121,7 @@ export function ClaimFormModal({ claim, accountId, onClose, onSaved }: { claim?:
         } catch (e) {
           toast(`Claim reported, but the follow-up task could not be created: ${(e as Error).message}`, 'error');
         }
+        try { await enqueueAutomation('Claim Reported', { account_id: saved.account_id, policy_id: saved.policy_id }); } catch { /* automations never block saving */ }
       }
       onSaved?.(saved);
       onClose();

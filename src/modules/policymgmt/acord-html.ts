@@ -66,6 +66,11 @@ export type AcordContext = {
   carrier?: Carrier;
   holder: string;
   preparedBy: string | null;
+  /** Description of operations / remarks (certificates). */
+  remarks?: string;
+  authorizedRep?: string | null;
+  /** Extra default values from a Settings → form template, printed as a section. */
+  templateFields?: [string, string][];
 };
 
 export const acordDocTitle = (f: AcordForm) => `ACORD ${f.code} — data for ${f.title}`;
@@ -105,6 +110,12 @@ export function buildAcordHtml(ctx: AcordContext) {
 
   if (form.certificate) {
     parts.push(`<h2>${form.code === '27' ? 'Additional interest / mortgagee' : 'Certificate holder'}</h2><p class="val" style="white-space:pre-wrap">${ctx.holder.trim() ? esc(ctx.holder.trim()) : '<span class="blank">not provided</span>'}</p>`);
+    parts.push(`<h2>${form.code === '27' ? 'Remarks' : 'Description of operations / remarks'}</h2><p style="white-space:pre-wrap">${ctx.remarks?.trim() ? esc(ctx.remarks.trim()) : '<span class="blank">none</span>'}</p>`);
+    if (ctx.authorizedRep?.trim()) parts.push(`<h2>Authorized representative</h2><p class="val">${esc(ctx.authorizedRep.trim())}</p>`);
+  }
+
+  if (ctx.templateFields?.length) {
+    parts.push(`<h2>Template defaults</h2>${kv(ctx.templateFields.map(([k, v]) => [k, v] as [string, unknown]))}`);
   }
 
   if (has('business')) {

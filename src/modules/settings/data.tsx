@@ -9,8 +9,8 @@ import { supabase } from '@/lib/supabase';
 import type { TableName } from '@/lib/types';
 
 /** Dependency order: parents before children so foreign keys resolve on import. */
-const TABLES: TableName[] = ['staff', 'carriers', 'agency_settings', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns', 'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports'];
-const MIGRATIONS = ['supabase/migrations/20260924160000_create_ams_schema.sql', 'supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql'];
+const TABLES: TableName[] = ['staff', 'carriers', 'agency_settings', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns', 'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports', 'app_config', 'labels', 'lead_sources', 'automation_workflows', 'automation_runs', 'billing_companies', 'departments', 'carrier_rating_setup', 'form_templates', 'proposal_templates', 'support_tickets', 'training_progress', 'training_registrations', 'integrations'];
+const MIGRATIONS = ['supabase/migrations/20260924160000_create_ams_schema.sql', 'supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql', 'supabase/migrations/20260926120000_settings_support_marketplace.sql'];
 const label = (t: string) => t.replace(/_/g, ' ');
 
 // Column types per table, mirroring the migration. A [type, default] tuple marks a NOT NULL column with a
@@ -19,7 +19,7 @@ type Col = 'text' | 'num' | 'int' | 'date' | 'ts' | 'bool' | 'json' | 'uuid';
 type ColSpec = Col | [Col, unknown];
 const BASE: Record<string, ColSpec> = { id: 'uuid', created_at: 'ts' };
 const SCHEMA: Record<TableName, Record<string, ColSpec>> = {
-  accounts: { ...BASE, first_name: 'text', last_name: 'text', email: 'text', phone: 'text', address: 'text', city: 'text', state: 'text', zip: 'text', policy_type: 'text', status: 'text', account_type: 'text', business_name: 'text', dob: 'date', marital_status: 'text', occupation: 'text', mobile_phone: 'text', producer: 'text', csr: 'text', lead_source: 'text', notes: 'text' },
+  accounts: { ...BASE, first_name: 'text', last_name: 'text', email: 'text', phone: 'text', address: 'text', city: 'text', state: 'text', zip: 'text', policy_type: 'text', status: 'text', account_type: 'text', business_name: 'text', dob: 'date', marital_status: 'text', occupation: 'text', mobile_phone: 'text', producer: 'text', csr: 'text', lead_source: 'text', notes: 'text', labels: ['json', []] },
   drivers: { ...BASE, account_id: 'uuid', first_name: 'text', last_name: 'text', dob: 'date', gender: 'text', marital_status: 'text', relationship: 'text', license_number: 'text', license_state: 'text', violations: ['int', 0], accidents: ['int', 0] },
   vehicles: { ...BASE, account_id: 'uuid', year: 'int', make: 'text', model: 'text', vin: 'text', usage: 'text', annual_miles: 'int', ownership: 'text', garaging_zip: 'text' },
   properties: { ...BASE, account_id: 'uuid', address: 'text', city: 'text', state: 'text', zip: 'text', year_built: 'int', square_feet: 'int', construction: 'text', roof_type: 'text', roof_year: 'int', protection_class: 'int', dwelling_value: 'num' },
@@ -45,6 +45,20 @@ const SCHEMA: Record<TableName, Record<string, ColSpec>> = {
   mail_items: { ...BASE, account_id: 'uuid', direction: ['text', 'Inbound'], mail_type: ['text', 'Letter'], correspondent: 'text', description: 'text', mail_date: 'date', status: ['text', 'Received'] },
   esign_templates: { ...BASE, name: 'text', description: 'text', category: ['text', 'Application'], message: 'text' },
   saved_reports: { ...BASE, name: 'text', report_key: 'text', owner: 'text', favorite: ['bool', false], shared: ['bool', false], schedule: 'text', schedule_email: 'text' },
+  app_config: { ...BASE, key: 'text', value: ['json', {}] },
+  labels: { ...BASE, name: 'text', color: ['text', '#dc2626'], description: 'text' },
+  lead_sources: { ...BASE, name: 'text', is_default: ['bool', false], hidden: ['bool', false] },
+  automation_workflows: { ...BASE, name: 'text', trigger: 'text', trigger_config: ['json', {}], steps: ['json', []], active: ['bool', true] },
+  automation_runs: { ...BASE, workflow_id: 'uuid', account_id: 'uuid', policy_id: 'uuid', step_index: ['int', 0], due_at: 'ts', status: ['text', 'Pending'], result: 'text' },
+  billing_companies: { ...BASE, name: 'text', company_type: ['text', 'Premium Finance'], phone: 'text', email: 'text', address: 'text', notes: 'text' },
+  departments: { ...BASE, name: 'text', description: 'text', members: ['json', []] },
+  carrier_rating_setup: { ...BASE, carrier: 'text', username: 'text', agency_code: 'text', login_set: ['bool', false], enabled_lines: ['json', []], active: ['bool', true] },
+  form_templates: { ...BASE, name: 'text', form_type: 'text', fields: ['json', {}] },
+  proposal_templates: { ...BASE, name: 'text', template_type: ['text', 'Proposal'], intro: 'text', closing: 'text', disclaimer: 'text', include_coverages: ['bool', true], include_premium: ['bool', true], is_default: ['bool', false] },
+  support_tickets: { ...BASE, subject: 'text', category: ['text', 'General'], priority: ['text', 'Normal'], status: ['text', 'Open'], requester: 'text', messages: ['json', []] },
+  training_progress: { ...BASE, staff_name: 'text', lesson_key: 'text', completed_at: 'ts' },
+  training_registrations: { ...BASE, session_key: 'text', staff_name: 'text' },
+  integrations: { ...BASE, integration_key: 'text', status: ['text', 'Setup Required'], config: ['json', {}], activated_by: 'text' },
 };
 
 /** Coerce a backup row to the table's columns so Postgres accepts it (unknown keys dropped, '' / NaN → null). */

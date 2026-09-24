@@ -27,6 +27,8 @@ export type Account = BaseRow & {
   csr: string | null; // staff name
   lead_source: string | null;
   notes: string | null;
+  /** Label ids (see Manage Labels). */
+  labels: string[];
 };
 
 export type Driver = BaseRow & {
@@ -363,6 +365,102 @@ export type SavedReport = BaseRow & {
   schedule_email: string | null;
 };
 
+/** Keyed JSON settings (activity, certificate, plugins, email subscriptions, lines of business…). */
+export type AppConfig = BaseRow & { key: string; value: Record<string, unknown> };
+
+export type Label = BaseRow & { name: string; color: string; description: string | null };
+
+export type LeadSource = BaseRow & { name: string; is_default: boolean; hidden: boolean };
+
+export type AutomationTrigger = 'Applicant Created' | 'Label Added' | 'Renewal Approaching' | 'Quote Not Bound' | 'Claim Reported' | 'Policy Cancelled';
+export type AutomationAction = 'Create Task' | 'Send Email' | 'Send Text' | 'Add Label';
+
+/** One step of an Automation Center workflow; steps run after their delay instead of all at once. */
+export type AutomationStep = {
+  delay_days: number;
+  action: AutomationAction;
+  subject?: string;
+  body?: string;
+  template_id?: string | null;
+  assign_to?: string | null; // staff name, or 'producer' / 'csr' of the account
+  label_id?: string | null;
+  priority?: Priority;
+};
+
+export type AutomationWorkflow = BaseRow & {
+  name: string;
+  trigger: AutomationTrigger;
+  trigger_config: { days?: number; label_id?: string | null; lines?: string[] };
+  steps: AutomationStep[];
+  active: boolean;
+};
+
+export type AutomationRun = BaseRow & {
+  workflow_id: string;
+  account_id: string | null;
+  policy_id: string | null;
+  step_index: number;
+  due_at: string;
+  status: 'Pending' | 'Done' | 'Skipped' | 'Failed';
+  result: string | null;
+};
+
+export type BillingCompany = BaseRow & {
+  name: string;
+  company_type: string; // Premium Finance, Carrier Direct Bill, MGA / Wholesaler, Agency Bill
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+};
+
+export type Department = BaseRow & { name: string; description: string | null; members: string[] };
+
+/** Carrier Quoting Setup: a carrier needs a login before it can return quotes. Passwords are never stored. */
+export type CarrierRatingSetup = BaseRow & {
+  carrier: string;
+  username: string | null;
+  agency_code: string | null;
+  login_set: boolean;
+  enabled_lines: string[];
+  active: boolean;
+};
+
+export type FormTemplate = BaseRow & { name: string; form_type: string; fields: Record<string, string> };
+
+export type ProposalTemplate = BaseRow & {
+  name: string;
+  template_type: 'Proposal' | 'SOI';
+  intro: string | null;
+  closing: string | null;
+  disclaimer: string | null;
+  include_coverages: boolean;
+  include_premium: boolean;
+  is_default: boolean;
+};
+
+export type TicketMessage = { from: 'user' | 'support' | 'assistant'; author: string; body: string; at: string };
+
+export type SupportTicket = BaseRow & {
+  subject: string;
+  category: string;
+  priority: Priority;
+  status: 'Open' | 'Pending' | 'Resolved' | 'Closed';
+  requester: string | null;
+  messages: TicketMessage[];
+};
+
+export type TrainingProgress = BaseRow & { staff_name: string; lesson_key: string; completed_at: string };
+
+export type TrainingRegistration = BaseRow & { session_key: string; staff_name: string };
+
+export type Integration = BaseRow & {
+  integration_key: string;
+  status: 'Setup Required' | 'Active' | 'Paused';
+  config: Record<string, string>;
+  activated_by: string | null;
+};
+
 export type TableMap = {
   accounts: Account;
   drivers: Driver;
@@ -390,6 +488,20 @@ export type TableMap = {
   mail_items: MailItem;
   esign_templates: ESignTemplate;
   saved_reports: SavedReport;
+  app_config: AppConfig;
+  labels: Label;
+  lead_sources: LeadSource;
+  automation_workflows: AutomationWorkflow;
+  automation_runs: AutomationRun;
+  billing_companies: BillingCompany;
+  departments: Department;
+  carrier_rating_setup: CarrierRatingSetup;
+  form_templates: FormTemplate;
+  proposal_templates: ProposalTemplate;
+  support_tickets: SupportTicket;
+  training_progress: TrainingProgress;
+  training_registrations: TrainingRegistration;
+  integrations: Integration;
 };
 
 export type TableName = keyof TableMap;
