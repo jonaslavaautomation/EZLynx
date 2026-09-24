@@ -7,7 +7,8 @@ import { AppDataProvider } from '@/lib/app-context';
 import { db, initDb, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
-import { AccountDetail, AccountFormModal, AccountsPage } from '@/modules/accounts';
+import { AccountDetail, AccountsPage } from '@/modules/accounts';
+import { CreateApplicant } from '@/modules/accounts/CreateApplicant';
 import { AccountingPage } from '@/modules/accounting';
 import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
 import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
@@ -24,7 +25,6 @@ import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies'
 import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
 import { ReportsPage } from '@/modules/reports';
 import { SettingsPage } from '@/modules/settings';
-import type { AccountType } from '@/lib/types';
 
 // Runs once per page load (StrictMode mounts effects twice; seeding must not run twice).
 let bootOnce: Promise<Boot> | null = null;
@@ -55,7 +55,7 @@ function Routes() {
   let page: ReactNode;
   switch (section) {
     case undefined: page = <Dashboard />; break;
-    case 'accounts': page = id ? <AccountDetail id={id} /> : <AccountsPage />; break;
+    case 'accounts': page = id === 'new' ? <CreateApplicant type={params.get('type') === 'Commercial' ? 'Commercial' : 'Personal'} /> : id ? <AccountDetail id={id} /> : <AccountsPage />; break;
     case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;
     case 'quotes': page = id === 'new' ? <QuoteWizard accountId={params.get('account')} line={params.get('line')} /> : id ? <QuoteDetail id={id} /> : <QuotesPage />; break;
     case 'activities': page = <ActivitiesPage />; break;
@@ -81,6 +81,7 @@ function Shell() {
   const [quick, setQuick] = useState<QuickAddKind | null>(null);
   const onQuickAdd = (k: QuickAddKind) => {
     if (k === 'quote') return navigate('/quotes/new');
+    if (k === 'account' || k === 'commercial') return navigate(`/accounts/new?type=${k === 'commercial' ? 'Commercial' : 'Personal'}`);
     if (k === 'message') return navigate('/messages?compose=1');
     setQuick(k);
   };
@@ -88,9 +89,6 @@ function Shell() {
   return (
     <Layout onQuickAdd={onQuickAdd}>
       <Routes />
-      {(quick === 'account' || quick === 'commercial') && (
-        <AccountFormModal defaultType={(quick === 'commercial' ? 'Commercial' : 'Personal') as AccountType} onClose={close} onSaved={(a) => navigate(`/accounts/${a.id}`)} />
-      )}
       {quick === 'policy' && <PolicyFormModal accountId={null} onClose={close} onSaved={(p) => navigate(`/policies/${p.id}`)} />}
       {quick === 'activity' && <ActivityFormModal onClose={close} />}
       {quick === 'claim' && <ClaimFormModal onClose={close} />}

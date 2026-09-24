@@ -29,6 +29,51 @@ export type Account = BaseRow & {
   notes: string | null;
   /** Label ids (see Manage Labels). */
   labels: string[];
+  /** When the customer first came to the agency's attention. */
+  customer_since: string | null;
+  // Commercial business classification (NAICS lookup), used to pre-fill ACORD forms and guide carrier appetite.
+  naics_code: string | null;
+  sic_code: string | null;
+  nature_of_business: string | null;
+  naics_description: string | null;
+  operations_description: string | null;
+};
+
+export const ADDRESS_TYPES = ['Mailing', 'Residence', 'Billing', 'Garaging', 'Business Location', 'Vacation / Seasonal Home', 'Previous Address'] as const;
+
+export type AccountAddress = BaseRow & {
+  account_id: string;
+  address_type: string;
+  street: string;
+  street2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  /** Only used for Mailing addresses (international mail). */
+  country: string | null;
+  is_primary: boolean;
+};
+
+/** A person on the account: the primary (named insured), a co-applicant / secondary contact, or another contact. */
+export type AccountContact = BaseRow & {
+  account_id: string;
+  first_name: string;
+  last_name: string;
+  title: string | null;
+  relationship: string | null;
+  email: string | null;
+  phone: string | null;
+  mobile_phone: string | null;
+  dob: string | null;
+  is_primary: boolean;
+  /** Co-applicant on personal accounts, secondary contact on commercial accounts. */
+  is_secondary: boolean;
+  client_center_access: boolean;
+  // Own address; only used when the contact isn't the primary (the primary uses the account's primary address).
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
 };
 
 export type Driver = BaseRow & {
@@ -502,6 +547,8 @@ export type TableMap = {
   training_progress: TrainingProgress;
   training_registrations: TrainingRegistration;
   integrations: Integration;
+  account_addresses: AccountAddress;
+  account_contacts: AccountContact;
 };
 
 export type TableName = keyof TableMap;

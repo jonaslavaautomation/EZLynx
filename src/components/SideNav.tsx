@@ -5,7 +5,7 @@ import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
 import { href, navigate, useRoute } from '@/lib/router';
-import type { Account, Driver, LineOfBusiness, Quote } from '@/lib/types';
+import type { Account, AccountContact, Driver, LineOfBusiness, Quote } from '@/lib/types';
 
 /*
  * Icon rail + hover flyout menus, laid out like the navigation agency staff are trained on:
@@ -213,10 +213,10 @@ function readSeen() {
   try { return localStorage.getItem(UPDATES_KEY) === UPDATES_VERSION; } catch { return true; }
 }
 
-/** Household label: "Robert & Linda Feinholz" when a spouse with the same last name is a driver. */
-function householdName(a: Account, drivers: Driver[]) {
+/** Household label: "Robert & Linda Feinholz" when there is a co-applicant (or a spouse driver). */
+function householdName(a: Account, drivers: Driver[], contacts: AccountContact[]) {
   if (a.account_type === 'Commercial') return accountName(a);
-  const spouse = drivers.find((d) => d.account_id === a.id && d.relationship === 'Spouse');
+  const spouse = contacts.find((c) => c.account_id === a.id && c.is_secondary) ?? drivers.find((d) => d.account_id === a.id && d.relationship === 'Spouse');
   if (!spouse) return accountName(a);
   return spouse.last_name === a.last_name ? `${a.first_name} & ${spouse.first_name} ${a.last_name}` : `${accountName(a)} & ${spouse.first_name} ${spouse.last_name}`;
 }
@@ -230,6 +230,7 @@ function useApplicantSections(enabled: boolean): Section[] {
   const newest = useTable('accounts', enabled && !recentIds.length ? { order: { column: 'created_at', ascending: false }, limit: 10 } : null);
   const shown = recentIds.length ? recentIds.map((id) => recent.data.find((a) => a.id === id)).filter((a): a is Account => !!a) : newest.data;
   const drivers = useTable('drivers', enabled && shown.length ? { in: { column: 'account_id', values: shown.map((a) => a.id) } } : null);
+  const contacts = useTable('account_contacts', enabled && shown.length ? { in: { column: 'account_id', values: shown.map((a) => a.id) } } : null);
   const quotes = useTable('quotes', enabled ? { order: { column: 'created_at', ascending: false }, limit: 5 } : null);
   const quoteOwners = useTable('accounts', enabled && quotes.data.length ? { in: { column: 'id', values: [...new Set(quotes.data.map((q) => q.account_id))] } } : null);
 
@@ -242,18 +243,18 @@ function useApplicantSections(enabled: boolean): Section[] {
     };
     return [
       { title: 'Applicants', links: [
-        { label: 'Create New Applicant', to: '/accounts?new=Personal' },
-        { label: 'Create Commercial Applicant', to: '/accounts?new=Commercial' },
+        { label: 'Create New Applicant', to: '/accounts/new?type=Personal' },
+        { label: 'Create Commercial Applicant', to: '/accounts/new?type=Commercial' },
         { label: 'List Applicants', to: '/accounts' },
         { label: 'Search Applicants', to: '/accounts?focus=search' },
         { label: 'Completed Quotes', to: '/quotes?status=Rated' },
         { label: 'Import', to: '/accounts?import=1' },
         { label: 'Submission Center', to: '/quotes?group=commercial' },
       ] },
-      { title: 'Recent Applicants', empty: 'No applicants yet', links: shown.map((a) => ({ label: householdName(a, drivers.data), to: `/accounts/${a.id}` })) },
+      { title: 'Recent Applicants', empty: 'No applicants yet', links: shown.map((a) => ({ label: householdName(a, drivers.data, contacts.data), to: `/accounts/${a.id}` })) },
       { title: 'Recent Quotes', empty: 'No quotes yet', links: quotes.data.map((q) => ({ label: quoteLabel(q), to: `/quotes/${q.id}` })) },
     ];
-  }, [shown, drivers.data, quotes.data, quoteOwners.data]);
+  }, [shown, drivers.data, contacts.data, quotes.data, quoteOwners.data]);
 }
 
 export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNavigate: () => void }) {

@@ -39,6 +39,7 @@ To switch to Supabase, run these migrations in order in the Supabase SQL editor 
 1. `supabase/migrations/20260924160000_create_ams_schema.sql`
 2. `supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql`
 3. `supabase/migrations/20260926120000_settings_support_marketplace.sql`
+4. `supabase/migrations/20260927120000_applicant_details.sql`
 
 The app stays in browser-storage mode until all of them have been applied.
 
