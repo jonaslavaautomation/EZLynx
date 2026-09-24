@@ -138,7 +138,7 @@ export function buildSeed(seed = 42): SeedData {
       status, account_type: commercial ? 'Commercial' : 'Personal', business_name: commercial ? BUSINESSES[Math.floor(i / 6) % BUSINESSES.length] : null,
       dob: commercial ? null : `${int(1955, 2001)}-${String(int(1, 12)).padStart(2, '0')}-${String(int(1, 28)).padStart(2, '0')}`,
       marital_status: commercial ? null : pick(['Married', 'Single', 'Married', 'Divorced']), occupation: commercial ? null : pick(['Engineer', 'Teacher', 'Nurse', 'Sales Manager', 'Retired', 'Accountant', 'Contractor']),
-      mobile_phone: `(737) 555-${String(2000 + i * 53).slice(-4)}`, producer: pick(producers), csr: pick(csrs), lead_source: pick(SOURCES), notes: null, labels: [],
+      mobile_phone: `(737) 555-${String(2000 + i * 53).slice(-4)}`, producer: pick(producers), csr: pick(csrs), lead_source: pick(SOURCES), notes: null, labels: [], customer_since: null, naics_code: null, sic_code: null, nature_of_business: null, naics_description: null, operations_description: null,
     };
     out.accounts.push(a);
 

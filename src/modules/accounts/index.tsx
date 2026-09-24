@@ -17,6 +17,7 @@ import { QuoteList } from '@/modules/quotes';
 import { AccountFormModal } from '@/modules/accounts/AccountFormModal';
 import { DriversPanel, PropertiesPanel, VehiclesPanel } from '@/modules/accounts/HouseholdPanels';
 import { ImportModal } from '@/modules/accounts/ImportModal';
+import { AddressesPanel, ClassificationPanel, ContactsPanel } from '@/modules/accounts/DetailsPanels';
 import { AccountLabels, LabelFilterSelect } from '@/modules/admin/integration';
 import { trackRecentAccount } from '@/lib/recent';
 import { useAppData } from '@/lib/app-context';
@@ -47,8 +48,9 @@ export function AccountsPage() {
   const accounts = useTable('accounts', { order: { column: 'created_at', ascending: false } });
   const policies = useTable('policies', { eq: { status: 'Active' } });
   const newParam = params.get('new');
-  const [creating, setCreating] = useState<AccountType | null>(null);
-  useEffect(() => { if (newParam) setCreating(newParam === 'Commercial' ? 'Commercial' : 'Personal'); }, [newParam]);
+  const setCreating = (t: AccountType) => navigate(`/accounts/new?type=${t}`);
+  // Legacy links (?new=Personal|Commercial) open the full Create Applicant page.
+  useEffect(() => { if (newParam) navigate(`/accounts/new?type=${newParam === 'Commercial' ? 'Commercial' : 'Personal'}`, { replace: true }); }, [newParam]);
   const importing = params.get('import') === '1';
   // "Search Applicants" in the navigation lands here with ?focus=search.
   const focusSearch = params.get('focus') === 'search';
@@ -147,7 +149,6 @@ export function AccountsPage() {
         />
       </Panel>
       {importing && <ImportModal onClose={() => setParam('import', null)} />}
-      {creating && <AccountFormModal defaultType={creating} onClose={() => { setCreating(null); if (params.get('new')) setParam('new', null); }} onSaved={(a) => navigate(`/accounts/${a.id}`)} />}
     </div>
   );
 }
@@ -270,10 +271,11 @@ export function AccountDetail({ id }: { id: string }) {
                 { label: 'Mailing address', value: a.address ? <span className="inline-flex items-start gap-1"><MapPin size={12} className="mt-0.5 shrink-0" />{a.address}, {a.city}, {a.state} {a.zip}</span> : null },
                 ...(!commercial ? [{ label: 'Occupation', value: a.occupation }] : []),
                 { label: 'Lead source', value: a.lead_source },
-                { label: 'Client since', value: fmtDate(a.created_at) },
+                { label: 'Customer since', value: fmtDate(a.customer_since ?? a.created_at) },
               ]} />
               {a.notes && <div className="mt-4 text-[13px] text-ink-600 bg-amber-50/60 border border-amber-100 rounded p-3 whitespace-pre-wrap">{a.notes}</div>}
             </Panel>
+            {commercial && <ClassificationPanel account={a} />}
             <Panel title="Policies" actions={<Button size="sm" onClick={() => setTab('policies')}>View all</Button>} bodyClassName="p-0">
               {active.length === 0 ? <EmptyState icon={<FolderOpen size={22} />} title="No active policies" message="Quote and bind, or add an existing policy." action={<Button variant="primary" size="sm" onClick={() => navigate(`/quotes/new?account=${a.id}`)}>Start a quote</Button>} /> : (
                 <div className="divide-y divide-ink-50">
@@ -302,6 +304,8 @@ export function AccountDetail({ id }: { id: string }) {
                 ))}
               </div>
             </Panel>
+            <ContactsPanel account={a} />
+            <AddressesPanel account={a} />
             {!commercial && <HouseholdSummary accountId={a.id} onOpen={() => setTab('household')} />}
             <Panel title="Recent activity" actions={<Button size="sm" onClick={() => setTab('activities')}>All</Button>}>
               {activities.data.length === 0 ? <div className="text-[13px] text-ink-400">No activity yet.</div> : (
