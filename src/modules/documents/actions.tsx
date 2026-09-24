@@ -6,7 +6,7 @@ import { useAppData } from '@/lib/app-context';
 import { db, getDbMode } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
 import { accountName, fmtBytes } from '@/lib/format';
-import { useRow } from '@/lib/hooks';
+import { useRow, useTable } from '@/lib/hooks';
 import type { DocumentRow } from '@/lib/types';
 import { AUTO_LINES, DOC_CATEGORIES, GEN_TEMPLATES, buildDocumentHtml, effectiveStatus, hasFile, openDocumentFile, type GenTemplate } from './shared';
 
@@ -191,6 +191,13 @@ function ESignModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void })
   const [message, setMessage] = useState(`Please review and sign “${doc.name}”. Let us know if you have any questions.`);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { busy, error, save } = useSave(onClose);
+  const templates = useTable('esign_templates', { order: { column: 'name' } });
+  const [templateId, setTemplateId] = useState('');
+  const applyTemplate = (id: string) => {
+    setTemplateId(id);
+    const t = templates.data.find((x) => x.id === id);
+    if (t?.message) setMessage(t.message.replace(/\{document\}/g, () => doc.name));
+  };
 
   // Prefill signer from the account once it loads.
   if (a && !touched) {
@@ -222,6 +229,11 @@ function ESignModal({ doc, onClose }: { doc: DocumentRow; onClose: () => void })
           <Field label="Signer name" required error={errors.name}><Input value={name} onChange={(e) => setName(e.target.value)} /></Field>
           <Field label="Signer email" required error={errors.email}><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></Field>
         </div>
+        {templates.data.length > 0 && (
+          <Field label="Template" hint="Pre-fills the message to the signer. Manage under Communication Center → eSignature Templates.">
+            <Select value={templateId} onChange={(e) => applyTemplate(e.target.value)} placeholder="No template" options={templates.data.map((t) => ({ value: t.id, label: `${t.name} (${t.category})` }))} />
+          </Field>
+        )}
         <Field label="Message to signer"><Textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} /></Field>
         <p className="text-[11px] text-ink-400">Requests expire after 30 days. Signing is simulated — connect an eSignature provider to send for real; use “Simulate signer” on the envelope to record the result.</p>
       </div>

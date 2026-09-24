@@ -6,7 +6,6 @@ import { useTable } from '@/lib/hooks';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, Driver, LineOfBusiness, Quote } from '@/lib/types';
-import { REPORTS } from '@/modules/reports/registry';
 
 /*
  * Icon rail + hover flyout menus, laid out like the navigation agency staff are trained on:
@@ -15,7 +14,7 @@ import { REPORTS } from '@/modules/reports/registry';
 
 type Link = { label: string; to: string };
 type Section = { title: string; links: Link[]; empty?: string };
-type MenuKey = 'dashboard' | 'applicants' | 'documents' | 'workspace' | 'reports' | 'settings' | 'help' | 'marketplace' | 'updates';
+type MenuKey = 'dashboard' | 'applicants' | 'policy' | 'communication' | 'reports' | 'settings' | 'help' | 'marketplace' | 'updates';
 
 /** Bump when the What's New page gets new entries; shows the badge until the user opens it. */
 export const UPDATES_VERSION = '2026-09-24';
@@ -29,8 +28,8 @@ const LINE_SHORT: Partial<Record<LineOfBusiness, string>> = {
 const MENU: { key: MenuKey; label: string; icon: LucideIcon; paths: string[] }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, paths: ['/'] },
   { key: 'applicants', label: 'Applicants', icon: SquareUser, paths: ['/accounts', '/quotes'] },
-  { key: 'documents', label: 'Documents', icon: Folder, paths: ['/documents', '/messages'] },
-  { key: 'workspace', label: 'Agency Workspace', icon: Network, paths: ['/policies', '/activities', '/claims', '/accounting'] },
+  { key: 'policy', label: 'Policy & Commissions', icon: Folder, paths: ['/policy-mgmt', '/policies', '/activities', '/claims', '/accounting', '/documents'] },
+  { key: 'communication', label: 'Communication Center', icon: Network, paths: ['/comm', '/messages'] },
   { key: 'reports', label: 'Reports', icon: BarChart3, paths: ['/reports'] },
   { key: 'settings', label: 'Settings', icon: Settings, paths: ['/settings'] },
   { key: 'help', label: 'Help & Training', icon: BookOpenText, paths: ['/help'] },
@@ -49,33 +48,89 @@ const STATIC: Partial<Record<MenuKey, Section[]>> = {
       { label: 'Directory', to: '/settings?tab=users' },
     ],
   }],
-  documents: [
-    { title: 'Documents', links: [
-      { label: 'All Documents', to: '/documents' },
-      { label: 'eSignature Envelopes', to: '/documents?tab=esign' },
+  // Policy management: transaction history, rewrites (replacing a policy with a new one), claim payments and
+  // reserves, and ACORD forms. Commissions: carrier statements are entered and reconciled, then split among the
+  // Service Team (the producers/CSRs who are paid or tracked) according to Service Team Rules.
+  policy: [
+    { title: 'Policy Mgmt', links: [
+      { label: 'Policy Transactions', to: '/policy-mgmt/transactions' },
+      { label: 'Policy Rewrites', to: '/policy-mgmt/rewrites' },
+      { label: 'Claim Transactions', to: '/policy-mgmt/claim-transactions' },
+      { label: 'ACORD Library', to: '/policy-mgmt/acord' },
     ] },
-    { title: 'Communication', links: [
-      { label: 'Text & Email Inbox', to: '/messages' },
-      { label: 'Send a Message', to: '/messages?compose=1' },
+    { title: 'Commissions', links: [
+      { label: 'Statements', to: '/policy-mgmt/statements' },
+      { label: 'Service Team Rules', to: '/policy-mgmt/rules' },
+      { label: 'Manage Service Team', to: '/policy-mgmt/team' },
+      { label: 'Reports', to: '/reports?category=commission' },
     ] },
-  ],
-  workspace: [
-    { title: 'Policies', links: [
+    // Not in the reference menu; keeps the agency-wide lists one hover away.
+    { title: 'Workspace', links: [
       { label: 'All Policies', to: '/policies' },
       { label: 'Renewals Queue', to: '/policies?view=renewals' },
-      { label: 'Pending Policies', to: '/policies?view=pending' },
-      { label: 'Cancelled & Expired', to: '/policies?view=cancelled' },
-    ] },
-    { title: 'Service', links: [
       { label: 'Activities & Tasks', to: '/activities' },
-      { label: 'Overdue Tasks', to: '/activities?view=overdue' },
       { label: 'Claims', to: '/claims' },
+      { label: 'Accounting', to: '/accounting' },
+      { label: 'Documents', to: '/documents' },
     ] },
-    { title: 'Accounting', links: [
-      { label: 'Receivables', to: '/accounting' },
-      { label: 'Payments', to: '/accounting?tab=payments' },
-      { label: 'Commissions', to: '/accounting?tab=commissions' },
+  ],
+  // Communication Center: bulk email campaigns sent to saved Recipient Lists, minus the Suppression List
+  // (unsubscribes and bounces); two-way texting with its own opt-out list and templates; a postal mail log;
+  // and reusable eSignature templates.
+  communication: [
+    { title: 'Email Campaigns', links: [
+      { label: 'Dashboard', to: '/comm' },
+      { label: 'New Campaign', to: '/comm/campaigns/new' },
+      { label: 'Campaigns', to: '/comm/campaigns' },
+      { label: 'Recipient List', to: '/comm/lists' },
+      { label: 'Suppression List', to: '/comm/suppression?channel=Email' },
+      { label: 'Settings', to: '/comm/settings' },
     ] },
+    { title: 'Voice and Text', links: [
+      { label: 'Calls and Messages', to: '/messages' },
+      { label: 'Suppression List', to: '/comm/suppression?channel=SMS' },
+      { label: 'Text Templates', to: '/comm/templates' },
+    ] },
+    { title: 'Postal Mail', links: [{ label: 'Mailbox', to: '/comm/mailbox' }] },
+    { title: 'eSignature', links: [{ label: 'eSignature Templates', to: '/comm/esign-templates' }] },
+  ],
+  // Reports 5.0: favorite, schedule (daily/weekly/monthly) and share saved reports; browse by category.
+  reports: [
+    { title: 'Reports 5.0', links: [
+      { label: 'Favorite Reports', to: '/reports?view=favorites' },
+      { label: 'Scheduled Reports', to: '/reports?view=scheduled' },
+      { label: 'Shared Reports', to: '/reports?view=shared' },
+    ] },
+    { title: 'Categories', links: [
+      { label: 'All Categories', to: '/reports?view=all' },
+      { label: 'Activity', to: '/reports?category=activity' },
+      { label: 'Applicant', to: '/reports?category=applicant' },
+      { label: 'Book of Business', to: '/reports?category=book-of-business' },
+      { label: 'Claim', to: '/reports?category=claim' },
+      { label: 'Commission', to: '/reports?category=commission' },
+      { label: 'Policy Coverage', to: '/reports?category=policy-coverage' },
+      { label: 'Policy Transaction', to: '/reports?category=policy-transaction' },
+      { label: 'Quote', to: '/reports?category=quote' },
+    ] },
+    { title: 'Reports', links: [
+      { label: 'All Reports', to: '/reports?view=all' },
+      { label: 'Saved Reports', to: '/reports?view=saved' },
+      { label: 'Scheduled Reports', to: '/reports?view=scheduled' },
+    ] },
+    { title: 'Report Categories', links: [
+      { label: 'Activity', to: '/reports?category=activity' },
+      { label: 'Agency Management', to: '/reports?category=agency-management' },
+      { label: 'Applicant', to: '/reports?category=applicant' },
+      { label: 'Book of Business', to: '/reports?category=book-of-business' },
+      { label: 'Claims', to: '/reports?category=claim' },
+      { label: 'Commission', to: '/reports?category=commission' },
+      { label: 'Policy Management', to: '/reports?category=policy-management' },
+      { label: 'Quote', to: '/reports?category=quote' },
+      { label: 'Retention Center', to: '/reports?category=retention' },
+      { label: 'Sales Center', to: '/reports?category=sales' },
+      { label: 'Data Export', to: '/reports?report=data-export' },
+    ] },
+    { title: 'Help', links: [{ label: 'Instructions', to: '/help?section=reports' }] },
   ],
   settings: [{
     title: 'Settings',
@@ -113,12 +168,6 @@ const STATIC: Partial<Record<MenuKey, Section[]>> = {
     ],
   }],
 };
-
-const REPORT_SECTIONS: Section[] = (() => {
-  const groups = new Map<string, Link[]>();
-  REPORTS.forEach((r) => { if (!groups.has(r.group)) groups.set(r.group, []); groups.get(r.group)!.push({ label: r.title, to: `/reports?report=${r.key}` }); });
-  return [...groups].map(([title, links]) => ({ title, links }));
-})();
 
 function readSeen() {
   try { return localStorage.getItem(UPDATES_KEY) === UPDATES_VERSION; } catch { return true; }
@@ -202,7 +251,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
   }, [open]);
 
   const activeKey = MENU.find((m) => m.paths.some((p) => (p === '/' ? path === '/' : path === p || path.startsWith(p + '/'))))?.key;
-  const sections = open === 'applicants' ? applicantSections : open === 'reports' ? REPORT_SECTIONS : open ? STATIC[open] ?? [] : [];
+  const sections = open === 'applicants' ? applicantSections : open ? STATIC[open] ?? [] : [];
 
   const go = (to: string) => {
     setOpen(null);

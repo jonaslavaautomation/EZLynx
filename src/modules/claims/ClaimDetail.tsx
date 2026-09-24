@@ -9,6 +9,7 @@ import { useRow } from '@/lib/hooks';
 import { href, navigate } from '@/lib/router';
 import type { ClaimStatus } from '@/lib/types';
 import { ActivityList } from '@/modules/activities';
+import { ClaimTransactionsPanel } from '@/modules/policymgmt/claimtx';
 import { ClaimFormModal } from './ClaimFormModal';
 import { claimLabel, daysOpen, isOpenClaim } from './constants';
 
@@ -131,6 +132,8 @@ export function ClaimDetail({ id }: { id: string }) {
           </Panel>
         </div>
       </div>
+
+      <ClaimTransactionsPanel claimId={c.id} />
 
       <h2 className="text-[15px] font-semibold text-ink-900 mb-2">Account Activity</h2>
       <ActivityList accountId={c.account_id} />

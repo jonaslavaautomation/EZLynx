@@ -18,7 +18,7 @@ type Tab = 'overview' | 'coverages' | 'history' | 'activities' | 'documents' | '
 const TABS: Tab[] = ['overview', 'coverages', 'history', 'activities', 'documents', 'claims'];
 
 const TX_TONES: Record<TransactionType, 'green' | 'blue' | 'teal' | 'red' | 'purple' | 'amber'> = {
-  'New Business': 'green', Endorsement: 'blue', Renewal: 'teal', Cancellation: 'red', Reinstatement: 'purple', Audit: 'amber',
+  'New Business': 'green', Endorsement: 'blue', Renewal: 'teal', Cancellation: 'red', Reinstatement: 'purple', Audit: 'amber', Rewrite: 'purple',
 };
 
 export function PolicyDetail({ id }: { id: string }) {

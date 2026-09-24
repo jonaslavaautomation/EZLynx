@@ -36,9 +36,9 @@ const SECTIONS: { key: string; title: string; group: string; body: ReactNode }[]
           {[
             ['Dashboard', 'Home page, agency activity & tasks, performance, staff directory'],
             ['Applicants', 'Create, list, search and import applicants; completed quotes; submission center; your recent applicants and quotes'],
-            ['Documents', 'Agency document library, eSignature envelopes, text & email inbox'],
-            ['Agency Workspace', 'Policies and renewals queue, activities, claims, receivables, payments and commissions'],
-            ['Reports', 'Book of business, sales, service and financial reports'],
+            ['Policy & Commissions', 'Policy transactions, rewrites, claim transactions, ACORD forms; commission statements, Service Team rules and team'],
+            ['Communication Center', 'Email campaigns, recipient and suppression lists, texting, templates, postal mailbox, eSignature templates'],
+            ['Reports', 'Reports 5.0: favorite, scheduled and shared reports, and the report library by category'],
             ['Settings', 'Agency profile, users, carriers, data import/export'],
             ['Help & Training', 'These guides'],
             ['Marketplace', 'Integrations such as carrier downloads, eSignature and texting'],
@@ -80,6 +80,20 @@ const SECTIONS: { key: string; title: string; group: string; body: ReactNode }[]
       <p>Every transaction is recorded on the policy&apos;s <b>History</b> tab and logged as an activity. Log every client call or email as an activity so the whole team can see what happened.</p>
       <h4>Claims</h4>
       <p>Use <A to="/claims">Claims → Report Claim</A> to record a first notice of loss. A follow-up task is created automatically.</p>
+    </>,
+  },
+  {
+    key: 'reports', group: 'Training', title: 'Using Reports',
+    body: <>
+      <p>Hover the <b>Reports</b> icon (bar chart) to open the report menu.</p>
+      <Steps items={[
+        <>Browse the library under <A to="/reports?view=all">All Reports</A> or pick a <b>Category</b> such as Book of Business, Commission or Policy Transaction.</>,
+        <>Open a report, then adjust its filters (dates, carrier, producer, line). Every report can be exported to CSV or printed.</>,
+        <>Click the <b>star</b> to add it to <A to="/reports?view=favorites">Favorite Reports</A> so it is one click away.</>,
+        <>Use <b>Save as…</b> to keep a named copy under <A to="/reports?view=saved">Saved Reports</A>, and <b>Share</b> it with your team (<A to="/reports?view=shared">Shared Reports</A>).</>,
+        <>Use <b>Schedule…</b> to have a report generated daily, weekly or monthly (<A to="/reports?view=scheduled">Scheduled Reports</A>). Delivery by email is simulated in this training system.</>,
+        <>Need raw data? <A to="/reports?report=data-export">Data Export</A> downloads any table as CSV.</>,
+      ]} />
     </>,
   },
   {

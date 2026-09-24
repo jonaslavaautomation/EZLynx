@@ -36,12 +36,16 @@ const IN_CHUNK = 100; // keeps `in.(…)` request URLs well under server limits
 // When a row in the key table is deleted, rows in these tables pointing at it are deleted (cascade)
 // or have the reference cleared (set null). Mirrors the FK rules in the migration for local mode.
 const CASCADES: Partial<Record<TableName, { table: TableName; column: string; action: 'delete' | 'null' }[]>> = {
-  accounts: (['drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices'] as TableName[])
+  accounts: (['drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'mail_items'] as TableName[])
     .map((table) => ({ table, column: 'account_id', action: 'delete' as const })),
   policies: [
     { table: 'policy_transactions', column: 'policy_id', action: 'delete' },
-    ...(['quotes', 'activities', 'claims', 'documents', 'invoices'] as TableName[]).map((table) => ({ table, column: 'policy_id', action: 'null' as const })),
+    ...(['quotes', 'activities', 'claims', 'documents', 'invoices', 'commission_statement_lines'] as TableName[]).map((table) => ({ table, column: 'policy_id', action: 'null' as const })),
+    { table: 'policies', column: 'rewritten_from_policy_id', action: 'null' },
   ],
+  claims: [{ table: 'claim_transactions', column: 'claim_id', action: 'delete' }],
+  commission_statements: [{ table: 'commission_statement_lines', column: 'statement_id', action: 'delete' }],
+  recipient_lists: [{ table: 'email_campaigns', column: 'recipient_list_id', action: 'null' }],
 };
 
 // Column types (and defaults) of every table, mirroring the migrations. Used to drop keys that aren't
@@ -67,7 +71,7 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
   policies: {
     id: 'u', created_at: 'ts', account_id: 'u', policy_number: 't', carrier: 't', line_of_business: 't', status: ['t', 'Active'], effective_date: 'd',
     expiration_date: 'd', term_months: ['i', 12], premium: ['n', 0], commission_rate: ['n', 10], billing_type: ['t', 'Direct Bill'], payment_plan: 't',
-    source: ['t', 'Manual'], producer: 't', coverages: ['j', []], notes: 't',
+    source: ['t', 'Manual'], producer: 't', coverages: ['j', []], notes: 't', rewritten_from_policy_id: 'u',
   },
   policy_transactions: { id: 'u', created_at: 'ts', policy_id: 'u', account_id: 'u', type: 't', effective_date: 'd', premium_change: ['n', 0], description: 't' },
   quotes: {
@@ -98,10 +102,40 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
     id: 'u', created_at: 'ts', name: 't', naic: 't', lines: ['j', []], commission_rate: ['n', 10], phone: 't', website: 't', appointed: ['b', true],
     downloads_enabled: ['b', false],
   },
-  staff: { id: 'u', created_at: 'ts', name: 't', email: 't', role: ['t', 'CSR'], active: ['b', true], color: ['t', '#684ec2'] },
+  staff: {
+    id: 'u', created_at: 'ts', name: 't', email: 't', role: ['t', 'CSR'], active: ['b', true], color: ['t', '#684ec2'],
+    service_team: ['b', true], external: ['b', false], producer_code: 't',
+  },
   agency_settings: {
     id: 'u', created_at: 'ts', name: 't', address: 't', city: 't', state: 't', zip: 't', phone: 't', email: 't', license_number: 't',
-    renewal_reminder_days: ['i', 60], current_user_name: 't',
+    renewal_reminder_days: ['i', 60], current_user_name: 't', email_from_name: 't', email_reply_to: 't', email_footer: 't',
+  },
+  claim_transactions: { id: 'u', created_at: 'ts', claim_id: 'u', account_id: 'u', type: 't', amount: ['n', 0], transaction_date: 'd', description: 't' },
+  commission_statements: {
+    id: 'u', created_at: 'ts', carrier: 't', statement_date: 'd', period_start: 'd', period_end: 'd', total_amount: ['n', 0], status: ['t', 'Open'], notes: 't',
+  },
+  commission_statement_lines: {
+    id: 'u', created_at: 'ts', statement_id: 'u', policy_id: 'u', policy_number: 't', insured_name: 't', transaction_type: ['t', 'New Business'],
+    premium: ['n', 0], commission_amount: ['n', 0],
+  },
+  commission_rules: {
+    id: 'u', created_at: 'ts', name: 't', staff_name: 't', business_type: ['t', 'All'], line_of_business: 't', carrier: 't', split_percent: ['n', 0],
+    active: ['b', true],
+  },
+  recipient_lists: { id: 'u', created_at: 'ts', name: 't', filters: ['j', {}] },
+  email_campaigns: {
+    id: 'u', created_at: 'ts', name: 't', subject: 't', body: 't', recipient_list_id: 'u', status: ['t', 'Draft'], scheduled_at: 'ts', sent_at: 'ts',
+    sent_count: ['i', 0], suppressed_count: ['i', 0],
+  },
+  suppressions: { id: 'u', created_at: 'ts', channel: ['t', 'Email'], address: 't', reason: ['t', 'Manual'] },
+  message_templates: { id: 'u', created_at: 'ts', channel: ['t', 'SMS'], name: 't', subject: 't', body: 't' },
+  mail_items: {
+    id: 'u', created_at: 'ts', account_id: 'u', direction: ['t', 'Inbound'], mail_type: ['t', 'Letter'], correspondent: 't', description: 't',
+    mail_date: 'd', status: ['t', 'Received'],
+  },
+  esign_templates: { id: 'u', created_at: 'ts', name: 't', description: 't', category: ['t', 'Application'], message: 't' },
+  saved_reports: {
+    id: 'u', created_at: 'ts', name: 't', report_key: 't', owner: 't', favorite: ['b', false], shared: ['b', false], schedule: 't', schedule_email: 't',
   },
 };
 
@@ -262,7 +296,8 @@ export function initDb(): Promise<DbMode> {
     try {
       // `agency_settings` only exists once the full AMS migration is applied; a project that only has
       // the original `accounts` table fails this probe and falls back to local mode.
-      const probe = supabase.from('agency_settings').select('id').limit(1);
+      // Probe the newest migration's table: if any migration is missing, stay in browser-storage mode.
+      const probe = supabase.from('saved_reports').select('id').limit(1);
       const { error } = await Promise.race([
         probe,
         new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),

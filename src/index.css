@@ -64,7 +64,7 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #dc2626; text-d
 .nav-item { width: 100%; height: 46px; background: transparent; color: #eceff1; display: grid; place-items: center; position: relative; border-bottom: 1px solid #2f3c43; }
 .nav-item svg { flex: none; }
 .nav-item:hover, .nav-item:focus-visible, .nav-item.selected { background: #263238; color: #fff; outline: none; }
-.nav-item.selected:before { content: ''; width: 3px; position: absolute; left: 0; top: 0; bottom: 0; background: #ef4444; }
+.nav-item.selected { box-shadow: inset 0 0 0 1px #fff; }
 .nav-badge { position: absolute; top: 7px; right: 8px; width: 14px; height: 14px; border-radius: 50%; background: #8b5cf6; color: #fff; font-size: 10px; font-weight: 700; line-height: 14px; text-align: center; border: 1px solid #37474f; }
 .nav-flyout { position: fixed; top: 50px; bottom: 28px; left: var(--sidebar-w); width: 236px; background: #263238; color: #fff; z-index: 29; overflow-y: auto; padding: 14px 0 18px; box-shadow: 6px 0 18px #0000004d; }
 .nav-flyout section + section { margin-top: 14px; }

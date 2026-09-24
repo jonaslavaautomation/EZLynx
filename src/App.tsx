@@ -6,7 +6,7 @@ import { Button, EmptyState, ErrorBanner, FeedbackProvider } from '@/components/
 import { AppDataProvider } from '@/lib/app-context';
 import { db, initDb, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
-import { loadSampleData, startEmpty } from '@/lib/seed';
+import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountFormModal, AccountsPage } from '@/modules/accounts';
 import { AccountingPage } from '@/modules/accounting';
 import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
@@ -14,6 +14,8 @@ import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
 import { Dashboard } from '@/modules/dashboard/Dashboard';
 import { DocumentsPage } from '@/modules/documents';
 import { HelpPage } from '@/modules/help';
+import { CommRoutes } from '@/modules/comm';
+import { PolicyMgmtRoutes } from '@/modules/policymgmt';
 import { MessagesPage } from '@/modules/messages';
 import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies';
 import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
@@ -28,7 +30,10 @@ function bootApp(): Promise<Boot> {
     try {
       const mode = await initDb();
       const settings = await db.list('agency_settings', { limit: 1 });
-      if (settings.length) return { state: 'ready', mode };
+      if (settings.length) {
+        if (mode === 'local') await topUpLocalSample().catch(() => { /* sample top-up is best effort */ });
+        return { state: 'ready', mode };
+      }
       // Browser-storage demo: seed silently so the portal is usable immediately.
       if (mode === 'local') { await loadSampleData(); return { state: 'ready', mode }; }
       return { state: 'onboarding', mode };
@@ -58,6 +63,8 @@ function Routes() {
     case 'reports': page = <ReportsPage />; break;
     case 'settings': page = <SettingsPage />; break;
     case 'help': page = <HelpPage />; break;
+    case 'policy-mgmt': page = <PolicyMgmtRoutes segments={segments.slice(1)} />; break;
+    case 'comm': page = <CommRoutes segments={segments.slice(1)} />; break;
     default: page = <EmptyState title="Page not found" message="That page doesn't exist." action={<Button onClick={() => navigate('/')}>Go to Workspace</Button>} />;
   }
   // Remount per path so page-local state (filters, wizards) resets between records.

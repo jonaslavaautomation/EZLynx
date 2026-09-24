@@ -227,7 +227,7 @@ export function Badge({ tone = 'gray', children, className }: { tone?: Tone; chi
 
 const STATUS_TONES: Record<string, Tone> = {
   Active: 'green', Paid: 'green', Completed: 'green', Bound: 'green', Delivered: 'green', Quoted: 'green', Closed: 'gray',
-  Pending: 'amber', 'In Progress': 'blue', 'Under Review': 'amber', Partial: 'amber', Rated: 'blue', Draft: 'gray', Open: 'blue', Sent: 'teal', Received: 'purple',
+  Pending: 'amber', Scheduled: 'blue', Reconciled: 'green', Posted: 'gray', 'In Progress': 'blue', 'Under Review': 'amber', Partial: 'amber', Rated: 'blue', Draft: 'gray', Open: 'blue', Sent: 'teal', Received: 'purple',
   Prospect: 'purple', Inactive: 'gray', Expired: 'gray', Unpaid: 'amber', Void: 'gray', Lost: 'gray',
   Cancelled: 'red', Canceled: 'red', 'Non-Renewed': 'red', Denied: 'red', Declined: 'red', Failed: 'red', Error: 'red',
   High: 'red', Normal: 'gray', Low: 'blue',
