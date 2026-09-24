@@ -1,206 +1,140 @@
-import {
-  ArrowLeft,
-  ArrowRight,
-  BarChart3,
-  Bell,
-  BookOpen,
-  BriefcaseBusiness,
-  Check,
-  ChevronDown,
-  ClipboardList,
-  FileCheck2,
-  FilePlus2,
-  FolderOpen,
-  Grid2X2,
-  KeyRound,
-  LifeBuoy,
-  Loader2,
-  MapPin,
-  Menu,
-  MessageSquare,
-  MoreHorizontal,
-  PanelLeft,
-  Phone,
-  RefreshCw,
-  Search,
-  Settings,
-  ShieldCheck,
-  Sparkles,
-  User,
-  X,
-} from 'lucide-react';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase, type Account } from '@/lib/supabase';
+import { Database, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Layout, type QuickAddKind } from '@/components/Layout';
+import { Logo } from '@/components/Logo';
+import { Button, EmptyState, ErrorBanner, FeedbackProvider } from '@/components/ui';
+import { AppDataProvider } from '@/lib/app-context';
+import { db, initDb, type DbMode } from '@/lib/db';
+import { navigate, useRoute } from '@/lib/router';
+import { loadSampleData, startEmpty } from '@/lib/seed';
+import { AccountDetail, AccountFormModal, AccountsPage } from '@/modules/accounts';
+import { AccountingPage } from '@/modules/accounting';
+import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
+import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
+import { Dashboard } from '@/modules/dashboard/Dashboard';
+import { DocumentsPage } from '@/modules/documents';
+import { MessagesPage } from '@/modules/messages';
+import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies';
+import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
+import { ReportsPage } from '@/modules/reports';
+import { SettingsPage } from '@/modules/settings';
+import type { AccountType } from '@/lib/types';
 
-const navItems = [
-  { icon: Grid2X2, label: 'Workspace' },
-  { icon: BriefcaseBusiness, label: 'Accounts' },
-  { icon: FolderOpen, label: 'Policies' },
-  { icon: ClipboardList, label: 'Activities' },
-  { icon: BarChart3, label: 'Reports' },
-  { icon: Settings, label: 'Settings' },
-  { icon: KeyRound, label: 'Access' },
-  { icon: BookOpen, label: 'Library' },
-  { icon: MessageSquare, label: 'Messages' },
-  { icon: BriefcaseBusiness, label: 'Workflows' },
-  { icon: FilePlus2, label: 'Documents' },
-];
-
-function StatRow({ label, value }: { label: string; value: string }) {
-  return <div className="stat-row"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function Card({ title, children, className = '', action }: { title: string; children: React.ReactNode; className?: string; action?: React.ReactNode }) {
-  return <section className={`card ${className}`}><div className="card-heading"><h2>{title}</h2>{action}</div>{children}</section>;
-}
-
-function SearchDropdown({ query, onClose }: { query: string; onClose: () => void }) {
-  const [results, setResults] = useState<Account[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-
-  useEffect(() => {
-    if (!query.trim()) {
-      setResults([]);
-      setSearched(false);
-      return;
+// Runs once per page load (StrictMode mounts effects twice; seeding must not run twice).
+let bootOnce: Promise<Boot> | null = null;
+function bootApp(): Promise<Boot> {
+  bootOnce ??= (async (): Promise<Boot> => {
+    try {
+      const mode = await initDb();
+      const settings = await db.list('agency_settings', { limit: 1 });
+      if (settings.length) return { state: 'ready', mode };
+      // Browser-storage demo: seed silently so the portal is usable immediately.
+      if (mode === 'local') { await loadSampleData(); return { state: 'ready', mode }; }
+      return { state: 'onboarding', mode };
+    } catch (e) {
+      return { state: 'error', message: (e as Error).message };
     }
+  })();
+  return bootOnce;
+}
 
-    setLoading(true);
-    const timer = setTimeout(async () => {
-      const { data, error } = await supabase
-        .from('accounts')
-        .select('*')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,city.ilike.%${query}%`)
-        .limit(10);
+type Boot = { state: 'loading' } | { state: 'onboarding'; mode: DbMode } | { state: 'ready'; mode: DbMode } | { state: 'error'; message: string };
 
-      if (!error && data) setResults(data as Account[]);
-      setLoading(false);
-      setSearched(true);
-    }, 300);
+function Routes() {
+  const { segments, params } = useRoute();
+  const [section, id] = segments;
+  let page: ReactNode;
+  switch (section) {
+    case undefined: page = <Dashboard />; break;
+    case 'accounts': page = id ? <AccountDetail id={id} /> : <AccountsPage />; break;
+    case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;
+    case 'quotes': page = id === 'new' ? <QuoteWizard accountId={params.get('account')} line={params.get('line')} /> : id ? <QuoteDetail id={id} /> : <QuotesPage />; break;
+    case 'activities': page = <ActivitiesPage />; break;
+    case 'claims': page = id ? <ClaimDetail id={id} /> : <ClaimsPage />; break;
+    case 'messages': page = <MessagesPage accountId={params.get('account')} />; break;
+    case 'documents': page = <DocumentsPage />; break;
+    case 'accounting': page = <AccountingPage />; break;
+    case 'reports': page = <ReportsPage />; break;
+    case 'settings': page = <SettingsPage />; break;
+    default: page = <EmptyState title="Page not found" message="That page doesn't exist." action={<Button onClick={() => navigate('/')}>Go to Workspace</Button>} />;
+  }
+  // Remount per path so page-local state (filters, wizards) resets between records.
+  return <div key={segments.slice(0, 2).join('/')}>{page}</div>;
+}
 
-    return () => clearTimeout(timer);
-  }, [query]);
-
+function Shell() {
+  const [quick, setQuick] = useState<QuickAddKind | null>(null);
+  const onQuickAdd = (k: QuickAddKind) => {
+    if (k === 'quote') return navigate('/quotes/new');
+    if (k === 'message') return navigate('/messages?compose=1');
+    setQuick(k);
+  };
+  const close = () => setQuick(null);
   return (
-    <div className="search-dropdown">
-      <div className="search-dropdown-header">
-        <span>{loading ? 'Searching…' : searched ? `${results.length} result${results.length === 1 ? '' : 's'} for "${query}"` : 'Type to search accounts'}</span>
-        <button onClick={onClose} aria-label="Close search"><X size={16} /></button>
-      </div>
-      {loading && <div className="search-loading"><Loader2 size={22} className="spin" /><span>Searching accounts…</span></div>}
-      {!loading && searched && results.length === 0 && (
-        <div className="search-empty"><User size={28} /><span>No accounts found for "{query}"</span></div>
+    <Layout onQuickAdd={onQuickAdd}>
+      <Routes />
+      {(quick === 'account' || quick === 'commercial') && (
+        <AccountFormModal defaultType={(quick === 'commercial' ? 'Commercial' : 'Personal') as AccountType} onClose={close} onSaved={(a) => navigate(`/accounts/${a.id}`)} />
       )}
-      {!loading && results.length > 0 && (
-        <div className="search-results">
-          {results.map((acct) => (
-            <div key={acct.id} className="account-result">
-              <div className="account-avatar">{acct.first_name[0]}{acct.last_name[0]}</div>
-              <div className="account-info">
-                <div className="account-name">{acct.first_name} {acct.last_name}</div>
-                <div className="account-details">
-                  <span className="account-email">{acct.email}</span>
-                  {acct.phone && <span className="account-phone"><Phone size={11} /> {acct.phone}</span>}
-                </div>
-                <div className="account-meta">
-                  {acct.policy_type && <span className="account-tag">{acct.policy_type}</span>}
-                  {acct.status && <span className={`account-status ${acct.status.toLowerCase()}`}>{acct.status}</span>}
-                  {acct.city && acct.state && <span className="account-location"><MapPin size={11} /> {acct.city}, {acct.state}</span>}
-                </div>
-              </div>
-            </div>
-          ))}
+      {quick === 'policy' && <PolicyFormModal accountId={null} onClose={close} onSaved={(p) => navigate(`/policies/${p.id}`)} />}
+      {quick === 'activity' && <ActivityFormModal onClose={close} />}
+      {quick === 'claim' && <ClaimFormModal onClose={close} />}
+    </Layout>
+  );
+}
+
+function Onboarding({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const run = async (fn: () => Promise<void>) => {
+    setError(null);
+    try { await fn(); onDone(); } catch (e) { setError((e as Error).message); setBusy(null); }
+  };
+  return (
+    <div className="min-h-screen grid place-items-center bg-[#f8f6f6] p-4">
+      <div className="w-full max-w-lg bg-white rounded-md shadow-pop border border-ink-100 p-7">
+        <Logo size={44} className="mb-4" />
+        <h1 className="text-xl font-semibold text-ink-900">Welcome to Northstar AMS</h1>
+        <p className="text-[13px] text-ink-500 mt-1.5">Your Supabase database is connected and the AMS schema is in place, but it has no agency set up yet. How would you like to start?</p>
+        <div className="mt-5 space-y-2.5">
+          <ErrorBanner message={error} />
+          <button disabled={!!busy} onClick={() => { setBusy('Loading sample agency…'); run(() => loadSampleData(setBusy)); }} className="w-full text-left flex gap-3 items-start border border-brand-200 bg-brand-50 hover:bg-brand-100 rounded p-3.5 disabled:opacity-60">
+            <Sparkles size={18} className="text-brand-600 mt-0.5 shrink-0" />
+            <span><span className="block text-[13px] font-semibold text-ink-900">Load a sample agency</span><span className="block text-xs text-ink-500">~40 demo accounts with policies, renewals, tasks, claims, messages and invoices. Good for exploring.</span></span>
+          </button>
+          <button disabled={!!busy} onClick={() => { setBusy('Setting up…'); run(startEmpty); }} className="w-full text-left flex gap-3 items-start border border-ink-200 hover:bg-ink-50 rounded p-3.5 disabled:opacity-60">
+            <Database size={18} className="text-ink-500 mt-0.5 shrink-0" />
+            <span><span className="block text-[13px] font-semibold text-ink-900">Start with an empty agency</span><span className="block text-xs text-ink-500">Creates your agency profile, one admin user and a starter carrier list. Your existing accounts are kept.</span></span>
+          </button>
         </div>
-      )}
+        {busy && <div className="flex items-center gap-2 text-[13px] text-ink-500 mt-4"><Loader2 size={15} className="animate-spin text-brand-500" />{busy}</div>}
+      </div>
     </div>
   );
 }
 
-function App() {
-  const [activeNav, setActiveNav] = useState('Workspace');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchActive, setSearchActive] = useState(false);
-  const [banner, setBanner] = useState(0);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  const handleSearch = useCallback((value: string) => {
-    setSearchQuery(value);
-    if (value.trim()) setSearchActive(true);
-    else setSearchActive(false);
-  }, []);
+export default function App() {
+  const [boot, setBoot] = useState<Boot>({ state: 'loading' });
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setSearchActive(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    let live = true;
+    bootApp().then((b) => { if (live) setBoot(b); });
+    return () => { live = false; };
   }, []);
 
+  if (boot.state === 'loading') {
+    return <div className="min-h-screen grid place-items-center bg-[#f8f6f6]"><div className="flex flex-col items-center gap-3 text-[13px] text-ink-500"><Logo size={48} /><span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin text-brand-500" /> Loading your agency…</span></div></div>;
+  }
+  if (boot.state === 'error') {
+    return <div className="min-h-screen grid place-items-center p-4"><div className="max-w-md w-full"><ErrorBanner message={`Could not start: ${boot.message}`} /></div></div>;
+  }
+  if (boot.state === 'onboarding') return <FeedbackProvider><Onboarding onDone={() => setBoot({ state: 'ready', mode: boot.mode })} /></FeedbackProvider>;
+
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-lockup"><div className="brand-mark"><ShieldCheck size={22} strokeWidth={2.2} /></div></div>
-        <div className="search-area" ref={searchRef}>
-          <button className="mobile-menu" aria-label="Open navigation"><Menu size={20} /></button>
-          <Search size={18} className="search-icon-left" />
-          <input
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            onFocus={() => searchQuery.trim() && setSearchActive(true)}
-            placeholder="Search accounts, policies, contacts…"
-            className="search-input"
-          />
-          {searchQuery && (
-            <button className="search-clear" onClick={() => { setSearchQuery(''); setSearchActive(false); }} aria-label="Clear search">
-              <X size={16} />
-            </button>
-          )}
-          {searchActive && <SearchDropdown query={searchQuery} onClose={() => setSearchActive(false)} />}
-        </div>
-        <div className="top-actions">
-          <button className="eva-button"><Sparkles size={16} /> AI</button>
-          <button className="avatar">MN</button>
-          <button className="top-icon" aria-label="Add"><FilePlus2 size={20} /></button>
-          <button className="top-icon" aria-label="Menu"><ClipboardList size={20} /></button>
-          <button className="top-icon notification" aria-label="Notifications"><Bell size={20} /><i /></button>
-          <button className="top-icon" aria-label="Help"><LifeBuoy size={20} /></button>
-          <button className="top-icon" aria-label="Settings"><Settings size={20} /></button>
-        </div>
-      </header>
-
-      <aside className="sidebar">
-        <div className="sidebar-top"><button className="collapse" aria-label="Collapse sidebar"><PanelLeft size={20} /></button></div>
-        <nav>{navItems.map(({ icon: Icon, label }) => <button key={label} className={`nav-item ${activeNav === label ? 'selected' : ''}`} onClick={() => setActiveNav(label)} title={label}><Icon size={22} strokeWidth={activeNav === label ? 2.3 : 1.8} /></button>)}</nav>
-        <div className="sidebar-bottom"><button className="nav-item" title="More"><MoreHorizontal size={22} /></button></div>
-      </aside>
-
-      <main className="main-content">
-        <div className="dashboard-grid">
-          <div className="promo-wrap">
-            <button className="carousel-arrow left" onClick={() => setBanner((banner + 2) % 3)} aria-label="Previous promotion"><ArrowLeft size={20} /></button>
-            <div className="promo-card">
-              <div className="promo-image" />
-              <div className="promo-copy"><span className="promo-kicker">NORTHSTAR ACADEMY</span><h1>Root<br /><em>Quote smarter.</em><br />Bind faster.</h1><button className="learn-button">Learn more <ArrowRight size={16} /></button></div>
-              <div className="promo-dots">{[0, 1, 2, 3, 4, 5].map((dot) => <span key={dot} className={banner === dot % 3 ? 'active' : ''} />)}</div>
-            </div>
-            <button className="carousel-arrow right" onClick={() => setBanner((banner + 1) % 3)} aria-label="Next promotion"><ArrowRight size={20} /></button>
-          </div>
-          <Card title="Need Help Getting Started?" className="help-card"><p className="teal-intro">Product News & Updates</p><a>Solution Center</a><a>Training & Learning</a><a>Submit a Support Ticket</a><button className="ask-button"><Sparkles size={16} /> Ask EVA</button></Card>
-          <Card title="Text Messages" className="text-card"><StatRow label="Sent / Received" value="74,361" /><StatRow label="Unresolved" value="5" /></Card>
-          <Card title="EZLynx Carrier Integration" className="carrier-card"><p>Log in to your carrier sites directly from EZLynx.</p><button className="extension-button">Add Extension</button></Card>
-          <Card title="Policy Downloads" className="policy-card" action={<RefreshCw size={20} className="muted-icon" />}><p className="card-note">(Last 7 Days) - updated 29 minutes ago</p><StatRow label="Cancellations" value="10" /><StatRow label="Renewals" value="45" /><StatRow label="New Policies" value="3" /><StatRow label="Non-Renewals" value="-" /><StatRow label="Matched" value="91" /></Card>
-          <Card title="Free Training: Transitioning to Reports 5.0" className="training-card"><div className="training-copy"><span>FREE TRAINING:</span><strong>Transitioning to Reports 5.0</strong><p>Join our free Friday webinars to make the move from old Reports to new Reports.</p></div><div className="training-image" /><button className="text-link">Register Now</button></Card>
-          <Card title="Alerts" className="alerts-card"><StatRow label="New" value="-" /><StatRow label="All Alerts" value="-" /></Card>
-          <Card title="eSignature" className="esign-card"><StatRow label="Completed" value="5,633" /><StatRow label="Pending" value="14" /><StatRow label="Canceled" value="202" /><StatRow label="Declined" value="6" /><StatRow label="Expired" value="372" /><StatRow label="Failed" value="-" /><StatRow label="All Envelopes" value="6,227" /></Card>
-        </div>
-      </main>
-      <footer><span>Northstar AMS · Workspace</span><span>All systems operational · <a>Support center</a></span></footer>
-    </div>
+    <FeedbackProvider>
+      <AppDataProvider>
+        <Shell />
+      </AppDataProvider>
+    </FeedbackProvider>
   );
 }
-
-export default App;
