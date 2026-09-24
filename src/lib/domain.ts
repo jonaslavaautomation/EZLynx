@@ -30,7 +30,7 @@ export async function logActivity(values: Pick<Activity, 'subject'> & Partial<Ac
   });
 }
 
-export type NewPolicy = Omit<Policy, 'id' | 'created_at' | 'expiration_date' | 'policy_number' | 'coverages' | 'notes' | 'payment_plan' | 'producer'> & Partial<Pick<Policy, 'expiration_date' | 'policy_number' | 'coverages' | 'notes' | 'payment_plan' | 'producer'>>;
+export type NewPolicy = Omit<Policy, 'id' | 'created_at' | 'expiration_date' | 'policy_number' | 'coverages' | 'notes' | 'payment_plan' | 'producer' | 'rewritten_from_policy_id'> & Partial<Pick<Policy, 'expiration_date' | 'policy_number' | 'coverages' | 'notes' | 'payment_plan' | 'producer' | 'rewritten_from_policy_id'>>;
 
 /**
  * Creates a policy plus its New Business transaction; for Agency Bill policies also creates the first
@@ -38,7 +38,7 @@ export type NewPolicy = Omit<Policy, 'id' | 'created_at' | 'expiration_date' | '
  */
 export async function createPolicy(values: NewPolicy): Promise<Policy> {
   const policy = await db.insert('policies', {
-    coverages: [] as Coverage[], notes: null, payment_plan: 'Paid in Full', producer: null,
+    coverages: [] as Coverage[], notes: null, payment_plan: 'Paid in Full', producer: null, rewritten_from_policy_id: null,
     ...values,
     policy_number: values.policy_number || generatePolicyNumber(values.line_of_business),
     expiration_date: values.expiration_date || addMonths(values.effective_date, values.term_months),

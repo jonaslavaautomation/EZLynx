@@ -9,8 +9,8 @@ import { supabase } from '@/lib/supabase';
 import type { TableName } from '@/lib/types';
 
 /** Dependency order: parents before children so foreign keys resolve on import. */
-const TABLES: TableName[] = ['staff', 'carriers', 'agency_settings', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices'];
-const MIGRATION = 'supabase/migrations/20260924160000_create_ams_schema.sql';
+const TABLES: TableName[] = ['staff', 'carriers', 'agency_settings', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns', 'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports'];
+const MIGRATIONS = ['supabase/migrations/20260924160000_create_ams_schema.sql', 'supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql'];
 const label = (t: string) => t.replace(/_/g, ' ');
 
 // Column types per table, mirroring the migration. A [type, default] tuple marks a NOT NULL column with a
@@ -23,7 +23,7 @@ const SCHEMA: Record<TableName, Record<string, ColSpec>> = {
   drivers: { ...BASE, account_id: 'uuid', first_name: 'text', last_name: 'text', dob: 'date', gender: 'text', marital_status: 'text', relationship: 'text', license_number: 'text', license_state: 'text', violations: ['int', 0], accidents: ['int', 0] },
   vehicles: { ...BASE, account_id: 'uuid', year: 'int', make: 'text', model: 'text', vin: 'text', usage: 'text', annual_miles: 'int', ownership: 'text', garaging_zip: 'text' },
   properties: { ...BASE, account_id: 'uuid', address: 'text', city: 'text', state: 'text', zip: 'text', year_built: 'int', square_feet: 'int', construction: 'text', roof_type: 'text', roof_year: 'int', protection_class: 'int', dwelling_value: 'num' },
-  policies: { ...BASE, account_id: 'uuid', policy_number: 'text', carrier: 'text', line_of_business: 'text', status: ['text', 'Active'], effective_date: 'date', expiration_date: 'date', term_months: ['int', 12], premium: ['num', 0], commission_rate: ['num', 10], billing_type: ['text', 'Direct Bill'], payment_plan: 'text', source: ['text', 'Manual'], producer: 'text', coverages: ['json', []], notes: 'text' },
+  policies: { ...BASE, account_id: 'uuid', policy_number: 'text', carrier: 'text', line_of_business: 'text', status: ['text', 'Active'], effective_date: 'date', expiration_date: 'date', term_months: ['int', 12], premium: ['num', 0], commission_rate: ['num', 10], billing_type: ['text', 'Direct Bill'], payment_plan: 'text', source: ['text', 'Manual'], producer: 'text', coverages: ['json', []], notes: 'text', rewritten_from_policy_id: 'uuid' },
   policy_transactions: { ...BASE, policy_id: 'uuid', account_id: 'uuid', type: 'text', effective_date: 'date', premium_change: ['num', 0], description: 'text' },
   quotes: { ...BASE, account_id: 'uuid', line_of_business: 'text', status: ['text', 'Draft'], effective_date: 'date', input: ['json', {}], results: ['json', []], selected_carrier: 'text', selected_premium: 'num', policy_id: 'uuid' },
   activities: { ...BASE, account_id: 'uuid', policy_id: 'uuid', type: ['text', 'Task'], subject: 'text', description: 'text', due_date: 'date', priority: ['text', 'Normal'], status: ['text', 'Open'], assigned_to: 'text', completed_at: 'ts' },
@@ -32,8 +32,19 @@ const SCHEMA: Record<TableName, Record<string, ColSpec>> = {
   messages: { ...BASE, account_id: 'uuid', channel: ['text', 'SMS'], direction: ['text', 'Outbound'], to_address: 'text', subject: 'text', body: 'text', status: ['text', 'Sent'], read: ['bool', true] },
   invoices: { ...BASE, account_id: 'uuid', policy_id: 'uuid', invoice_number: 'text', description: 'text', amount: ['num', 0], amount_paid: ['num', 0], due_date: 'date', status: ['text', 'Unpaid'], paid_date: 'date', payment_method: 'text' },
   carriers: { ...BASE, name: 'text', naic: 'text', lines: ['json', []], commission_rate: ['num', 10], phone: 'text', website: 'text', appointed: ['bool', true], downloads_enabled: ['bool', false] },
-  staff: { ...BASE, name: 'text', email: 'text', role: ['text', 'CSR'], active: ['bool', true], color: ['text', '#684ec2'] },
-  agency_settings: { ...BASE, name: 'text', address: 'text', city: 'text', state: 'text', zip: 'text', phone: 'text', email: 'text', license_number: 'text', renewal_reminder_days: ['int', 60], current_user_name: 'text' },
+  staff: { ...BASE, name: 'text', email: 'text', role: ['text', 'CSR'], active: ['bool', true], color: ['text', '#684ec2'], service_team: ['bool', true], external: ['bool', false], producer_code: 'text' },
+  agency_settings: { ...BASE, name: 'text', address: 'text', city: 'text', state: 'text', zip: 'text', phone: 'text', email: 'text', license_number: 'text', renewal_reminder_days: ['int', 60], current_user_name: 'text', email_from_name: 'text', email_reply_to: 'text', email_footer: 'text' },
+  claim_transactions: { ...BASE, claim_id: 'uuid', account_id: 'uuid', type: 'text', amount: ['num', 0], transaction_date: 'date', description: 'text' },
+  commission_statements: { ...BASE, carrier: 'text', statement_date: 'date', period_start: 'date', period_end: 'date', total_amount: ['num', 0], status: ['text', 'Open'], notes: 'text' },
+  commission_statement_lines: { ...BASE, statement_id: 'uuid', policy_id: 'uuid', policy_number: 'text', insured_name: 'text', transaction_type: ['text', 'New Business'], premium: ['num', 0], commission_amount: ['num', 0] },
+  commission_rules: { ...BASE, name: 'text', staff_name: 'text', business_type: ['text', 'All'], line_of_business: 'text', carrier: 'text', split_percent: ['num', 0], active: ['bool', true] },
+  recipient_lists: { ...BASE, name: 'text', filters: ['json', {}] },
+  email_campaigns: { ...BASE, name: 'text', subject: 'text', body: 'text', recipient_list_id: 'uuid', status: ['text', 'Draft'], scheduled_at: 'ts', sent_at: 'ts', sent_count: ['int', 0], suppressed_count: ['int', 0] },
+  suppressions: { ...BASE, channel: ['text', 'Email'], address: 'text', reason: ['text', 'Manual'] },
+  message_templates: { ...BASE, channel: ['text', 'SMS'], name: 'text', subject: 'text', body: 'text' },
+  mail_items: { ...BASE, account_id: 'uuid', direction: ['text', 'Inbound'], mail_type: ['text', 'Letter'], correspondent: 'text', description: 'text', mail_date: 'date', status: ['text', 'Received'] },
+  esign_templates: { ...BASE, name: 'text', description: 'text', category: ['text', 'Application'], message: 'text' },
+  saved_reports: { ...BASE, name: 'text', report_key: 'text', owner: 'text', favorite: ['bool', false], shared: ['bool', false], schedule: 'text', schedule_email: 'text' },
 };
 
 /** Coerce a backup row to the table's columns so Postgres accepts it (unknown keys dropped, '' / NaN → null). */
@@ -255,7 +266,7 @@ export function DataTab() {
                   <div className="font-semibold mb-1">To connect Supabase</div>
                   <ol className="list-decimal pl-5 space-y-1">
                     <li>Open your Supabase project’s <b>SQL editor</b>.</li>
-                    <li>Paste and run the migration file <code className="text-xs bg-white border border-ink-100 px-1 rounded break-all">{MIGRATION}</code>.</li>
+                    <li>Paste and run these migration files, in order: {MIGRATIONS.map((m, i) => <span key={m}>{i > 0 && ', then '}<code className="text-xs bg-white border border-ink-100 px-1 rounded break-all">{m}</code></span>)}.</li>
                     <li>Reload this page — the app detects the schema and switches automatically.</li>
                   </ol>
                 </div>

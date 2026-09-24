@@ -1,4 +1,7 @@
 import { db, uuid } from '@/lib/db';
+import { buildCommSample } from '@/modules/comm/sample';
+import { buildPolicyMgmtSample } from '@/modules/policymgmt/sample';
+import { buildReportsSample } from '@/modules/reports/sample';
 import { addDays, addMonths, today } from '@/lib/format';
 import type {
   Account, Activity, Carrier, Claim, Coverage, DocumentRow, Driver, Invoice, LineOfBusiness, Message, Policy, PolicyTransaction,
@@ -42,11 +45,11 @@ export const DEMO_CARRIERS: Omit<Carrier, 'id' | 'created_at'>[] = [
 ];
 
 export const DEMO_STAFF: Omit<Staff, 'id' | 'created_at'>[] = [
-  { name: 'Morgan Nash', email: 'morgan@northstar-agency.example', role: 'Agency Owner', active: true, color: '#684ec2' },
-  { name: 'Priya Desai', email: 'priya@northstar-agency.example', role: 'Producer', active: true, color: '#0f8a7e' },
-  { name: 'Luis Herrera', email: 'luis@northstar-agency.example', role: 'Producer', active: true, color: '#d9622b' },
-  { name: 'Hannah Lee', email: 'hannah@northstar-agency.example', role: 'CSR', active: true, color: '#2f6fbd' },
-  { name: 'Marcus Webb', email: 'marcus@northstar-agency.example', role: 'Account Manager', active: true, color: '#b23a6e' },
+  { name: 'Morgan Nash', email: 'morgan@northstar-agency.example', role: 'Agency Owner', active: true, color: '#684ec2', service_team: true, external: false, producer_code: null },
+  { name: 'Priya Desai', email: 'priya@northstar-agency.example', role: 'Producer', active: true, color: '#0f8a7e', service_team: true, external: false, producer_code: null },
+  { name: 'Luis Herrera', email: 'luis@northstar-agency.example', role: 'Producer', active: true, color: '#d9622b', service_team: true, external: false, producer_code: null },
+  { name: 'Hannah Lee', email: 'hannah@northstar-agency.example', role: 'CSR', active: true, color: '#2f6fbd', service_team: true, external: false, producer_code: null },
+  { name: 'Marcus Webb', email: 'marcus@northstar-agency.example', role: 'Account Manager', active: true, color: '#b23a6e', service_team: true, external: false, producer_code: null },
 ];
 
 const COVERAGES: Partial<Record<LineOfBusiness, Coverage[]>> = {
@@ -106,7 +109,7 @@ export function buildSeed(seed = 42): SeedData {
       policy_number: `${line.slice(0, 2).toUpperCase()}-${int(1000000, 9999999)}`, carrier: c.name, line_of_business: line, status,
       effective_date: effective, expiration_date: expiration, term_months: term, premium, commission_rate: c.commission_rate,
       billing_type: r() < 0.8 ? 'Direct Bill' : 'Agency Bill', payment_plan: pick(['Paid in Full', 'Monthly', 'Quarterly', 'Semi-Annual']),
-      source: c.downloads_enabled ? 'Download' : 'Manual', producer: a.producer, coverages: COVERAGES[line] ?? [], notes: null,
+      source: c.downloads_enabled ? 'Download' : 'Manual', producer: a.producer, coverages: COVERAGES[line] ?? [], notes: null, rewritten_from_policy_id: null,
     };
     out.policies.push(p);
     out.policy_transactions.push({ ...base(), created_at: p.created_at, policy_id: p.id, account_id: a.id, type: r() < 0.6 ? 'Renewal' : 'New Business', effective_date: effective, premium_change: premium, description: `${line} term ${effective} – ${expiration}` });
@@ -206,17 +209,55 @@ function daysBetween(a: string, b: string) {
 
 const SEED_ORDER: TableName[] = ['staff', 'carriers', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices'];
 
+type Base = Pick<SeedData, 'accounts' | 'policies' | 'claims' | 'staff' | 'carriers'>;
+
+/** Sample rows for the Policy Mgmt, Communication Center and Reports 5.0 tables, built from the core book. */
+function buildExtras(d: Base): Partial<Record<TableName, { id: string }[]>> {
+  return {
+    ...buildPolicyMgmtSample(d),
+    ...buildCommSample(d),
+    ...buildReportsSample(d),
+  };
+}
+
+// FK order for the extra tables.
+const EXTRA_ORDER: TableName[] = [
+  'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns',
+  'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports',
+];
+
+async function insertTables(order: TableName[], data: Partial<Record<TableName, { id: string }[]>>, onProgress?: (msg: string) => void) {
+  for (const table of order) {
+    const rows = data[table] ?? [];
+    onProgress?.(`Loading ${table.replace(/_/g, ' ')}…`);
+    for (let i = 0; i < rows.length; i += 200) await db.insertMany(table, rows.slice(i, i + 200) as never[], { silent: true });
+  }
+}
+
 /** Inserts the demo agency. Settings row is created if missing. */
 export async function loadSampleData(onProgress?: (msg: string) => void) {
   const data = buildSeed();
-  for (const table of SEED_ORDER) {
-    const rows = data[table as keyof SeedData] as { id: string }[];
-    onProgress?.(`Loading ${table.replace('_', ' ')}…`);
-    for (let i = 0; i < rows.length; i += 200) await db.insertMany(table, rows.slice(i, i + 200) as never[], { silent: true });
-  }
+  await insertTables(SEED_ORDER, data as unknown as Partial<Record<TableName, { id: string }[]>>, onProgress);
+  await insertTables(EXTRA_ORDER, buildExtras(data), onProgress);
   const existing = await db.list('agency_settings', { limit: 1 });
   if (!existing.length) await db.insertMany('agency_settings', [defaultSettings()], { silent: true });
-  db.touchAll([...SEED_ORDER, 'agency_settings']);
+  db.touchAll([...SEED_ORDER, ...EXTRA_ORDER, 'agency_settings']);
+}
+
+/**
+ * Browser-storage agencies seeded before the Policy Mgmt / Communication Center / Reports 5.0 tables existed get
+ * their sample rows once, built from the book already in the browser. Skips tables that already have rows.
+ */
+export async function topUpLocalSample() {
+  const [accounts, policies, claims, staff, carriers] = await Promise.all([
+    db.list('accounts'), db.list('policies'), db.list('claims'), db.list('staff'), db.list('carriers'),
+  ]);
+  if (!accounts.length || !staff.length) return;
+  const empty = (await Promise.all(EXTRA_ORDER.map(async (t) => ((await db.list(t, { limit: 1 })).length ? null : t)))).filter((t): t is TableName => !!t);
+  if (!empty.length) return;
+  const extras = buildExtras({ accounts, policies, claims, staff, carriers });
+  await insertTables(empty, extras);
+  db.touchAll(empty);
 }
 
 export function defaultSettings() {

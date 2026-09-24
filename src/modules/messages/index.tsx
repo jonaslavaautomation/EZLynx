@@ -10,7 +10,7 @@ import { accountName, fmtDateTime, fmtPhone, fmtRelative, parseDate } from '@/li
 import { useRow, useTable } from '@/lib/hooks';
 import { href, setParam, useRoute } from '@/lib/router';
 import type { Account, Message } from '@/lib/types';
-import { MESSAGE_TEMPLATES, defaultAddress, fillTemplate, sendMessage, smsInfo, validateAddress, type Channel } from './shared';
+import { MESSAGE_TEMPLATES, defaultAddress, fillTemplate, sendMessage, smsInfo, validateAddress, type Channel, type MessageTemplate } from './shared';
 
 /** Unread inbound message count, for the topbar badge. */
 export function useUnreadMessageCount() {
@@ -19,6 +19,15 @@ export function useUnreadMessageCount() {
 }
 
 const SIMULATED_NOTE = 'Delivery is simulated — connect an SMS/email provider to send for real.';
+
+/** Built-in templates plus the agency's saved templates (Communication Center → Text Templates) for a channel. */
+function useTemplates(channel: Channel): MessageTemplate[] {
+  const saved = useTable('message_templates', { eq: { channel }, order: { column: 'name' } });
+  return useMemo(() => [
+    ...MESSAGE_TEMPLATES,
+    ...saved.data.map((t) => ({ id: `saved:${t.id}`, label: `Saved: ${t.name}`, subject: t.subject ?? '', body: t.body })),
+  ], [saved.data]);
+}
 
 function smsHint(body: string) {
   const s = smsInfo(body);
@@ -179,6 +188,7 @@ function Thread({ accountId, onBack, className }: ThreadProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const marking = useRef(new Set<string>());
   const initialized = useRef(false);
+  const templates = useTemplates(channel);
   const a = account.data;
 
   // Default channel (SMS when the client has a phone) once the account loads.
@@ -221,6 +231,7 @@ function Thread({ accountId, onBack, className }: ThreadProps) {
       toast(channel === 'SMS' ? 'Text sent' : 'Email sent');
     } catch (e) {
       setError((e as Error).message);
+      toast((e as Error).message, 'error');
     } finally {
       setSending(false);
     }
@@ -231,7 +242,7 @@ function Thread({ accountId, onBack, className }: ThreadProps) {
   };
 
   const applyTemplate = (id: string) => {
-    const t = MESSAGE_TEMPLATES.find((x) => x.id === id);
+    const t = templates.find((x) => x.id === id);
     if (!t) return;
     setBody(fillTemplate(t.body, a, settings, me?.name));
     if (channel === 'Email') setSubject(fillTemplate(t.subject, a, settings, me?.name));
@@ -297,7 +308,7 @@ function Thread({ accountId, onBack, className }: ThreadProps) {
             <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">To</span>
             <Input value={to} onChange={(e) => { setTo(e.target.value); setError(null); }} placeholder={channel === 'SMS' ? 'Mobile number' : 'Email address'} className="h-7 text-xs" />
           </div>
-          <Select className="h-7 text-xs w-auto max-w-[180px]" value="" onChange={(e) => applyTemplate(e.target.value)} placeholder="Insert template…" options={MESSAGE_TEMPLATES.map((t) => ({ value: t.id, label: t.label }))} aria-label="Insert template" />
+          <Select className="h-7 text-xs w-auto max-w-[180px]" value="" onChange={(e) => applyTemplate(e.target.value)} placeholder="Insert template…" options={templates.map((t) => ({ value: t.id, label: t.label }))} aria-label="Insert template" />
         </div>
         {channel === 'Email' && <Input value={subject} onChange={(e) => { setSubject(e.target.value); setError(null); }} placeholder="Subject" />}
         <div className="flex items-end gap-2">
@@ -416,8 +427,9 @@ function NewMessageModal({ onClose }: { onClose: () => void }) {
   const [body, setBody] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const templates = useTemplates(channel);
 
-  const pickAccount = (id: string | null, a: Account | null) => {
+  const pickAccount =(id: string | null, a: Account | null) => {
     setAccountId(id);
     setAccount(a);
     if (a) {
@@ -429,7 +441,7 @@ function NewMessageModal({ onClose }: { onClose: () => void }) {
   };
 
   const applyTemplate = (id: string) => {
-    const t = MESSAGE_TEMPLATES.find((x) => x.id === id);
+    const t = templates.find((x) => x.id === id);
     if (!t) return;
     setBody(fillTemplate(t.body, account, settings, me?.name));
     setSubject(fillTemplate(t.subject, account, settings, me?.name));
@@ -458,6 +470,7 @@ function NewMessageModal({ onClose }: { onClose: () => void }) {
       onClose();
     } catch (err) {
       setErrors({ form: (err as Error).message });
+      toast((err as Error).message, 'error');
       setBusy(false);
     }
   };
@@ -482,7 +495,7 @@ function NewMessageModal({ onClose }: { onClose: () => void }) {
           </Field>
         </div>
         <Field label="Template">
-          <Select value="" onChange={(e) => applyTemplate(e.target.value)} placeholder="Insert template…" options={MESSAGE_TEMPLATES.map((t) => ({ value: t.id, label: t.label }))} />
+          <Select value="" onChange={(e) => applyTemplate(e.target.value)} placeholder="Insert template…" options={templates.map((t) => ({ value: t.id, label: t.label }))} />
         </Field>
         {channel === 'Email' && <Field label="Subject" required error={errors.subject}><Input value={subject} onChange={(e) => setSubject(e.target.value)} /></Field>}
         <Field

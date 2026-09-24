@@ -1,6 +1,8 @@
 import { db } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
+import { accountName } from '@/lib/format';
 import type { Account, AgencySettings, Message } from '@/lib/types';
+import { isSuppressed, suppressedMessage } from '@/modules/comm/suppression';
 
 export type Channel = Message['channel'];
 
@@ -52,6 +54,7 @@ export function fillTemplate(text: string, account: Account | null, settings: Ag
   return text
     .replace(/\{first_name\}/g, () => first || 'there')
     .replace(/\{last_name\}/g, () => account?.last_name ?? '')
+    .replace(/\{full_name\}/g, () => (account ? accountName(account) : '') || 'there')
     .replace(/\{agency\}/g, () => settings?.name || 'our agency')
     .replace(/\{agent\}/g, () => agent || settings?.name || 'your agent');
 }
@@ -77,6 +80,8 @@ export function validateAddress(channel: Channel, to: string): string | null {
  * ~1.5s later to mimic a carrier receipt. Also logs a lightweight activity on the account.
  */
 export async function sendMessage(account: Account, v: { channel: Channel; to: string; subject?: string; body: string; agent?: string | null }) {
+  // Opted-out numbers / suppressed addresses are never contacted (Communication Center suppression lists).
+  if (await isSuppressed(v.channel, v.to)) throw new Error(suppressedMessage(v.channel));
   const row = await db.insert('messages', {
     account_id: account.id, channel: v.channel, direction: 'Outbound', to_address: v.to.trim(),
     subject: v.channel === 'Email' ? (v.subject?.trim() || null) : null, body: v.body.trim(), status: 'Sent', read: true,

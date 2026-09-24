@@ -108,9 +108,11 @@ export type Policy = BaseRow & {
   producer: string | null;
   coverages: Coverage[];
   notes: string | null;
+  /** Set when this policy was created by rewriting (replacing) an earlier policy. */
+  rewritten_from_policy_id: string | null;
 };
 
-export type TransactionType = 'New Business' | 'Endorsement' | 'Renewal' | 'Cancellation' | 'Reinstatement' | 'Audit';
+export type TransactionType = 'New Business' | 'Endorsement' | 'Renewal' | 'Cancellation' | 'Reinstatement' | 'Audit' | 'Rewrite';
 
 export type PolicyTransaction = BaseRow & {
   policy_id: string;
@@ -240,6 +242,11 @@ export type Staff = BaseRow & {
   role: StaffRole;
   active: boolean;
   color: string; // avatar color
+  /** Member of the commission Service Team (paid commissions or tracked on commission reports). */
+  service_team: boolean;
+  /** External producer (not an employee). */
+  external: boolean;
+  producer_code: string | null;
 };
 
 export type AgencySettings = BaseRow & {
@@ -253,6 +260,107 @@ export type AgencySettings = BaseRow & {
   license_number: string | null;
   renewal_reminder_days: number;
   current_user_name: string | null; // staff name used as "me"
+  email_from_name: string | null;
+  email_reply_to: string | null;
+  email_footer: string | null;
+};
+
+export type ClaimTransactionType = 'Reserve' | 'Payment' | 'Expense' | 'Recovery';
+
+export type ClaimTransaction = BaseRow & {
+  claim_id: string;
+  account_id: string;
+  type: ClaimTransactionType;
+  amount: number;
+  transaction_date: string;
+  description: string | null;
+};
+
+export type StatementStatus = 'Open' | 'Reconciled' | 'Posted';
+
+/** A carrier commission statement, entered and reconciled against the book. */
+export type CommissionStatement = BaseRow & {
+  carrier: string;
+  statement_date: string;
+  period_start: string | null;
+  period_end: string | null;
+  total_amount: number;
+  status: StatementStatus;
+  notes: string | null;
+};
+
+export type CommissionStatementLine = BaseRow & {
+  statement_id: string;
+  policy_id: string | null;
+  policy_number: string;
+  insured_name: string | null;
+  transaction_type: string;
+  premium: number;
+  commission_amount: number;
+};
+
+/** Service Team rule: the share of agency commission a team member earns on matching policies. */
+export type CommissionRule = BaseRow & {
+  name: string;
+  staff_name: string;
+  business_type: 'All' | 'New Business' | 'Renewal';
+  line_of_business: string | null;
+  carrier: string | null;
+  split_percent: number;
+  active: boolean;
+};
+
+export type RecipientFilters = {
+  account_type?: AccountType | null;
+  statuses?: AccountStatus[];
+  lines?: string[];
+  producer?: string | null;
+  states?: string[];
+  has_email?: boolean;
+};
+
+export type RecipientList = BaseRow & { name: string; filters: RecipientFilters };
+
+export type CampaignStatus = 'Draft' | 'Scheduled' | 'Sent';
+
+export type EmailCampaign = BaseRow & {
+  name: string;
+  subject: string;
+  body: string;
+  recipient_list_id: string | null;
+  status: CampaignStatus;
+  scheduled_at: string | null;
+  sent_at: string | null;
+  sent_count: number;
+  suppressed_count: number;
+};
+
+export type Suppression = BaseRow & { channel: 'Email' | 'SMS'; address: string; reason: string };
+
+export type MessageTemplate = BaseRow & { channel: 'SMS' | 'Email'; name: string; subject: string | null; body: string };
+
+export type MailItem = BaseRow & {
+  account_id: string | null;
+  direction: 'Inbound' | 'Outbound';
+  mail_type: string;
+  correspondent: string | null;
+  description: string | null;
+  mail_date: string;
+  status: string;
+};
+
+export type ESignTemplate = BaseRow & { name: string; description: string | null; category: string; message: string | null };
+
+export type ReportSchedule = 'Daily' | 'Weekly' | 'Monthly';
+
+export type SavedReport = BaseRow & {
+  name: string;
+  report_key: string;
+  owner: string | null;
+  favorite: boolean;
+  shared: boolean;
+  schedule: ReportSchedule | null;
+  schedule_email: string | null;
 };
 
 export type TableMap = {
@@ -271,6 +379,17 @@ export type TableMap = {
   carriers: Carrier;
   staff: Staff;
   agency_settings: AgencySettings;
+  claim_transactions: ClaimTransaction;
+  commission_statements: CommissionStatement;
+  commission_statement_lines: CommissionStatementLine;
+  commission_rules: CommissionRule;
+  recipient_lists: RecipientList;
+  email_campaigns: EmailCampaign;
+  suppressions: Suppression;
+  message_templates: MessageTemplate;
+  mail_items: MailItem;
+  esign_templates: ESignTemplate;
+  saved_reports: SavedReport;
 };
 
 export type TableName = keyof TableMap;
