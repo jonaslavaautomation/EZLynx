@@ -37,7 +37,35 @@ export type Account = BaseRow & {
   nature_of_business: string | null;
   naics_description: string | null;
   operations_description: string | null;
+  // Personal Lines Applicant info
+  prefix: string | null;
+  middle_initial: string | null;
+  suffix: string | null;
+  maiden_name: string | null;
+  nickname: string | null;
+  gender: string | null;
+  /** Only the last four digits are ever stored. */
+  ssn_last4: string | null;
+  dl_number: string | null;
+  dl_status: string | null;
+  dl_state: string | null;
+  education: string | null;
+  industry: string | null;
+  occupation_years: number | null;
+  prior_employer_years: number | null;
+  account_name: string | null;
+  preferred_language: string | null;
+  vip: boolean;
+  phones: ContactPhone[];
+  emails: ContactEmail[];
+  /** Send the email address to carriers when rating. */
+  bridge_email: boolean;
+  contact_method: string | null;
+  contact_time: string | null;
 };
+
+export type ContactPhone = { type: string; number: string };
+export type ContactEmail = { type: string; address: string };
 
 export const ADDRESS_TYPES = ['Mailing', 'Residence', 'Billing', 'Garaging', 'Business Location', 'Vacation / Seasonal Home', 'Previous Address'] as const;
 
@@ -52,6 +80,11 @@ export type AccountAddress = BaseRow & {
   /** Only used for Mailing addresses (international mail). */
   country: string | null;
   is_primary: boolean;
+  county: string | null;
+  zip_suffix: string | null;
+  unit: string | null;
+  years_at_address: number | null;
+  months_at_address: number | null;
 };
 
 /** A person on the account: the primary (named insured), a co-applicant / secondary contact, or another contact. */

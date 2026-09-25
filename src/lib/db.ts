@@ -60,7 +60,10 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
     id: 'u', created_at: 'ts', first_name: 't', last_name: 't', email: 't', phone: 't', address: 't', city: 't', state: 't', zip: 't', policy_type: 't',
     status: ['t', 'Active'], account_type: ['t', 'Personal'], business_name: 't', dob: 'd', marital_status: 't', occupation: 't', mobile_phone: 't',
     producer: 't', csr: 't', lead_source: 't', notes: 't', labels: ['j', []], customer_since: 'd', naics_code: 't', sic_code: 't',
-    nature_of_business: 't', naics_description: 't', operations_description: 't',
+    nature_of_business: 't', naics_description: 't', operations_description: 't', prefix: 't', middle_initial: 't', suffix: 't', maiden_name: 't',
+    nickname: 't', gender: 't', ssn_last4: 't', dl_number: 't', dl_status: 't', dl_state: 't', education: 't', industry: 't', occupation_years: 'i',
+    prior_employer_years: 'i', account_name: 't', preferred_language: 't', vip: ['b', false], phones: ['j', []], emails: ['j', []],
+    bridge_email: ['b', false], contact_method: 't', contact_time: 't',
   },
   drivers: {
     id: 'u', created_at: 'ts', account_id: 'u', first_name: 't', last_name: 't', dob: 'd', gender: 't', marital_status: 't', relationship: 't',
@@ -165,7 +168,7 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
   integrations: { id: 'u', created_at: 'ts', integration_key: 't', status: ['t', 'Setup Required'], config: ['j', {}], activated_by: 't' },
   account_addresses: {
     id: 'u', created_at: 'ts', account_id: 'u', address_type: ['t', 'Mailing'], street: 't', street2: 't', city: 't', state: 't', zip: 't', country: 't',
-    is_primary: ['b', false],
+    is_primary: ['b', false], county: 't', zip_suffix: 't', unit: 't', years_at_address: 'i', months_at_address: 'i',
   },
   account_contacts: {
     id: 'u', created_at: 'ts', account_id: 'u', first_name: 't', last_name: 't', title: 't', relationship: 't', email: 't', phone: 't', mobile_phone: 't',
@@ -331,7 +334,7 @@ export function initDb(): Promise<DbMode> {
       // `agency_settings` only exists once the full AMS migration is applied; a project that only has
       // the original `accounts` table fails this probe and falls back to local mode.
       // Probe the newest migration's table: if any migration is missing, stay in browser-storage mode.
-      const probe = supabase.from('account_contacts').select('id').limit(1);
+      const probe = supabase.from('account_addresses').select('id, years_at_address').limit(1);
       const { error } = await Promise.race([
         probe,
         new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),
