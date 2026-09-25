@@ -1,4 +1,5 @@
-import { db } from '@/lib/db';
+import { db, getDbMode } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { accountName } from '@/lib/format';
 import type { Account, AgencySettings, EmailCampaign, Message, Policy, RecipientFilters } from '@/lib/types';
 import { EMAIL_RE, suppressedKeys, suppressionKey } from './suppression';
@@ -107,8 +108,27 @@ const inFlight = new Set<string>();
 export type SendResult = { sent: number; suppressed: number };
 
 /**
+ * Claims a Draft/Scheduled campaign for sending by marking it Sent up front, conditional on its status being
+ * unchanged — so another tab/window can't send it too (Supabase: one conditional UPDATE; local: re-read and
+ * write immediately, localStorage being shared across tabs). Returns false when someone else claimed it first.
+ */
+async function claimCampaign(c: EmailCampaign, sentAt: string): Promise<boolean> {
+  if (getDbMode() === 'supabase') {
+    const { data, error } = await supabase.from('email_campaigns').update({ status: 'Sent', sent_at: sentAt } as never)
+      .eq('id', c.id).eq('status', c.status).select('id');
+    if (error) throw new Error(error.message);
+    return !!data?.length;
+  }
+  const fresh = await db.get('email_campaigns', c.id);
+  if (!fresh || fresh.status !== c.status) return false;
+  await db.update('email_campaigns', c.id, { status: 'Sent', sent_at: sentAt });
+  return true;
+}
+
+/**
  * Sends (simulated) a campaign: resolves the list, drops suppressed/duplicate addresses, writes one Email
- * message per recipient in batches of 200, then marks the campaign Sent. Guarded against double sends.
+ * message per recipient in batches of 200, then records the counts. Guarded against double sends, including
+ * from other tabs (the campaign is claimed as Sent first and restored if sending fails).
  */
 export async function sendCampaign(campaignId: string, settings: AgencySettings | null, agent: string | null | undefined): Promise<SendResult> {
   if (inFlight.has(campaignId)) throw new Error('This campaign is already being sent');
@@ -121,19 +141,28 @@ export async function sendCampaign(campaignId: string, settings: AgencySettings 
     if (!c.recipient_list_id) throw new Error('Choose a recipient list before sending');
     const list = await db.get('recipient_lists', c.recipient_list_id);
     if (!list) throw new Error('The recipient list for this campaign no longer exists');
-    const [recipients, suppressed] = await Promise.all([resolveRecipients(list.filters ?? {}), suppressedKeys('Email')]);
-    const { send, suppressedCount } = partitionRecipients(recipients, suppressed);
-    const signature = await loadSendSignature(agent).catch(() => null);
     const sentAt = new Date().toISOString();
-    const rows: Partial<Message>[] = send.map((a) => ({
-      account_id: a.id, channel: 'Email', direction: 'Outbound', to_address: a.email.trim(),
-      subject: mergeFields(c.subject, a, settings, agent).trim(), body: composeEmailBody(c.body, a, settings, agent, signature),
-      status: 'Delivered', read: true, created_at: sentAt,
-    }));
-    for (let i = 0; i < rows.length; i += 200) await db.insertMany('messages', rows.slice(i, i + 200), { silent: true });
-    if (rows.length) db.touchAll(['messages']);
-    await db.update('email_campaigns', c.id, { status: 'Sent', sent_at: sentAt, sent_count: send.length, suppressed_count: suppressedCount });
-    return { sent: send.length, suppressed: suppressedCount };
+    if (!(await claimCampaign(c, sentAt))) throw new Error('This campaign has already been sent');
+    let inserted = 0;
+    try {
+      const [recipients, suppressed] = await Promise.all([resolveRecipients(list.filters ?? {}), suppressedKeys('Email')]);
+      const { send, suppressedCount } = partitionRecipients(recipients, suppressed);
+      const signature = await loadSendSignature(agent).catch(() => null);
+      const rows: Partial<Message>[] = send.map((a) => ({
+        account_id: a.id, channel: 'Email', direction: 'Outbound', to_address: a.email.trim(),
+        subject: mergeFields(c.subject, a, settings, agent).trim(), body: composeEmailBody(c.body, a, settings, agent, signature),
+        status: 'Delivered', read: true, created_at: sentAt,
+      }));
+      for (let i = 0; i < rows.length; i += 200) { await db.insertMany('messages', rows.slice(i, i + 200), { silent: true }); inserted += Math.min(200, rows.length - i); }
+      if (rows.length) db.touchAll(['messages']);
+      await db.update('email_campaigns', c.id, { status: 'Sent', sent_at: sentAt, sent_count: send.length, suppressed_count: suppressedCount });
+      return { sent: send.length, suppressed: suppressedCount };
+    } catch (e) {
+      // Nothing went out: release the claim so it can be retried. Partially sent: keep it Sent (no duplicate emails).
+      if (!inserted) await db.update('email_campaigns', c.id, { status: c.status, sent_at: c.sent_at }).catch(() => {});
+      else await db.update('email_campaigns', c.id, { sent_count: inserted }).catch(() => {});
+      throw e;
+    }
   } finally {
     inFlight.delete(campaignId);
   }

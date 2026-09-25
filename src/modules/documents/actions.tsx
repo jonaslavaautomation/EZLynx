@@ -5,9 +5,10 @@ import { Button, Checkbox, ErrorBanner, Field, Input, Modal, Select, Textarea, u
 import { useAppData } from '@/lib/app-context';
 import { db, getDbMode } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
-import { accountName, fmtBytes } from '@/lib/format';
+import { accountName, fmtBytes, fmtDate, today } from '@/lib/format';
 import { useRow, useTable } from '@/lib/hooks';
-import type { DocumentRow } from '@/lib/types';
+import type { DocumentRow, Policy, PolicyTransaction } from '@/lib/types';
+import { priorTerm } from '@/modules/policies/shared';
 import { AUTO_LINES, DOC_CATEGORIES, GEN_TEMPLATES, buildDocumentHtml, effectiveStatus, hasFile, openDocumentFile, type GenTemplate } from './shared';
 
 type MenuItem = { label: string; icon?: ReactNode; onClick: () => void; danger?: boolean; disabled?: boolean } | 'divider';
@@ -345,6 +346,18 @@ export function UploadModal({ files: initial, accountId: fixedAccount, policyId:
 
 // ── Generate ──
 
+/**
+ * Why proof of insurance / ID cards can't be issued for this policy, or null when it is in force today.
+ * An early-renewed policy (row already on the future renewal term) is in force on its prior term.
+ */
+function notInForce(p: Policy, txns: PolicyTransaction[]) {
+  const t = today();
+  if (p.status !== 'Active') return `This policy is ${p.status.toLowerCase()}; proof of insurance and ID cards can only be issued for an active policy.`;
+  if (p.expiration_date < t) return `This policy expired ${fmtDate(p.expiration_date)}; proof of insurance and ID cards can't be issued for it.`;
+  if (p.effective_date > t && !priorTerm(p, txns)) return `This policy isn't in force until ${fmtDate(p.effective_date)}; proof of insurance and ID cards can't be issued yet.`;
+  return null;
+}
+
 export function GenerateModal({ accountId: fixedAccount, policyId: fixedPolicy, onClose }: { accountId: string | null; policyId: string | null; onClose: () => void }) {
   const { toast } = useFeedback();
   const { settings, carriers, me } = useAppData();
@@ -355,19 +368,26 @@ export function GenerateModal({ accountId: fixedAccount, policyId: fixedPolicy, 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const policy = useRow('policies', policyId);
+  const txns = useTable('policy_transactions', policyId ? { eq: { policy_id: policyId } } : null);
   const isAuto = policy.data ? AUTO_LINES.includes(policy.data.line_of_business) : true;
   const tpl = GEN_TEMPLATES.find((t) => t.value === template)!;
+  const needsInForce = template === 'proof' || template === 'id-card';
+  const inForceError = needsInForce && policy.data && !txns.loading ? notInForce(policy.data, txns.data) : null;
 
   const submit = async () => {
     if (!accountId) { setError('Choose a client'); return; }
     if (!policyId) { setError('Choose the policy to generate from'); return; }
     if (tpl.autoOnly && !isAuto) { setError('Auto ID cards can only be generated for auto policies'); return; }
+    if (inForceError) { setError(inForceError); return; }
     setBusy(true);
     setError(null);
     const win = openAfter ? window.open('', '_blank') : null;
     try {
       const [p, a] = await Promise.all([db.get('policies', policyId), db.get('accounts', accountId)]);
       if (!p || !a) throw new Error('Policy or account not found');
+      // Re-check against the freshly loaded row (the policy may have changed since the modal opened).
+      const blocked = needsInForce ? notInForce(p, await db.list('policy_transactions', { eq: { policy_id: p.id } })) : null;
+      if (blocked) throw new Error(blocked);
       const vehicles = AUTO_LINES.includes(p.line_of_business) ? await db.list('vehicles', { eq: { account_id: a.id } }) : [];
       const html = buildDocumentHtml(template, { policy: p, account: a, vehicles, settings, carrier: carriers.find((c) => c.name === p.carrier) });
       const fileName = `${tpl.label} - ${p.policy_number}.html`;
@@ -406,7 +426,7 @@ export function GenerateModal({ accountId: fixedAccount, policyId: fixedPolicy, 
             <PolicySelect accountId={accountId} value={policyId} onChange={(id) => { setPolicyId(id); setError(null); }} allowEmpty />
           </Field>
         )}
-        <Field label="Document" error={tpl.autoOnly && !isAuto ? 'Only available for auto policies' : undefined}>
+        <Field label="Document" error={tpl.autoOnly && !isAuto ? 'Only available for auto policies' : inForceError ?? undefined}>
           <Select value={template} onChange={(e) => { setTemplate(e.target.value as GenTemplate); setError(null); }} options={GEN_TEMPLATES.map((t) => ({ value: t.value, label: `${t.label} (${t.category})` }))} />
         </Field>
         <Checkbox label="Open the document after generating" checked={openAfter} onChange={setOpenAfter} />

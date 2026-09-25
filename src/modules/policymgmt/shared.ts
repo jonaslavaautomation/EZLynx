@@ -58,8 +58,9 @@ export type BusinessKind = 'New Business' | 'Renewal' | null;
 
 export function businessKind(transactionType: string): BusinessKind {
   const s = transactionType.toLowerCase();
-  if (s.includes('new')) return 'New Business';
+  // Check renewal first: "renewal" contains "new".
   if (s.includes('renew')) return 'Renewal';
+  if (/\bnew\b/.test(s)) return 'New Business';
   return null;
 }
 

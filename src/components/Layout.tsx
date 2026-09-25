@@ -221,7 +221,8 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
   const markUnread = (id: string) => setRead(read.filter((x) => x !== id));
   const unreadVisible = visible.filter((a) => !read.includes(a.id));
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    // Let open modals handle Escape first.
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('[role="dialog"][aria-modal="true"]')) onClose(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose]);

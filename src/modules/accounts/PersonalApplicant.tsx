@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, LoadingBlock, Modal, cx, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db, uuid } from '@/lib/db';
-import { fmtDate, fmtPhone, today } from '@/lib/format';
+import { fmtDate, fmtPhone, parseDate, toISODate, today } from '@/lib/format';
 import { href, navigate } from '@/lib/router';
 import { US_STATES, type Account, type AccountAddress, type AccountContact, type ContactEmail, type ContactPhone, type LineOfBusiness } from '@/lib/types';
 import { enqueueAutomation } from '@/modules/admin/automation-engine';
@@ -68,6 +68,8 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
   const [prefillInfo, setPrefillInfo] = useState(false);
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
+  // Id of the account once it exists, so a retry after a later step fails updates it instead of inserting another.
+  const savedId = useRef<string | null>(accountId ?? null);
   const [f, setF] = useState<Form>({
     prefix: '', first_name: '', middle_initial: '', last_name: '', suffix: '', maiden_name: '', nickname: '', gender: '', dob: '', marital_status: '',
     ssn: '', ssn_last4: '', dl_number: '', dl_status: 'Valid', dl_state: '', education: '', industry: '', occupation: '', occupation_years: '',
@@ -102,7 +104,7 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
         ssn: '', ssn_last4: a.ssn_last4 ?? '', dl_number: a.dl_number ?? '', dl_status: a.dl_status ?? 'Valid', dl_state: a.dl_state ?? '',
         education: a.education ?? '', industry, occupation: a.occupation ?? '', occupation_years: a.occupation_years?.toString() ?? '',
         prior_employer_years: a.prior_employer_years?.toString() ?? '',
-        applicant_type: APPLICANT_TYPES.find((t) => t.status === a.status)?.label ?? 'Prospect/Lead', customer_since: a.customer_since ?? a.created_at.slice(0, 10),
+        applicant_type: APPLICANT_TYPES.find((t) => t.status === a.status)?.label ?? 'Prospect/Lead', customer_since: a.customer_since ?? toISODate(parseDate(a.created_at) ?? new Date()),
         account_name: a.account_name ?? '', producer: a.producer, csr: a.csr, lead_source: a.lead_source ?? '', preferred_language: a.preferred_language ?? 'English',
         vip: a.vip ?? false, labels: a.labels ?? [], bridge_email: a.bridge_email ?? false, contact_method: a.contact_method ?? '', contact_time: a.contact_time ?? '',
       });
@@ -199,17 +201,20 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
         address: primary ? [primary.street.trim(), primary.unit.trim() && `Unit ${primary.unit.trim()}`].filter(Boolean).join(', ') || null : null,
         city: primary ? n(primary.city) : null, state: primary ? n(primary.state) : null, zip: primary ? n(primary.zip) : null,
       };
-      const account = editing ? await db.update('accounts', accountId!, payload) : await db.insert('accounts', { ...payload, notes: null, policy_type: null, business_name: null });
+      const account = savedId.current ? await db.update('accounts', savedId.current, payload) : await db.insert('accounts', { ...payload, notes: null, policy_type: null, business_name: null });
+      savedId.current = account.id;
 
-      // Addresses
+      // Addresses. Newly inserted child rows get their ids recorded so a retry updates them.
       for (const id of removedAddrIds) await db.remove('account_addresses', id);
+      setRemovedAddrIds([]);
       for (const a of addrs.filter((x) => x.street.trim())) {
         const row = {
           account_id: account.id, address_type: a.address_type, street: a.street.trim(), unit: n(a.unit), street2: n(a.street2), city: n(a.city), state: n(a.state),
           county: n(a.county), zip: n(a.zip), zip_suffix: n(a.zip_suffix), years_at_address: intOrNull(a.years), months_at_address: intOrNull(a.months),
           is_primary: a.is_primary, country: a.address_type === 'Mailing' ? 'United States' : null,
         };
-        if (a.id) await db.update('account_addresses', a.id, row); else await db.insert('account_addresses', row);
+        if (a.id) await db.update('account_addresses', a.id, row);
+        else { const saved = await db.insert('account_addresses', row); setAddr(a.key, { id: saved.id }); }
       }
 
       // Contacts: the applicant is the primary contact; extra contacts may be the co-applicant.
@@ -218,14 +223,16 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
         dob: account.dob, relationship: 'Insured', is_primary: true, is_secondary: false,
       };
       if (primaryContactId) await db.update('account_contacts', primaryContactId, primaryRow);
-      else await db.insert('account_contacts', { ...primaryRow, client_center_access: false });
+      else setPrimaryContactId((await db.insert('account_contacts', { ...primaryRow, client_center_access: false })).id);
       for (const id of removedContactIds) await db.remove('account_contacts', id);
+      setRemovedContactIds([]);
       for (const x of extras) {
         const row = {
           account_id: account.id, first_name: x.first_name.trim(), last_name: x.last_name.trim(), relationship: n(x.relationship), dob: n(x.dob), email: n(x.email),
           phone: n(fmtPhone(x.phone)), is_primary: false, is_secondary: x.co_applicant, client_center_access: x.client_center,
         };
-        if (x.id) await db.update('account_contacts', x.id, row); else await db.insert('account_contacts', row);
+        if (x.id) await db.update('account_contacts', x.id, row);
+        else { const saved = await db.insert('account_contacts', row); setExtras((l) => l.map((e) => (e.key === x.key ? { ...e, id: saved.id } : e))); }
       }
 
       // Drivers: keep the named insured (and a new co-applicant) on the household.

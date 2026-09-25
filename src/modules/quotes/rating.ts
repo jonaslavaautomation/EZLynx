@@ -216,10 +216,12 @@ const pct = (f: number) => `${Math.round(Math.abs(1 - f) * 100)}%`;
 
 function rateAuto(a: AutoInput, p: Profile): LineResult {
   const discounts: string[] = [], surcharges: string[] = [], notes: string[] = [];
-  const biF = ({ '25/50': 0.78, '50/100': 0.88, '100/300': 1, '250/500': 1.22 } as Record<string, number>)[a.bi] ?? 1;
+  const limitF = (l: string) => ({ '25/50': 0.78, '30/60': 0.82, '50/100': 0.88, '100/300': 1, '250/500': 1.22 } as Record<string, number>)[l] ?? 1;
+  const biF = limitF(a.bi);
+  const umF = limitF(a.um_limit ?? a.bi);
   const pdF = ({ 25000: 0.9, 50000: 0.95, 100000: 1, 250000: 1.08 } as Record<number, number>)[a.pd] ?? 1;
   const medPrem = ({ 0: 0, 1000: 18, 5000: 38, 10000: 60 } as Record<number, number>)[a.medpay] ?? 0;
-  const dedF = (d: number, kind: 'comp' | 'coll') => (d <= 0 ? 0 : kind === 'comp' ? ({ 250: 1.15, 500: 1, 1000: 0.8 } as Record<number, number>)[d] ?? 1 : ({ 250: 1.2, 500: 1, 1000: 0.78 } as Record<number, number>)[d] ?? 1);
+  const dedF = (d: number, kind: 'comp' | 'coll') => (d <= 0 ? 0 : kind === 'comp' ? ({ 100: 1.3, 250: 1.15, 500: 1, 1000: 0.8, 2500: 0.62 } as Record<number, number>)[d] ?? 1 : ({ 100: 1.35, 250: 1.2, 500: 1, 1000: 0.78, 2500: 0.6 } as Record<number, number>)[d] ?? 1);
 
   // Driver class factor: average of each operator's age/marital/incident factor.
   const driverFactors = a.drivers.map((d) => {
@@ -256,12 +258,12 @@ function rateAuto(a: AutoInput, p: Profile): LineResult {
     const collBase = val < 10000 ? 260 : val < 20000 ? 380 : val < 35000 ? 500 : val < 55000 ? 650 : 860;
     bi += 330 * biF * yearLiab * common;
     pd += 190 * pdF * yearLiab * common;
-    if (a.um) um += 72 * biF * terr;
+    if (a.um) um += 72 * umF * terr;
     med += medPrem * terr;
     comp += compBase * yearPhys * terr * dedF(a.comp_ded, 'comp');
     coll += collBase * yearPhys * common * dedF(a.coll_ded, 'coll');
-    if (a.rental) rental += 36;
-    if (a.towing) tow += 14;
+    if (v.rental ?? a.rental) rental += 36;
+    if (v.towing ?? a.towing) tow += 14;
   });
 
   let factor = 1;
@@ -282,7 +284,7 @@ function rateAuto(a: AutoInput, p: Profile): LineResult {
     coverages: [
       { cov: { name: 'Bodily Injury', limit: a.bi }, weight: bi },
       { cov: { name: 'Property Damage', limit: money(a.pd) }, weight: pd },
-      ...(a.um ? [{ cov: { name: 'Uninsured Motorist', limit: a.bi }, weight: um }] : []),
+      ...(a.um ? [{ cov: { name: 'Uninsured Motorist', limit: a.um_limit ?? a.bi }, weight: um }] : []),
       ...(a.medpay > 0 ? [{ cov: { name: 'Medical Payments', limit: money(a.medpay) }, weight: med }] : []),
       ...(a.comp_ded > 0 ? [{ cov: { name: 'Comprehensive', limit: 'ACV', deductible: ded(a.comp_ded) }, weight: comp }] : []),
       ...(a.coll_ded > 0 ? [{ cov: { name: 'Collision', limit: 'ACV', deductible: ded(a.coll_ded) }, weight: coll }] : []),

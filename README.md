@@ -36,13 +36,14 @@ When it starts, the app checks whether the AMS schema exists in the connected Su
 
 To switch to Supabase, run these migrations in order in the Supabase SQL editor (or with `supabase db push`), then reload:
 
-1. `supabase/migrations/20260924160000_create_ams_schema.sql`
-2. `supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql`
-3. `supabase/migrations/20260926120000_settings_support_marketplace.sql`
-4. `supabase/migrations/20260927120000_applicant_details.sql`
-5. `supabase/migrations/20260928120000_personal_applicant_info.sql`
-6. `supabase/migrations/20260929120000_commercial_applicant_info.sql`
-7. `supabase/migrations/20260930120000_user_settings_login_activity.sql`
+1. `supabase/migrations/20260924144614_create_accounts_table.sql`
+2. `supabase/migrations/20260924160000_create_ams_schema.sql`
+3. `supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql`
+4. `supabase/migrations/20260926120000_settings_support_marketplace.sql`
+5. `supabase/migrations/20260927120000_applicant_details.sql`
+6. `supabase/migrations/20260928120000_personal_applicant_info.sql`
+7. `supabase/migrations/20260929120000_commercial_applicant_info.sql`
+8. `supabase/migrations/20260930120000_user_settings_login_activity.sql`
 
 The app stays in browser-storage mode until all of them have been applied.
 

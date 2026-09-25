@@ -1,5 +1,5 @@
 import {
-  Building2, Calculator, Calendar, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, Upload, User, Users,
+  Building2, Calculator, Calendar, Car, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, Upload, User, Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -23,7 +23,7 @@ import { trackRecentAccount } from '@/lib/recent';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { commissionOf } from '@/lib/domain';
-import { accountName, age, daysUntil, downloadCsv, fmtDate, fmtMoney, fmtPhone } from '@/lib/format';
+import { accountName, age, daysUntil, downloadCsv, fmtDate, fmtMoney, fmtPhone, parseDate, toISODate } from '@/lib/format';
 import { useRow, useTable } from '@/lib/hooks';
 import { href, navigate, setParam, useRoute } from '@/lib/router';
 import type { Account, AccountStatus, AccountType } from '@/lib/types';
@@ -113,7 +113,7 @@ export function AccountsPage() {
   const exportCsv = () => downloadCsv('accounts.csv', filtered.map((a) => ({
     name: accountName(a), type: a.account_type, first_name: a.first_name, last_name: a.last_name, email: a.email, phone: a.phone, mobile: a.mobile_phone,
     address: a.address, city: a.city, state: a.state, zip: a.zip, status: a.status, producer: a.producer, csr: a.csr, lead_source: a.lead_source,
-    active_policies: policyStats.get(a.id)?.count ?? 0, premium: policyStats.get(a.id)?.premium ?? 0, created: a.created_at.slice(0, 10),
+    active_policies: policyStats.get(a.id)?.count ?? 0, premium: policyStats.get(a.id)?.premium ?? 0, created: toISODate(parseDate(a.created_at)!),
   })));
 
   return (
@@ -231,7 +231,12 @@ export function AccountDetail({ id }: { id: string }) {
         subtitle={commercial ? `Commercial · Contact: ${a.first_name} ${a.last_name}` : `Personal lines${a.dob ? ` · Age ${age(a.dob)}` : ''}${a.occupation ? ` · ${a.occupation}` : ''}`}
         icon={commercial ? <Building2 size={20} /> : <User size={20} />}
         actions={<>
-          <Button variant="primary" icon={<Calculator size={15} />} onClick={() => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine)}`)}>New quote</Button>
+          {commercial
+            ? <Button variant="primary" icon={<Calculator size={15} />} onClick={() => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine)}`)}>New quote</Button>
+            : <Menu align="left" trigger={<Button variant="primary" icon={<Calculator size={15} />}>New quote</Button>} items={[
+              { label: 'Auto (quoting workflow)', icon: <Car size={14} />, onClick: () => navigate(`/accounts/${a.id}/auto-quote`) },
+              { label: 'Other lines (quick rater)', icon: <Calculator size={14} />, onClick: () => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine === 'Personal Auto' ? 'Homeowners' : primaryLine)}`) },
+            ]} />}
           <Button icon={<MessageSquare size={15} />} onClick={() => setTab('messages')}>Text</Button>
           <Button icon={<Mail size={15} />} onClick={() => { window.location.href = `mailto:${a.email}`; }}>Email</Button>
           <Button icon={<Pencil size={15} />} onClick={() => navigate(`/accounts/${a.id}/edit`)}>Edit</Button>

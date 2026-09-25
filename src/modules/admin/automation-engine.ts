@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { db } from '@/lib/db';
+import { db, getDbMode } from '@/lib/db';
+import { supabase } from '@/lib/supabase';
 import { accountName, addDays, daysUntil, fmtDate, parseDate, today } from '@/lib/format';
 import type { Account, AgencySettings, AutomationRun, AutomationStep, AutomationTrigger, AutomationWorkflow, Policy } from '@/lib/types';
 import { composeEmailBody, mergeFields } from '@/modules/comm/shared';
@@ -207,6 +208,29 @@ async function execute(step: AutomationStep, c: Ctx): Promise<{ text: string; sk
 
 export type ProcessResult = { done: number; skipped: number; failed: number };
 
+/** How long a claimed run is hidden from other engines; if the claiming tab dies, the run becomes due again. */
+const CLAIM_LEASE_MS = 10 * 60 * 1000;
+
+/**
+ * Claims a due Pending run so another tab/window never executes it too. The claim pushes `due_at` forward by a
+ * lease, conditional on the run still being Pending and due (Supabase: one conditional UPDATE; local: re-read and
+ * write immediately, localStorage being shared across tabs). Returns false when another engine got there first.
+ */
+async function claimRun(id: string): Promise<boolean> {
+  const now = new Date();
+  const lease = new Date(now.getTime() + CLAIM_LEASE_MS).toISOString();
+  if (getDbMode() === 'supabase') {
+    const { data, error } = await supabase.from('automation_runs').update({ due_at: lease } as never)
+      .eq('id', id).eq('status', 'Pending').lte('due_at', now.toISOString()).select('id');
+    if (error) throw new Error(error.message);
+    return !!data?.length;
+  }
+  const fresh = await db.get('automation_runs', id);
+  if (!fresh || fresh.status !== 'Pending' || timeOf(fresh.due_at) > now.getTime()) return false;
+  await db.update('automation_runs', id, { due_at: lease });
+  return true;
+}
+
 /** Runs passes until nothing is due, so follow-on steps with no delay execute right away (bounded). */
 async function processNow(): Promise<ProcessResult> {
   const out: ProcessResult = { done: 0, skipped: 0, failed: 0 };
@@ -230,6 +254,7 @@ async function processOnce(): Promise<ProcessResult> {
   for (const run of due) {
     const wf = wfMap.get(run.workflow_id);
     const mark = (status: AutomationRun['status'], result: string) => db.update('automation_runs', run.id, { status, result });
+    try { if (!(await claimRun(run.id))) continue; } catch { continue; } // another tab has it (or the row is gone)
     try {
       if (!wf) { await mark('Skipped', 'Workflow no longer exists'); out.skipped++; continue; }
       if (!wf.active) { await mark('Skipped', 'Workflow is inactive'); out.skipped++; continue; }

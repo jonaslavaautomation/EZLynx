@@ -25,6 +25,8 @@ export type AutoDriverInput = {
 export type AutoVehicleInput = {
   key: string; id: string | null;
   year: number; make: string; model: string; vin: string; usage: string; annual_miles: number; ownership: string; garaging_zip: string; value: number;
+  /** Per-vehicle rental / towing (auto quoting workflow); falls back to the policy-level flags. */
+  rental?: boolean; towing?: boolean;
 };
 
 export type PriorInsurance = 'None' | 'Under 1 year' | '1-3 years' | '3+ years';
@@ -33,7 +35,7 @@ export type AutoInput = {
   state: string;
   drivers: AutoDriverInput[];
   vehicles: AutoVehicleInput[];
-  bi: string; pd: number; um: boolean; medpay: number; comp_ded: number; coll_ded: number; rental: boolean; towing: boolean;
+  bi: string; pd: number; um: boolean; /** UM limit when it differs from BI */ um_limit?: string; medpay: number; comp_ded: number; coll_ded: number; rental: boolean; towing: boolean;
   homeowner: boolean; multi_policy: boolean; paid_in_full: boolean; prior_insurance: PriorInsurance; term_months: number;
 };
 

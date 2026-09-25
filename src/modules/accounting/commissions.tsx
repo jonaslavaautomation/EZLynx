@@ -6,16 +6,20 @@ import { commissionOf } from '@/lib/domain';
 import { accountName, addDays, downloadCsv, fmtDate, fmtMoney, today } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { href } from '@/lib/router';
-import type { Policy, PolicyStatus } from '@/lib/types';
+import type { Policy, PolicyStatus, PolicyTransaction } from '@/lib/types';
 import { HBarChart } from '@/modules/reports/charts';
 
 type Preset = '12m' | 'ytd' | 'all' | 'custom';
+
+/** A policy with the premium it wrote in the selected period (and the commission on it). */
+type Row = Policy & { written: number; commission: number };
 
 export function CommissionsTab() {
   const { toast } = useFeedback();
   const { carriers, staff } = useAppData();
   const policies = useTable('policies', { order: { column: 'effective_date', ascending: false } });
   const accounts = useTable('accounts');
+  const txns = useTable('policy_transactions');
   const accountsById = useMemo(() => new Map(accounts.data.map((a) => [a.id, a])), [accounts.data]);
 
   const [preset, setPreset] = useState<Preset>('12m');
@@ -32,20 +36,46 @@ export function CommissionsTab() {
     if (p === 'all') { setFrom(''); setTo(''); }
   };
 
-  const rows = useMemo(() => policies.data.filter((p) =>
-    (!from || p.effective_date >= from) && (!to || p.effective_date <= to)
-    && (!carrier || p.carrier === carrier) && (!producer || (producer === '__none' ? !p.producer : p.producer === producer))
-    && (!status || (status === 'inforce' ? p.status === 'Active' || p.status === 'Pending' : p.status === status)),
-  ), [policies.data, from, to, carrier, producer, status]);
+  const txByPolicy = useMemo(() => {
+    const m = new Map<string, PolicyTransaction[]>();
+    txns.data.forEach((t) => m.set(t.policy_id, [...(m.get(t.policy_id) ?? []), t]));
+    return m;
+  }, [txns.data]);
 
-  const totalPremium = rows.reduce((s, p) => s + Number(p.premium), 0);
-  const totalComm = rows.reduce((s, p) => s + commissionOf(p), 0);
-  const group = (key: (p: Policy) => string) => {
+  // Written premium comes from the transaction history (new business/renewal/rewrite at full premium,
+  // endorsements/cancellations/audits as changes), so an early renewal, which moves the policy row's
+  // dates into the future, doesn't drop the in-force term from the period. Policies without any
+  // transactions fall back to the row's premium and effective date.
+  const rows = useMemo(() => {
+    const inRange = (d: string) => (!from || d >= from) && (!to || d <= to);
+    const out: Row[] = [];
+    policies.data.forEach((p) => {
+      if (carrier && p.carrier !== carrier) return;
+      if (producer && (producer === '__none' ? p.producer : p.producer !== producer)) return;
+      if (status && !(status === 'inforce' ? p.status === 'Active' || p.status === 'Pending' : p.status === status)) return;
+      const list = txByPolicy.get(p.id);
+      let written: number;
+      if (list?.length) {
+        const hits = list.filter((t) => inRange(t.effective_date));
+        if (!hits.length) return;
+        written = Math.round(hits.reduce((s, t) => s + Number(t.premium_change), 0) * 100) / 100;
+      } else {
+        if (!inRange(p.effective_date)) return;
+        written = Number(p.premium);
+      }
+      out.push({ ...p, written, commission: commissionOf({ premium: written, commission_rate: p.commission_rate }) });
+    });
+    return out;
+  }, [policies.data, txByPolicy, from, to, carrier, producer, status]);
+
+  const totalPremium = rows.reduce((s, p) => s + p.written, 0);
+  const totalComm = rows.reduce((s, p) => s + p.commission, 0);
+  const group = (key: (p: Row) => string) => {
     const m = new Map<string, { premium: number; commission: number; count: number }>();
     rows.forEach((p) => {
       const k = key(p);
       const g = m.get(k) ?? { premium: 0, commission: 0, count: 0 };
-      g.premium += Number(p.premium); g.commission += commissionOf(p); g.count++;
+      g.premium += p.written; g.commission += p.commission; g.count++;
       m.set(k, g);
     });
     return [...m.entries()].map(([label, g]) => ({ label, ...g })).sort((a, b) => b.commission - a.commission);
@@ -60,13 +90,13 @@ export function CommissionsTab() {
     if (!rows.length) { toast('Nothing to export for these filters', 'info'); return; }
     downloadCsv(`commissions-${today()}.csv`, rows.map((p) => ({
       policy_number: p.policy_number, account: accountName(accountsById.get(p.account_id)), carrier: p.carrier, line_of_business: p.line_of_business,
-      producer: p.producer ?? '', status: p.status, effective_date: p.effective_date, premium: Number(p.premium).toFixed(2),
-      commission_rate: p.commission_rate, commission: commissionOf(p).toFixed(2),
+      producer: p.producer ?? '', status: p.status, effective_date: p.effective_date, written_premium: p.written.toFixed(2),
+      commission_rate: p.commission_rate, commission: p.commission.toFixed(2),
     })));
     toast(`Exported ${rows.length} policies`);
   };
 
-  const columns: Column<Policy>[] = [
+  const columns: Column<Row>[] = [
     { key: 'num', header: 'Policy #', sortValue: (p) => p.policy_number, render: (p) => <a href={href(`/policies/${p.id}`)} className="font-semibold hover:underline">{p.policy_number}</a> },
     { key: 'acct', header: 'Account', sortValue: (p) => accountName(accountsById.get(p.account_id)), render: (p) => <a href={href(`/accounts/${p.account_id}`)} className="hover:underline">{accountName(accountsById.get(p.account_id))}</a> },
     { key: 'carrier', header: 'Carrier', sortValue: (p) => p.carrier, render: (p) => p.carrier },
@@ -74,9 +104,9 @@ export function CommissionsTab() {
     { key: 'producer', header: 'Producer', sortValue: (p) => p.producer ?? '', render: (p) => p.producer ?? <span className="text-ink-300">—</span> },
     { key: 'eff', header: 'Effective', sortValue: (p) => p.effective_date, render: (p) => fmtDate(p.effective_date) },
     { key: 'status', header: 'Status', sortValue: (p) => p.status, render: (p) => <StatusBadge status={p.status} /> },
-    { key: 'premium', header: 'Premium', align: 'right', sortValue: (p) => Number(p.premium), render: (p) => <span className="tabular-nums">{fmtMoney(p.premium)}</span> },
+    { key: 'premium', header: 'Written premium', align: 'right', sortValue: (p) => p.written, render: (p) => <span className="tabular-nums">{fmtMoney(p.written)}</span> },
     { key: 'rate', header: 'Rate', align: 'right', sortValue: (p) => Number(p.commission_rate), render: (p) => <span className="tabular-nums">{Number(p.commission_rate)}%</span> },
-    { key: 'comm', header: 'Commission', align: 'right', sortValue: (p) => commissionOf(p), render: (p) => <span className="tabular-nums font-semibold">{fmtMoney(commissionOf(p), true)}</span> },
+    { key: 'comm', header: 'Commission', align: 'right', sortValue: (p) => p.commission, render: (p) => <span className="tabular-nums font-semibold">{fmtMoney(p.commission, true)}</span> },
   ];
 
   const summary = (title: string, data: typeof byCarrier) => (
@@ -101,8 +131,8 @@ export function CommissionsTab() {
           <Button icon={<Download size={14} />} onClick={exportCsv}>Export CSV</Button>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <Field label="Effective from"><Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPreset('custom'); }} /></Field>
-          <Field label="Effective to"><Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPreset('custom'); }} /></Field>
+          <Field label="Written from"><Input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setPreset('custom'); }} /></Field>
+          <Field label="Written to"><Input type="date" value={to} onChange={(e) => { setTo(e.target.value); setPreset('custom'); }} /></Field>
           <Field label="Carrier"><Select value={carrier} onChange={(e) => setCarrier(e.target.value)} placeholder="All carriers" options={carrierOptions} /></Field>
           <Field label="Producer"><Select value={producer} onChange={(e) => setProducer(e.target.value)} placeholder="All producers" options={[...producerOptions, { value: '__none', label: 'Unassigned' }]} /></Field>
           <Field label="Policy status"><Select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} placeholder="All statuses" options={[{ value: 'inforce', label: 'In force (Active + Pending)' }, 'Active', 'Pending', 'Cancelled', 'Expired', 'Non-Renewed']} /></Field>
@@ -119,7 +149,7 @@ export function CommissionsTab() {
         {summary('By producer', byProducer)}
       </div>
       <Panel title="Policy commissions" bodyClassName="p-0">
-        <DataTable columns={columns} rows={rows} loading={policies.loading} initialSort={{ key: 'eff', dir: 'desc' }}
+        <DataTable columns={columns} rows={rows} loading={policies.loading || txns.loading} initialSort={{ key: 'eff', dir: 'desc' }}
           empty={<EmptyState title="No policies match" message="Adjust the date range or filters to see commissions." />} />
       </Panel>
     </div>

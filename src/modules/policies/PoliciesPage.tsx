@@ -1,9 +1,9 @@
 import { CalendarClock, Download, DollarSign, FileCheck2, Plus, Percent, RotateCcw } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, DataTable, EmptyState, ErrorBanner, Panel, PageHeader, Pills, SearchInput, Select, StatCard, StatusBadge, useFeedback, type Column } from '@/components/ui';
 import { StaffSelect } from '@/components/pickers';
 import { useAppData } from '@/lib/app-context';
-import { commissionOf } from '@/lib/domain';
+import { commissionOf, sweepPolicyStatuses } from '@/lib/domain';
 import { accountName, daysUntil, downloadCsv, fmtDate, fmtMoney, today } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { href, navigate, setParam, useRoute } from '@/lib/router';
@@ -13,6 +13,9 @@ import { expirationTone, inRenewalWindow, relativeDays } from './shared';
 
 type View = 'all' | 'active' | 'pending' | 'renewals' | 'cancelled';
 const VIEWS: View[] = ['all', 'active', 'pending', 'renewals', 'cancelled'];
+
+/** Statuses are swept (Active → Expired, Pending → Active) once per session, on first visit. */
+let swept = false;
 
 export function ExpirationCell({ policy, windowDays }: { policy: Policy; windowDays: number }) {
   const d = daysUntil(policy.expiration_date);
@@ -39,6 +42,12 @@ export function PoliciesPage() {
   const [carrier, setCarrier] = useState('');
   const [producer, setProducer] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    if (swept) return;
+    swept = true;
+    sweepPolicyStatuses().catch(() => { swept = false; });
+  }, []);
 
   const accountMap = useMemo(() => new Map<string, Account>(accounts.data.map((a) => [a.id, a])), [accounts.data]);
   const nameOf = (p: Policy) => accountName(accountMap.get(p.account_id));

@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, FileText, Pencil, Printer, RefreshCw, RotateCcw, Trash2, X, Zap } from 'lucide-react';
+import { Ban, Car, CheckCircle2, FileText, Pencil, Printer, RefreshCw, RotateCcw, Trash2, X, Zap } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -54,6 +54,8 @@ export function QuoteDetail({ id }: { id: string }) {
   const acct = account.data;
   const name = acct ? accountName(acct) : 'Account';
   const closed = q.status === 'Bound' || q.status === 'Lost';
+  // Quotes from the auto quoting workflow are edited and re-rated there.
+  const workflow = !!(q.input as { workflow?: unknown } | null)?.workflow;
 
   const rerate = async () => {
     setRerating(true);
@@ -133,8 +135,9 @@ export function QuoteDetail({ id }: { id: string }) {
         breadcrumb={[{ label: 'Quotes', href: href('/quotes') }, { label: name, href: href(`/accounts/${q.account_id}?tab=quotes`) }]}
         actions={
           <>
-            {!closed && <Button icon={<RefreshCw size={15} />} loading={rerating} onClick={rerate}>Re-rate</Button>}
-            {!closed && <Button icon={<Pencil size={15} />} onClick={() => navigate(`/quotes/new?quote=${q.id}`)}>Edit</Button>}
+            {!closed && <Button icon={<RefreshCw size={15} />} loading={rerating} onClick={workflow ? () => navigate(`/accounts/${q.account_id}/auto-quote/${q.id}?step=review`) : rerate}>Re-rate</Button>}
+            {!closed && <Button icon={<Pencil size={15} />} onClick={() => navigate(workflow ? `/accounts/${q.account_id}/auto-quote/${q.id}?step=rating` : `/quotes/new?quote=${q.id}`)}>Edit</Button>}
+            {workflow && <Button icon={<Car size={15} />} onClick={() => navigate(`/accounts/${q.account_id}/auto-quote/${q.id}?step=results`)}>Quote results</Button>}
             {quoted.length > 0 && <Button icon={<Printer size={15} />} onClick={() => setProposal(true)}>Proposal</Button>}
             {!closed && best && <Button variant="primary" icon={<Zap size={15} />} onClick={() => setBindRate(best)}>Bind lowest</Button>}
             <Menu items={[
@@ -183,7 +186,7 @@ export function QuoteDetail({ id }: { id: string }) {
             </>
           ) : (
             <EmptyState title={q.status === 'Draft' ? 'This quote is a draft' : 'No carrier results'} message="Rate the quote to compare carriers side by side."
-              action={!closed && <div className="flex gap-2 justify-center"><Button onClick={() => navigate(`/quotes/new?quote=${q.id}`)} icon={<Pencil size={15} />}>Continue editing</Button><Button variant="primary" icon={<Zap size={15} />} loading={rerating} onClick={rerate}>Rate now</Button></div>} />
+              action={!closed && <div className="flex gap-2 justify-center"><Button onClick={() => navigate(workflow ? `/accounts/${q.account_id}/auto-quote/${q.id}?step=rating` : `/quotes/new?quote=${q.id}`)} icon={<Pencil size={15} />}>Continue editing</Button><Button variant="primary" icon={<Zap size={15} />} loading={rerating} onClick={workflow ? () => navigate(`/accounts/${q.account_id}/auto-quote/${q.id}?step=review`) : rerate}>Rate now</Button></div>} />
           ))}
           {tab === 'coverages' && <CoverageMatrix rates={results} />}
           {tab === 'inputs' && <InputSummary line={q.line_of_business} input={input} />}

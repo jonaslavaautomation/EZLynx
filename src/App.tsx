@@ -4,11 +4,12 @@ import { Layout, type QuickAddKind } from '@/components/Layout';
 import { Logo } from '@/components/Logo';
 import { Button, EmptyState, ErrorBanner, FeedbackProvider } from '@/components/ui';
 import { AppDataProvider } from '@/lib/app-context';
-import { db, initDb, type DbMode } from '@/lib/db';
+import { db, initDb, setModeOverride, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
 import { ApplicantEditor } from '@/modules/accounts/ApplicantEditor';
+import { AutoQuoteRoute } from '@/modules/autoquote/AutoQuote';
 import { CommercialApplicant } from '@/modules/accounts/CommercialApplicant';
 import { PersonalApplicant } from '@/modules/accounts/PersonalApplicant';
 import { AccountingPage } from '@/modules/accounting';
@@ -62,6 +63,7 @@ function Routes() {
     case 'accounts':
       if (id === 'new') page = params.get('type') === 'Commercial' ? <CommercialApplicant /> : <PersonalApplicant />;
       else if (id && segments[2] === 'edit') page = <ApplicantEditor accountId={id} />;
+      else if (id && segments[2] === 'auto-quote') page = <AutoQuoteRoute accountId={id} quoteId={segments[3] ?? null} />;
       else page = id ? <AccountDetail id={id} /> : <AccountsPage />;
       break;
     case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;
@@ -148,7 +150,18 @@ export default function App() {
     return <div className="min-h-[var(--vh100)] grid place-items-center bg-[#f8f6f6]"><div className="flex flex-col items-center gap-3 text-[13px] text-ink-500"><Logo size={48} /><span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin text-brand-500" /> Loading your agency…</span></div></div>;
   }
   if (boot.state === 'error') {
-    return <div className="min-h-[var(--vh100)] grid place-items-center p-4"><div className="max-w-md w-full"><ErrorBanner message={`Could not start: ${boot.message}`} /></div></div>;
+    return (
+      <div className="min-h-[var(--vh100)] grid place-items-center p-4">
+        <div className="max-w-md w-full">
+          <ErrorBanner message={`Could not start: ${boot.message}`} />
+          <div className="flex flex-wrap gap-2 mt-3">
+            <Button variant="primary" onClick={() => window.location.reload()}>Retry</Button>
+            <Button onClick={() => setModeOverride('local')}>Use browser storage instead</Button>
+          </div>
+          <p className="text-[12px] text-ink-500 mt-2">Browser storage is a separate practice agency in this browser only; your Supabase data is untouched.</p>
+        </div>
+      </div>
+    );
   }
   if (boot.state === 'onboarding') return <FeedbackProvider><Onboarding onDone={() => setBoot({ state: 'ready', mode: boot.mode })} /></FeedbackProvider>;
 

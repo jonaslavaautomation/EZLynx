@@ -262,9 +262,12 @@ export function CommissionSummary({ data: d }: { data: ReportData }) {
 
 // 7. Cancellations & Non-renewals
 type LostRow = { id: string; policy: Policy; kind: 'Cancellation' | 'Non-Renewal'; date: string; reason: string };
+/** Ids of policies replaced by a rewrite (another policy's `rewritten_from_policy_id`) — the business was kept, not lost. */
+const rewrittenIds = (d: ReportData) => new Set(d.policies.map((p) => p.rewritten_from_policy_id).filter((id): id is string => !!id));
 function lostPolicies(d: ReportData): LostRow[] {
   const cancelTx = groupBy(d.transactions.filter((t) => t.type === 'Cancellation'), (t) => t.policy_id);
-  return d.policies.filter((p) => p.status === 'Cancelled' || p.status === 'Non-Renewed').map((p) => {
+  const rewritten = rewrittenIds(d);
+  return d.policies.filter((p) => (p.status === 'Cancelled' || p.status === 'Non-Renewed') && !rewritten.has(p.id)).map((p) => {
     const tx = cancelTx.get(p.id)?.sort((a, b) => b.effective_date.localeCompare(a.effective_date))[0];
     return {
       id: p.id, policy: p, kind: p.status === 'Cancelled' ? 'Cancellation' as const : 'Non-Renewal' as const,
@@ -331,7 +334,8 @@ export function Retention({ data: d }: { data: ReportData }) {
   };
   const renewals = d.transactions.filter((t) => t.type === 'Renewal' && t.effective_date <= today() && byProducer(t.policy_id, t.account_id));
   const lost = lostPolicies(d).filter((r) => byProducer(r.policy.id, r.policy.account_id));
-  const expired = d.policies.filter((p) => p.status === 'Expired' && byProducer(p.id, p.account_id)).map((p) => ({ date: p.expiration_date, premium: Number(p.premium) }));
+  const rewritten = rewrittenIds(d);
+  const expired = d.policies.filter((p) => p.status === 'Expired' && !rewritten.has(p.id) && byProducer(p.id, p.account_id)).map((p) => ({ date: p.expiration_date, premium: Number(p.premium) }));
   const lostAll = [...lost.map((r) => ({ date: r.date, premium: Number(r.policy.premium) })), ...expired];
   const rows: RetRow[] = months.map((m) => {
     const rn = renewals.filter((t) => monthKey(t.effective_date) === m.key);

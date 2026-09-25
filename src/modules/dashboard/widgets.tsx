@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button, Field, Input, Modal, useFeedback } from '@/components/ui';
-import { fmtMoney, fmtRelative, today } from '@/lib/format';
+import { fmtMoney, fmtRelative, parseDate, today, toISODate } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { href } from '@/lib/router';
 import { saveAppConfig, useAppConfig, type GoalsConfig } from '@/modules/admin/config';
@@ -21,7 +21,9 @@ export const dash = (n: number) => (n ? n.toLocaleString('en-US') : '-');
 
 const DAY = 86400000;
 const within = (iso: string | null | undefined, days: number) => !!iso && Date.now() - new Date(iso).getTime() <= days * DAY;
-const isToday = (iso: string | null | undefined) => !!iso && iso.slice(0, 10) === today();
+/** Local calendar date (YYYY-MM-DD) of a timestamp or date string — never the UTC prefix of an ISO timestamp. */
+const localDay = (iso: string | null | undefined) => { const d = parseDate(iso); return d ? toISODate(d) : null; };
+const isToday = (iso: string | null | undefined) => !!iso && localDay(iso) === today();
 
 function Refresh({ onClick }: { onClick: () => void }) {
   return <button className="bg-transparent text-ink-700 hover:text-brand-600" aria-label="Refresh" title="Refresh" onClick={onClick}><RefreshCw size={18} /></button>;
@@ -44,11 +46,11 @@ function useGoals() {
     const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const pace = now.getDate() / daysInMonth; // share of the month elapsed
-    const nb = tx.data.filter((t) => (t.type === 'New Business' || t.type === 'Rewrite') && t.created_at.slice(0, 7) === monthKey);
+    const nb = tx.data.filter((t) => (t.type === 'New Business' || t.type === 'Rewrite') && localDay(t.created_at)?.slice(0, 7) === monthKey);
     const decided = quotes.data.filter((q) => within(q.created_at, 90) && (q.status === 'Bound' || q.status === 'Lost' || q.status === 'Rated'));
     const closePct = decided.length ? Math.round((decided.filter((q) => q.status === 'Bound').length / decided.length) * 100) : 0;
     const dueDone = acts.data.filter((a) => a.due_date && a.completed_at && within(a.completed_at, 30));
-    const onTimePct = dueDone.length ? Math.round((dueDone.filter((a) => a.completed_at!.slice(0, 10) <= a.due_date!).length / dueDone.length) * 100) : 100;
+    const onTimePct = dueDone.length ? Math.round((dueDone.filter((a) => localDay(a.completed_at)! <= a.due_date!).length / dueDone.length) * 100) : 100;
     return [
       { key: 'monthly_new_policies', label: 'New policies this month', actual: nb.length, target: targets.monthly_new_policies, paceTarget: Math.ceil(targets.monthly_new_policies * pace), format: (n) => String(n) },
       { key: 'monthly_new_premium', label: 'New business premium this month', actual: Math.round(nb.reduce((s, t) => s + Number(t.premium_change), 0)), target: targets.monthly_new_premium, paceTarget: Math.round(targets.monthly_new_premium * pace), format: (n) => fmtMoney(n) },

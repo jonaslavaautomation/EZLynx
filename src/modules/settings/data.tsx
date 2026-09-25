@@ -2,7 +2,7 @@ import { CheckCircle2, Cloud, Database, Download, FileSignature, HardDrive, Mess
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, ErrorBanner, Panel, Spinner, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
-import { db, getDbMode, initDb, isLocalForced, onDbChange, setModeOverride } from '@/lib/db';
+import { db, getDbMode, initDb, isLocalForced, onDbChange, setModeOverride, withoutExistingKeys } from '@/lib/db';
 import { today } from '@/lib/format';
 import { loadSampleData } from '@/lib/seed';
 import { supabase } from '@/lib/supabase';
@@ -10,7 +10,7 @@ import type { TableName } from '@/lib/types';
 
 /** Dependency order: parents before children so foreign keys resolve on import. */
 const TABLES: TableName[] = ['staff', 'carriers', 'agency_settings', 'accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions', 'quotes', 'activities', 'claims', 'documents', 'messages', 'invoices', 'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns', 'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports', 'app_config', 'labels', 'lead_sources', 'automation_workflows', 'automation_runs', 'billing_companies', 'departments', 'carrier_rating_setup', 'form_templates', 'proposal_templates', 'support_tickets', 'training_progress', 'training_registrations', 'integrations', 'account_addresses', 'account_contacts', 'user_settings', 'login_events'];
-const MIGRATIONS = ['supabase/migrations/20260924160000_create_ams_schema.sql', 'supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql', 'supabase/migrations/20260926120000_settings_support_marketplace.sql', 'supabase/migrations/20260927120000_applicant_details.sql', 'supabase/migrations/20260928120000_personal_applicant_info.sql', 'supabase/migrations/20260929120000_commercial_applicant_info.sql', 'supabase/migrations/20260930120000_user_settings_login_activity.sql'];
+const MIGRATIONS = ['supabase/migrations/20260924144614_create_accounts_table.sql', 'supabase/migrations/20260924160000_create_ams_schema.sql', 'supabase/migrations/20260925120000_policy_mgmt_comm_center_reports.sql', 'supabase/migrations/20260926120000_settings_support_marketplace.sql', 'supabase/migrations/20260927120000_applicant_details.sql', 'supabase/migrations/20260928120000_personal_applicant_info.sql', 'supabase/migrations/20260929120000_commercial_applicant_info.sql', 'supabase/migrations/20260930120000_user_settings_login_activity.sql'];
 const label = (t: string) => t.replace(/_/g, ' ');
 
 // Column types per table, mirroring the migration. A [type, default] tuple marks a NOT NULL column with a
@@ -220,10 +220,17 @@ export function DataTab() {
         });
         // Only one agency profile is used — keep the existing one (or import just the first).
         if (t === 'agency_settings') rows = existing.length ? [] : rows.slice(0, 1);
+        // Rows whose natural key (setting key, staff user, carrier setup…) already exists are kept as they are.
+        rows = await withoutExistingKeys(t, rows);
         skipped += (tables[t] as unknown[]).length - rows.length;
-        for (const batch of batches(rows.map((r) => sanitizeRow(t, r)))) {
+        // A rewritten policy can reference one later in the file: insert without the link, then restore it.
+        const links = t === 'policies' ? rows.filter((r) => r.rewritten_from_policy_id).map((r) => [r.id as string, r.rewritten_from_policy_id as string] as const) : [];
+        for (const batch of batches(rows.map((r) => sanitizeRow(t, links.length ? { ...r, rewritten_from_policy_id: null } : r)))) {
           await db.insertMany(t, batch as never[], { silent: true });
           added += batch.length;
+        }
+        for (const [id, from] of links) {
+          if (ids.has(from)) await db.update('policies', id, { rewritten_from_policy_id: from });
         }
       }
       db.touchAll(TABLES);

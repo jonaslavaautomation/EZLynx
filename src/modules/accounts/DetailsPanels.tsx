@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { fmtDate, fmtPhone, today } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { ADDRESS_TYPES, US_STATES, type Account, type AccountAddress, type AccountContact } from '@/lib/types';
+import { syncContactJson } from '@/modules/accounts/AccountFormModal';
 import { NaicsLookup } from '@/modules/accounts/NaicsLookup';
 import { natureOfBusiness } from '@/modules/accounts/naics';
 
@@ -14,17 +15,31 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ZIP_RE = /^\d{5}(-\d{4})?$/;
 const n = (v: string) => v.trim() || null;
 
-/** Keeps the account's own address / contact columns in sync with its primary address and primary contact. */
+/**
+ * Keeps the account's own address / contact columns in sync with its primary address and primary contact.
+ * Only non-empty values are copied, so a sparse contact never blanks the account's data. Commercial
+ * accounts keep their business email/phone (the contact's own details stay on the contact row).
+ */
 async function syncPrimary(accountId: string) {
-  const [addrs, contacts] = await Promise.all([
+  const [account, addrs, contacts] = await Promise.all([
+    db.get('accounts', accountId),
     db.list('account_addresses', { eq: { account_id: accountId } }),
     db.list('account_contacts', { eq: { account_id: accountId } }),
   ]);
+  if (!account) return;
   const a = addrs.find((x) => x.is_primary);
   const c = contacts.find((x) => x.is_primary);
   const patch: Partial<Account> = {};
-  if (a) Object.assign(patch, { address: [a.street, a.street2].filter(Boolean).join(', '), city: a.city, state: a.state, zip: a.zip });
-  if (c) Object.assign(patch, { first_name: c.first_name, last_name: c.last_name, email: c.email ?? '', phone: c.phone, mobile_phone: c.mobile_phone, dob: c.dob });
+  const put = (k: 'address' | 'city' | 'state' | 'zip' | 'first_name' | 'last_name' | 'email' | 'phone' | 'mobile_phone' | 'dob', v: string | null | undefined) => {
+    if (v?.trim() && v.trim() !== account[k]) patch[k] = v.trim();
+  };
+  if (a) { put('address', [a.street, a.street2].filter(Boolean).join(', ')); put('city', a.city); put('state', a.state); put('zip', a.zip); }
+  if (c) {
+    put('first_name', c.first_name); put('last_name', c.last_name);
+    if (account.account_type !== 'Commercial') { put('email', c.email); put('phone', c.phone); put('mobile_phone', c.mobile_phone); put('dob', c.dob); }
+  }
+  // The typed phones/emails lists must follow the columns they mirror.
+  Object.assign(patch, syncContactJson(account, { email: patch.email, phone: patch.phone, mobile_phone: patch.mobile_phone }));
   if (Object.keys(patch).length) await db.update('accounts', accountId, patch);
 }
 

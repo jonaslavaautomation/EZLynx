@@ -126,6 +126,10 @@ function ReceivablesTab() {
 
 type Period = 'all' | '30' | '90' | 'ytd';
 
+/**
+ * Payments by invoice. An invoice stores only its cumulative amount paid plus the date/method of its
+ * latest payment, so rows are labelled as such rather than as individual payments.
+ */
 function PaymentsTab() {
   const { toast } = useFeedback();
   const invoices = useTable('invoices', { order: { column: 'paid_date', ascending: false } });
@@ -150,22 +154,22 @@ function PaymentsTab() {
   const total = rows.reduce((s, i) => s + Number(i.amount_paid), 0);
 
   const columns: Column<Invoice>[] = [
-    { key: 'date', header: 'Paid date', sortValue: (r) => r.paid_date, render: (r) => fmtDate(r.paid_date) },
+    { key: 'date', header: 'Last payment', sortValue: (r) => r.paid_date, render: (r) => fmtDate(r.paid_date) },
     { key: 'num', header: 'Invoice #', sortValue: (r) => r.invoice_number, render: (r) => <span className="font-semibold text-ink-900">{r.invoice_number}</span> },
     { key: 'account', header: 'Account', sortValue: (r) => accountName(accountsById.get(r.account_id)), render: (r) => <a href={href(`/accounts/${r.account_id}`)} className="hover:underline">{accountName(accountsById.get(r.account_id))}</a> },
     { key: 'policy', header: 'Policy', render: (r) => { const p = r.policy_id ? policiesById.get(r.policy_id) : null; return p ? <a href={href(`/policies/${p.id}`)} className="hover:underline">{p.policy_number}</a> : <span className="text-ink-300">—</span>; } },
-    { key: 'method', header: 'Method', sortValue: (r) => r.payment_method, render: (r) => r.payment_method ?? '—' },
+    { key: 'method', header: 'Last method', sortValue: (r) => r.payment_method, render: (r) => r.payment_method ?? '—' },
     { key: 'status', header: 'Invoice status', sortValue: (r) => r.status, render: (r) => <span className={r.status === 'Paid' ? 'text-emerald-700' : 'text-amber-700'}>{r.status === 'Paid' ? 'Paid in full' : r.status === 'Void' ? 'Voided' : `Balance ${fmtMoney(balanceOf(r), true)}`}</span> },
-    { key: 'amount', header: 'Amount received', align: 'right', sortValue: (r) => Number(r.amount_paid), render: (r) => <span className="tabular-nums font-semibold">{fmtMoney(r.amount_paid, true)}</span> },
+    { key: 'amount', header: 'Received to date', align: 'right', sortValue: (r) => Number(r.amount_paid), render: (r) => <span className="tabular-nums font-semibold">{fmtMoney(r.amount_paid, true)}</span> },
   ];
 
   const exportCsv = () => {
     if (!rows.length) { toast('Nothing to export', 'info'); return; }
     downloadCsv(`payments-${today()}.csv`, rows.map((r) => ({
-      paid_date: r.paid_date ?? '', invoice_number: r.invoice_number, account: accountName(accountsById.get(r.account_id)),
-      policy: r.policy_id ? policiesById.get(r.policy_id)?.policy_number ?? '' : '', method: r.payment_method ?? '', amount_paid: Number(r.amount_paid).toFixed(2), invoice_status: r.status,
+      last_payment_date: r.paid_date ?? '', invoice_number: r.invoice_number, account: accountName(accountsById.get(r.account_id)),
+      policy: r.policy_id ? policiesById.get(r.policy_id)?.policy_number ?? '' : '', last_payment_method: r.payment_method ?? '', received_to_date: Number(r.amount_paid).toFixed(2), invoice_status: r.status,
     })));
-    toast(`Exported ${rows.length} payments`);
+    toast(`Exported ${rows.length} paid invoice${rows.length === 1 ? '' : 's'}`);
   };
 
   return (
@@ -173,13 +177,14 @@ function PaymentsTab() {
       <ErrorBanner message={invoices.error} />
       <div className="flex flex-wrap items-center gap-2">
         <Pills value={period} onChange={setPeriod} options={[{ value: 'all', label: 'All time' }, { value: '30', label: 'Last 30 days' }, { value: '90', label: 'Last 90 days' }, { value: 'ytd', label: 'Year to date' }]} />
+        <span className="text-xs text-ink-400">By last payment date · amounts are the total received on each invoice</span>
         <Button className="ml-auto" icon={<Download size={14} />} onClick={exportCsv}>Export CSV</Button>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatCard label="Total received" value={fmtMoney(paid.reduce((s, i) => s + Number(i.amount_paid), 0), true)} hint={`${paid.length} payments`} icon={<DollarSign size={18} />} tone="green" onClick={() => setMethod('all')} />
+        <StatCard label="Total received" value={fmtMoney(paid.reduce((s, i) => s + Number(i.amount_paid), 0), true)} hint={`${paid.length} invoice${paid.length === 1 ? '' : 's'}`} icon={<DollarSign size={18} />} tone="green" onClick={() => setMethod('all')} />
         {byMethod.map((m) => (
           <StatCard key={m.method} label={m.method} value={fmtMoney(m.amount, true)}
-            hint={<span className={method === m.method ? 'text-brand-600 font-semibold' : ''}>{m.count} payment{m.count === 1 ? '' : 's'}{method === m.method ? ' · filtered' : ''}</span>}
+            hint={<span className={method === m.method ? 'text-brand-600 font-semibold' : ''}>{m.count} invoice{m.count === 1 ? '' : 's'}{method === m.method ? ' · filtered' : ''}</span>}
             onClick={() => setMethod(method === m.method ? 'all' : m.method)} />
         ))}
       </div>
