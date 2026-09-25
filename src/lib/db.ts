@@ -171,6 +171,13 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
     id: 'u', created_at: 'ts', account_id: 'u', address_type: ['t', 'Mailing'], street: 't', street2: 't', city: 't', state: 't', zip: 't', country: 't',
     is_primary: ['b', false], county: 't', zip_suffix: 't', unit: 't', years_at_address: 'i', months_at_address: 'i',
   },
+  user_settings: {
+    id: 'u', created_at: 'ts', staff_name: 't', first_name: 't', middle_initial: 't', last_name: 't', email: 't', phone: 't', mobile_phone: 't',
+    role_detail: 't', preferences: ['j', {}], acord: ['j', {}], email_signature: 't', reply_to: 't', signature_insert: ['t', 'smart_tag'],
+    signature_global_default: ['b', false], display_global: ['b', false], password_hash: 't', password_salt: 't', password_updated_at: 'ts',
+    totp_secret: 't', totp_enabled: ['b', false],
+  },
+  login_events: { id: 'u', created_at: 'ts', staff_name: 't', event: 't', ip: 't', user_agent: 't', trusted: ['b', false] },
   account_contacts: {
     id: 'u', created_at: 'ts', account_id: 'u', first_name: 't', last_name: 't', title: 't', relationship: 't', email: 't', phone: 't', mobile_phone: 't',
     dob: 'd', is_primary: ['b', false], is_secondary: ['b', false], client_center_access: ['b', false], address: 't', city: 't', state: 't', zip: 't',
@@ -335,7 +342,7 @@ export function initDb(): Promise<DbMode> {
       // `agency_settings` only exists once the full AMS migration is applied; a project that only has
       // the original `accounts` table fails this probe and falls back to local mode.
       // Probe the newest migration's table: if any migration is missing, stay in browser-storage mode.
-      const probe = supabase.from('accounts').select('id, lead_status').limit(1);
+      const probe = supabase.from('login_events').select('id').limit(1);
       const { error } = await Promise.race([
         probe,
         new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),

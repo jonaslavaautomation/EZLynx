@@ -37,12 +37,16 @@ export type EmailSubscriptionsConfig = { subscriptions: Record<string, string[]>
 export type LineSetting = { enabled: boolean; default_term: 6 | 12 };
 export type LinesConfig = Record<string, LineSetting>;
 
+/** Monthly targets shown on the dashboard Performance Goals tile. */
+export type GoalsConfig = { monthly_new_policies: number; monthly_new_premium: number; quote_close_pct: number; tasks_on_time_pct: number };
+
 export type ConfigMap = {
   activity: ActivityConfig;
   certificates: CertificateConfig;
   plugins: PluginsConfig;
   email_subscriptions: EmailSubscriptionsConfig;
   lines: LinesConfig;
+  goals: GoalsConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -56,6 +60,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   },
   plugins: { enabled: {} },
   email_subscriptions: { subscriptions: {} },
+  goals: { monthly_new_policies: 10, monthly_new_premium: 15000, quote_close_pct: 35, tasks_on_time_pct: 85 },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 
