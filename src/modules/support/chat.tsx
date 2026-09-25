@@ -123,7 +123,7 @@ export function SupportChatHost() {
 
   return (
     <div
-      className="fixed z-[90] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-12 sm:w-[380px] h-[min(560px,calc(100dvh-80px))] bg-white border border-ink-200 rounded-md shadow-pop flex flex-col"
+      className="fixed z-[90] inset-x-2 bottom-2 sm:inset-x-auto sm:right-4 sm:bottom-12 sm:w-[380px] h-[min(560px,calc(var(--dvh100)-80px))] bg-white border border-ink-200 rounded-md shadow-pop flex flex-col"
       role="dialog"
       aria-label="Support chat"
     >

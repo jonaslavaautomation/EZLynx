@@ -102,7 +102,7 @@ function Rail({ view, railCategory, report, saved }: { view: string; railCategor
           <Select value={report.key} onChange={(e) => { const def = findReport(e.target.value); if (def) navigate(reportHref(def, railCategory)); }} options={siblings.map((r) => ({ value: r.key, label: r.title }))} />
         )}
       </div>
-      <div className="hidden lg:block bg-white border border-[#e3e3e3] rounded shadow-card py-2 lg:sticky lg:top-16 max-h-[calc(100vh-5rem)] overflow-y-auto">
+      <div className="hidden lg:block bg-white border border-[#e3e3e3] rounded shadow-card py-2 lg:sticky lg:top-16 max-h-[calc(var(--vh100)-5rem)] overflow-y-auto">
         <div className="px-3 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-ink-400">Reports 5.0</div>
         {VIEWS.map((v) => { const Icon = v.icon; return item(view === v.key, () => navigate(`/reports?view=${v.key}`), <Icon size={14} className="shrink-0 text-ink-400" />, v.label, counts[v.key]); })}
         {item(report?.key === 'data-export', () => navigate('/reports?report=data-export'), <Database size={14} className="shrink-0 text-ink-400" />, 'Data Export')}

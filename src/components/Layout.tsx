@@ -3,7 +3,7 @@ import {
   FolderOpen, HelpCircle, Loader2, Menu as MenuIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Logo } from '@/components/Logo';
+import { Logo, Wordmark } from '@/components/Logo';
 import { SideNav } from '@/components/SideNav';
 import { AutomationTicker } from '@/modules/admin';
 import { SupportChatHost } from '@/modules/support';
@@ -54,7 +54,7 @@ function TopBar({ onMenu, onQuickAdd }: { onMenu: () => void; onQuickAdd: (k: Qu
   const { me } = useAppData();
   return (
     <header className="topbar">
-      <a className="brand-lockup" href={href('/')} aria-label="Workspace home"><Logo size={30} /></a>
+      <a className="brand-lockup" href={href('/')} aria-label="Workspace home"><Logo size={32} /><Wordmark height={17} className="brand-wordmark" /></a>
       <button className="mobile-menu" aria-label="Open navigation" onClick={onMenu}><MenuIcon size={20} /></button>
       <GlobalSearch />
       <div className="top-actions">
