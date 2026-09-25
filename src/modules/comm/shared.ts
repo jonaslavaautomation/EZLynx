@@ -2,8 +2,9 @@ import { db } from '@/lib/db';
 import { accountName } from '@/lib/format';
 import type { Account, AgencySettings, EmailCampaign, Message, Policy, RecipientFilters } from '@/lib/types';
 import { EMAIL_RE, suppressedKeys, suppressionKey } from './suppression';
+import { applySignature, loadSendSignature, type SendSignature } from '@/modules/usersettings/data';
 
-export const MERGE_FIELDS = ['{first_name}', '{last_name}', '{full_name}', '{agency}', '{agent}'] as const;
+export const MERGE_FIELDS = ['{first_name}', '{last_name}', '{full_name}', '{agency}', '{agent}', '{agent_signature}'] as const;
 
 export const SIMULATED_NOTE = 'Delivery is simulated — no real emails leave the system. Each recipient gets an Email row in their message history.';
 
@@ -93,9 +94,10 @@ export const footerOf = (s: AgencySettings | null) => (s?.email_footer?.trim() ?
 
 export const UNSUBSCRIBE_LINE = 'Unsubscribe — you are receiving this because you are a client of our agency. Reply UNSUBSCRIBE to stop these emails.';
 
-export function composeEmailBody(body: string, account: Account | null, settings: AgencySettings | null, agent: string | null | undefined) {
+export function composeEmailBody(body: string, account: Account | null, settings: AgencySettings | null, agent: string | null | undefined, signature: SendSignature | null = null) {
   const footer = footerOf(settings);
-  return [mergeFields(body, account, settings, agent).trim(), '—', footer, UNSUBSCRIBE_LINE].filter(Boolean).join('\n\n');
+  // The sender's User Settings signature fills {agent_signature} (or is appended under the "auto" rule).
+  return [mergeFields(applySignature(body, signature), account, settings, agent).trim(), '—', footer, UNSUBSCRIBE_LINE].filter(Boolean).join('\n\n');
 }
 
 // ── Sending ──
@@ -121,10 +123,11 @@ export async function sendCampaign(campaignId: string, settings: AgencySettings 
     if (!list) throw new Error('The recipient list for this campaign no longer exists');
     const [recipients, suppressed] = await Promise.all([resolveRecipients(list.filters ?? {}), suppressedKeys('Email')]);
     const { send, suppressedCount } = partitionRecipients(recipients, suppressed);
+    const signature = await loadSendSignature(agent).catch(() => null);
     const sentAt = new Date().toISOString();
     const rows: Partial<Message>[] = send.map((a) => ({
       account_id: a.id, channel: 'Email', direction: 'Outbound', to_address: a.email.trim(),
-      subject: mergeFields(c.subject, a, settings, agent).trim(), body: composeEmailBody(c.body, a, settings, agent),
+      subject: mergeFields(c.subject, a, settings, agent).trim(), body: composeEmailBody(c.body, a, settings, agent, signature),
       status: 'Delivered', read: true, created_at: sentAt,
     }));
     for (let i = 0; i < rows.length; i += 200) await db.insertMany('messages', rows.slice(i, i + 200), { silent: true });

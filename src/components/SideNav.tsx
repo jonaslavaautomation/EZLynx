@@ -6,6 +6,7 @@ import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
 import { appZoom } from '@/lib/zoom';
+import { useUserPreferences } from '@/modules/usersettings/data';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, AccountContact, Driver, LineOfBusiness, Quote } from '@/lib/types';
 
@@ -224,16 +225,19 @@ function householdName(a: Account, drivers: Driver[], contacts: AccountContact[]
 }
 
 function useApplicantSections(enabled: boolean): Section[] {
-  const [recentIds, setRecentIds] = useState(getRecentAccountIds);
+  const prefs = useUserPreferences();
+  const [allRecentIds, setRecentIds] = useState(getRecentAccountIds);
   useEffect(() => onRecentChange(() => setRecentIds(getRecentAccountIds())), []);
+  // How many recents to show comes from User Settings → Preferences.
+  const recentIds = useMemo(() => allRecentIds.slice(0, prefs.recent_applicants), [allRecentIds, prefs.recent_applicants]);
 
   const recent = useTable('accounts', enabled && recentIds.length ? { in: { column: 'id', values: recentIds } } : null);
   // Nothing viewed yet: fall back to the newest applicants so the list is never empty.
-  const newest = useTable('accounts', enabled && !recentIds.length ? { order: { column: 'created_at', ascending: false }, limit: 10 } : null);
+  const newest = useTable('accounts', enabled && !recentIds.length ? { order: { column: 'created_at', ascending: false }, limit: prefs.recent_applicants } : null);
   const shown = recentIds.length ? recentIds.map((id) => recent.data.find((a) => a.id === id)).filter((a): a is Account => !!a) : newest.data;
   const drivers = useTable('drivers', enabled && shown.length ? { in: { column: 'account_id', values: shown.map((a) => a.id) } } : null);
   const contacts = useTable('account_contacts', enabled && shown.length ? { in: { column: 'account_id', values: shown.map((a) => a.id) } } : null);
-  const quotes = useTable('quotes', enabled ? { order: { column: 'created_at', ascending: false }, limit: 5 } : null);
+  const quotes = useTable('quotes', enabled ? { order: { column: 'created_at', ascending: false }, limit: prefs.recent_quotes } : null);
   const quoteOwners = useTable('accounts', enabled && quotes.data.length ? { in: { column: 'id', values: [...new Set(quotes.data.map((q) => q.account_id))] } } : null);
 
   return useMemo(() => {
@@ -243,7 +247,7 @@ function useApplicantSections(enabled: boolean): Section[] {
       const who = !a ? 'Unknown' : a.account_type === 'Commercial' && a.business_name ? a.business_name : `${a.last_name}, ${a.first_name}`;
       return `${who} (${LINE_SHORT[q.line_of_business] ?? q.line_of_business})`;
     };
-    return [
+    const sections: Section[] = [
       { title: 'Applicants', links: [
         { label: 'Create New Applicant', to: '/accounts/new?type=Personal' },
         { label: 'Create Commercial Applicant', to: '/accounts/new?type=Commercial' },
@@ -256,7 +260,8 @@ function useApplicantSections(enabled: boolean): Section[] {
       { title: 'Recent Applicants', empty: 'No applicants yet', links: shown.map((a) => ({ label: householdName(a, drivers.data, contacts.data), to: `/accounts/${a.id}` })) },
       { title: 'Recent Quotes', empty: 'No quotes yet', links: quotes.data.map((q) => ({ label: quoteLabel(q), to: `/quotes/${q.id}` })) },
     ];
-  }, [shown, drivers.data, contacts.data, quotes.data, quoteOwners.data]);
+    return prefs.show_recent ? sections : sections.slice(0, 1);
+  }, [shown, drivers.data, contacts.data, quotes.data, quoteOwners.data, prefs.show_recent]);
 }
 
 export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNavigate: () => void }) {

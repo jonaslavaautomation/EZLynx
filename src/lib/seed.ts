@@ -5,6 +5,7 @@ import { buildMarketplaceSample } from '@/modules/marketplace/sample';
 import { buildPolicyMgmtSample } from '@/modules/policymgmt/sample';
 import { buildReportsSample } from '@/modules/reports/sample';
 import { buildSupportSample } from '@/modules/support/sample';
+import { buildUserSettingsSample } from '@/modules/usersettings/sample';
 import { addDays, addMonths, today } from '@/lib/format';
 import type {
   Account, Activity, Carrier, Claim, Coverage, DocumentRow, Driver, Invoice, LineOfBusiness, Message, Policy, PolicyTransaction,
@@ -228,6 +229,7 @@ function buildExtras(d: Base): Partial<Record<TableName, { id: string }[]>> {
     ...buildAdminSample(d),
     ...buildSupportSample(d),
     ...buildMarketplaceSample(d),
+    ...buildUserSettingsSample(d),
   };
 }
 
@@ -236,7 +238,7 @@ const EXTRA_ORDER: TableName[] = [
   'claim_transactions', 'commission_rules', 'commission_statements', 'commission_statement_lines', 'recipient_lists', 'email_campaigns',
   'suppressions', 'message_templates', 'mail_items', 'esign_templates', 'saved_reports',
   'app_config', 'labels', 'lead_sources', 'automation_workflows', 'billing_companies', 'departments', 'carrier_rating_setup', 'form_templates',
-  'proposal_templates', 'support_tickets', 'training_progress', 'training_registrations', 'integrations',
+  'proposal_templates', 'support_tickets', 'training_progress', 'training_registrations', 'integrations', 'user_settings', 'login_events',
 ];
 
 async function insertTables(order: TableName[], data: Partial<Record<TableName, { id: string }[]>>, onProgress?: (msg: string) => void) {

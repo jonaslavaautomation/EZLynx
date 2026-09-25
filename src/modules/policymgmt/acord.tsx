@@ -10,6 +10,7 @@ import { useTable } from '@/lib/hooks';
 import { href } from '@/lib/router';
 import type { DocumentRow } from '@/lib/types';
 import { openDocumentFile } from '@/modules/documents/shared';
+import { acordUserContext, useMySettings } from '@/modules/usersettings/data';
 import { useCertificateSettings, useFormTemplates } from '@/modules/admin/integration';
 import { fieldLabel } from '@/modules/admin/templates';
 import { ACORD_FORMS, acordDocTitle, buildAcordHtml, type AcordForm } from './acord-html';
@@ -86,6 +87,7 @@ export function AcordPage() {
 function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) {
   const { toast } = useFeedback();
   const { settings, carriers, me } = useAppData();
+  const mine = useMySettings().row;
   const [accountId, setAccountId] = useState<string | null>(null);
   const [policyId, setPolicyId] = useState('');
   const [showAll, setShowAll] = useState(false);
@@ -146,6 +148,7 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
         remarks, authorizedRep: template?.fields.authorized_representative || cert.config.authorized_rep || null,
         templateFields: template ? Object.entries(template.fields).filter(([k, val]) => val && !['certificate_holder', 'remarks', 'authorized_representative'].includes(k)).map(([k, val]) => [fieldLabel(k), val] as [string, string]) : undefined,
         carrier: policy ? carriers.find((c) => c.name === policy.carrier) : undefined,
+        ...acordUserContext(mine, me),
       });
       const name = `ACORD ${form.code} data - ${accountName(account)}${policy ? ` - ${policy.policy_number}` : ''}.html`;
       const meta = await db.uploadFile(new File([html], name.replace(/[\\/:*?"<>|]/g, '_'), { type: 'text/html' }));

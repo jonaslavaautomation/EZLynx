@@ -5,6 +5,7 @@ import { age, fmtDate, fmtMoney } from '@/lib/format';
 import type { CarrierRate, LineOfBusiness } from '@/lib/types';
 import { classLabel, sectionOf, wcLabel, type QuoteInput } from './inputs';
 import { monthlyEstimate, sortRates, type RatedCarrier } from './rating';
+import { sortByPref, sortPrefFor, useUserPreferences } from '@/modules/usersettings/data';
 
 // ── Form helpers ──
 
@@ -64,11 +65,14 @@ export function SectionTitle({ children, actions }: { children: ReactNode; actio
 
 // ── Comparison ──
 
-export function ComparisonTable({ rates, onSelect, selectLabel = 'Select', selectedCarrier, selectDisabledReason }: {
-  rates: CarrierRate[]; onSelect?: (r: CarrierRate) => void; selectLabel?: string; selectedCarrier?: string | null; selectDisabledReason?: string | null;
+export function ComparisonTable({ rates, onSelect, selectLabel = 'Select', selectedCarrier, selectDisabledReason, line }: {
+  rates: CarrierRate[]; onSelect?: (r: CarrierRate) => void; selectLabel?: string; selectedCarrier?: string | null; selectDisabledReason?: string | null; line?: LineOfBusiness | null;
 }) {
-  const sorted = sortRates(rates);
-  const quoted = sorted.filter((r) => r.status === 'Quoted' && r.premium !== null);
+  // Sort order and emphasized payment column come from User Settings → Preferences.
+  const prefs = useUserPreferences();
+  const sorted = sortByPref(rates, sortPrefFor(prefs, line));
+  const monthlyFirst = prefs.payment_option === 'monthly';
+  const quoted = sortRates(rates).filter((r) => r.status === 'Quoted' && r.premium !== null);
   const low = quoted[0]?.premium ?? null;
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const toggle = (c: string) => setOpen((o) => ({ ...o, [c]: !o[c] }));
@@ -80,8 +84,8 @@ export function ComparisonTable({ rates, onSelect, selectLabel = 'Select', selec
           <tr className="border-b border-ink-100 bg-ink-50/60 text-[11px] font-semibold uppercase tracking-wide text-ink-400">
             <th className="px-3 py-2 text-left w-8" />
             <th className="px-3 py-2 text-left">Carrier</th>
-            <th className="px-3 py-2 text-right whitespace-nowrap">Term premium</th>
-            <th className="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell">Monthly est.</th>
+            <th className={cx('px-3 py-2 text-right whitespace-nowrap', !monthlyFirst && 'text-ink-700')}>{monthlyFirst ? 'Term premium' : 'Paid in full'}</th>
+            <th className={cx('px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell', monthlyFirst && 'text-ink-700')}>Monthly est.</th>
             <th className="px-3 py-2 text-left">Status</th>
             {onSelect && <th className="px-3 py-2 text-right" />}
           </tr>
@@ -118,7 +122,7 @@ export function ComparisonTable({ rates, onSelect, selectLabel = 'Select', selec
                       </>
                     ) : '—'}
                   </td>
-                  <td className="px-3 py-2.5 align-top text-right tabular-nums hidden sm:table-cell">{r.premium !== null ? `${fmtMoney(monthlyEstimate(r), true)}` : '—'}</td>
+                  <td className={cx('px-3 py-2.5 align-top text-right tabular-nums hidden sm:table-cell', monthlyFirst && r.premium !== null && 'font-semibold text-ink-900')}>{r.premium !== null ? `${fmtMoney(monthlyEstimate(r), true)}` : '—'}</td>
                   <td className="px-3 py-2.5 align-top"><StatusBadge status={r.status} /></td>
                   {onSelect && (
                     <td className="px-3 py-2.5 align-top text-right">

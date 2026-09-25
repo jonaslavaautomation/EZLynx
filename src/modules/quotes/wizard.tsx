@@ -20,6 +20,7 @@ import {
 import { bestRate, rateQuote, type RatedCarrier } from './rating';
 import { CoverageStep, RiskStep, type SetSection } from './steps';
 import { useCarrierQuoting, useLineSettings } from '@/modules/admin/integration';
+import { submitAllFor, useUserPreferences } from '@/modules/usersettings/data';
 
 const STEPS = ['Applicant', 'Risk details', 'Coverages', 'Carriers', 'Results'];
 const EMPTY_RISK: AccountRisk = { account: null, drivers: [], vehicles: [], properties: [] };
@@ -101,6 +102,8 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
   const lineSettings = useLineSettings();
   const writers = useMemo(() => carriersForLine(lob, appointedCarriers), [lob, appointedCarriers]);
   const eligible = useMemo(() => writers.filter((c) => quoting.isReady(c.name, lob)), [writers, quoting, lob]);
+  // User Settings → Preferences: submit to all appointed carriers by default (per line), or start with none checked.
+  const prefs = useUserPreferences();
   const loginBlocked = useMemo(() => writers.filter((c) => !quoting.isReady(c.name, lob)), [writers, quoting, lob]);
   const notAppointed = useMemo(() => carriers.filter((c) => !c.appointed && c.lines.includes(lob)), [carriers, lob]);
 
@@ -127,7 +130,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
   const changeLine = (l: LineOfBusiness) => {
     setLob(l);
     setDirty(true);
-    setInput((i) => ({ ...i, carriers: carriersForLine(l, appointedCarriers).filter((c) => quoting.isReady(c.name, l)).map((c) => c.name) }));
+    setInput((i) => ({ ...i, carriers: submitAllFor(prefs, l) ? carriersForLine(l, appointedCarriers).filter((c) => quoting.isReady(c.name, l)).map((c) => c.name) : [] }));
     setMaxStep((m) => Math.min(m, 0));
   };
 
@@ -167,7 +170,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
       const e = validateStep(s);
       if (Object.values(e).some(Boolean)) { setStep(s); fail(e); return; }
     }
-    if (target === 3 && !input.carriers.some((c) => eligible.some((x) => x.name === c))) {
+    if (target === 3 && submitAllFor(prefs, lob) && !input.carriers.some((c) => eligible.some((x) => x.name === c))) {
       setInput((i) => ({ ...i, carriers: eligible.map((c) => c.name) }));
     }
     setErrors({});
@@ -435,7 +438,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
         )}
 
         {step === 4 && run && (
-          <RatingProgress run={run} elapsed={elapsed} saving={busy === 'rate'} saveError={saveError} onRetry={() => void finish(run)} onBack={() => { setRun(null); setStep(3); setBusy(null); }} />
+          <RatingProgress run={run} lob={lob} elapsed={elapsed} saving={busy === 'rate'} saveError={saveError} onRetry={() => void finish(run)} onBack={() => { setRun(null); setStep(3); setBusy(null); }} />
         )}
 
         {!rating && (
@@ -458,7 +461,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
   );
 }
 
-function RatingProgress({ run, elapsed, saving, saveError, onRetry, onBack }: { run: Run; elapsed: number; saving: boolean; saveError: string | null; onRetry: () => void; onBack: () => void }) {
+function RatingProgress({ run, lob, elapsed, saving, saveError, onRetry, onBack }: { run: Run; lob: LineOfBusiness; elapsed: number; saving: boolean; saveError: string | null; onRetry: () => void; onBack: () => void }) {
   const byName = new Map(run.results.map((r) => [r.carrier, r]));
   const doneList = run.order.filter((n) => elapsed >= run.timing[n].start + run.timing[n].dur);
   const allDone = doneList.length === run.order.length;
@@ -490,7 +493,7 @@ function RatingProgress({ run, elapsed, saving, saveError, onRetry, onBack }: { 
           );
         })}
       </div>
-      {finished.length > 0 && <div className="border border-ink-100 rounded"><ComparisonTable rates={finished} /></div>}
+      {finished.length > 0 && <div className="border border-ink-100 rounded"><ComparisonTable rates={finished} line={lob} /></div>}
       {allDone && (
         <div className="flex flex-wrap items-center gap-2 text-[13px]">
           {saving && <span className="inline-flex items-center gap-2 text-ink-500"><Loader2 size={14} className="animate-spin" /> Saving quote…</span>}

@@ -178,7 +178,7 @@ export function QuoteDetail({ id }: { id: string }) {
         <div className="p-4">
           {tab === 'compare' && (results.length ? (
             <>
-              <ComparisonTable rates={results} onSelect={(r) => setBindRate(r)} selectLabel="Select & bind" selectedCarrier={q.selected_carrier} selectDisabledReason={selectDisabled} />
+              <ComparisonTable rates={results} line={q.line_of_business} onSelect={(r) => setBindRate(r)} selectLabel="Select & bind" selectedCarrier={q.selected_carrier} selectDisabledReason={selectDisabled} />
               <SimulatedNote className="mt-3" />
             </>
           ) : (
