@@ -1,6 +1,6 @@
-import { daysUntil, parseDate } from '@/lib/format';
+import { addMonths, daysUntil, parseDate, today } from '@/lib/format';
 import type { Tone } from '@/components/ui';
-import type { Coverage, LineOfBusiness, Policy, PolicyStatus } from '@/lib/types';
+import type { Coverage, LineOfBusiness, Policy, PolicyStatus, PolicyTransaction, TransactionType } from '@/lib/types';
 
 export const POLICY_STATUSES: PolicyStatus[] = ['Active', 'Pending', 'Cancelled', 'Expired', 'Non-Renewed'];
 export const PAYMENT_PLANS = ['Paid in Full', 'Semi-Annual', 'Quarterly', 'Monthly', 'EFT Monthly', 'Payroll Deduct'];
@@ -130,6 +130,25 @@ export function proRataReturn(p: Pick<Policy, 'premium' | 'effective_date' | 'ex
   const term = Math.max(1, Math.round((end.getTime() - start.getTime()) / dayMs));
   const remaining = Math.min(term, Math.max(0, Math.round((end.getTime() - at.getTime()) / dayMs)));
   return Math.round((Number(p.premium) * remaining * 100) / term) / 100;
+}
+
+const TERM_START: TransactionType[] = ['New Business', 'Renewal', 'Rewrite'];
+
+export type PriorTerm = { start: string; end: string; premium: number };
+
+/**
+ * After an early renewal the policy row already carries the renewal term (effective date in the
+ * future) while the prior term is still in force. Returns that prior term, derived from the
+ * transaction history, or null when the row's own term is the one in force.
+ * Premium = the prior term's opening transaction plus every change dated within it.
+ */
+export function priorTerm(p: Pick<Policy, 'effective_date' | 'term_months' | 'premium'>, txns: Pick<PolicyTransaction, 'type' | 'effective_date' | 'premium_change'>[]): PriorTerm | null {
+  if (p.effective_date <= today()) return null;
+  if (!txns.some((t) => t.type === 'Renewal' && t.effective_date === p.effective_date)) return null;
+  const opener = txns.filter((t) => TERM_START.includes(t.type) && t.effective_date < p.effective_date).sort((a, b) => b.effective_date.localeCompare(a.effective_date))[0];
+  if (!opener) return { start: addMonths(p.effective_date, -(p.term_months || 12)), end: p.effective_date, premium: Number(p.premium) };
+  const premium = txns.filter((t) => t.effective_date >= opener.effective_date && t.effective_date < p.effective_date).reduce((s, t) => s + Number(t.premium_change), 0);
+  return { start: opener.effective_date, end: p.effective_date, premium: Math.max(0, Math.round(premium * 100) / 100) };
 }
 
 /** Parse a money-ish input string ("1,234.50", "-50") into a number, or null when blank/invalid. */

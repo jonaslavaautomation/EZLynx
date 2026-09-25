@@ -19,9 +19,24 @@ export function effectiveStatus(d: Pick<DocumentRow, 'esign_status' | 'esign_sen
 
 export const hasFile = (d: Pick<DocumentRow, 'data_url' | 'storage_path'>) => Boolean(d.data_url || d.storage_path);
 
+/** Types a same-origin blob URL may render directly: none of these can run script. */
+const INLINE_SAFE = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain']);
+
+/**
+ * HTML (generated documents and uploads alike) is shown inside a sandboxed iframe without
+ * `allow-same-origin`, so it gets an opaque origin: the Print button still works, but script in an
+ * uploaded file can't reach the app's storage, cookies or DOM.
+ */
+function sandboxedViewer(title: string, html: string) {
+  const attr = html.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>html,body{margin:0;height:100%}iframe{border:0;width:100%;height:100%;display:block}</style></head><body><iframe sandbox="allow-scripts allow-modals" srcdoc="${attr}"></iframe></body></html>`;
+}
+
 /**
  * Opens (or downloads) a document's file. Data URLs and signed URLs are re-wrapped in a same-origin
- * blob URL with the right MIME type so HTML/PDF render in the browser instead of being blocked.
+ * blob URL so PDFs/images render in the browser instead of being blocked. Only INLINE_SAFE types are
+ * rendered as-is; HTML goes through `sandboxedViewer`, and anything else (SVG, XML, unknown) is
+ * downloaded rather than rendered on the app origin.
  * `win` is a window opened synchronously by the caller (to avoid popup blockers).
  */
 export async function openDocumentFile(doc: DocumentRow, download: boolean, win: Window | null) {
@@ -40,8 +55,14 @@ export async function openDocumentFile(doc: DocumentRow, download: boolean, win:
   }
   if (res) {
     const raw = await res.blob();
-    // Storage may serve HTML as text/plain; re-type the blob from the saved MIME type so it renders.
-    const blobUrl = URL.createObjectURL(new Blob([raw], { type: doc.mime_type || raw.type || 'application/octet-stream' }));
+    // Storage may serve HTML as text/plain, so go by the saved MIME type (falling back to the served one).
+    const type = (doc.mime_type || raw.type || '').split(';')[0].trim().toLowerCase();
+    let blob: Blob;
+    if (download) blob = new Blob([raw], { type: 'application/octet-stream' });
+    else if (INLINE_SAFE.has(type)) blob = new Blob([raw], { type });
+    else if (type === 'text/html') blob = new Blob([sandboxedViewer(doc.name, await raw.text())], { type: 'text/html' });
+    else { blob = new Blob([raw], { type: 'application/octet-stream' }); download = true; win?.close(); win = null; }
+    const blobUrl = URL.createObjectURL(blob);
     target = blobUrl;
     setTimeout(() => URL.revokeObjectURL(blobUrl), 5 * 60 * 1000);
   }

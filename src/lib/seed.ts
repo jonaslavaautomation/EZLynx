@@ -1,4 +1,4 @@
-import { db, uuid } from '@/lib/db';
+import { db, uuid, withoutExistingKeys } from '@/lib/db';
 import { buildAdminSample } from '@/modules/admin/sample';
 import { buildCommSample } from '@/modules/comm/sample';
 import { buildMarketplaceSample } from '@/modules/marketplace/sample';
@@ -243,7 +243,7 @@ const EXTRA_ORDER: TableName[] = [
 
 async function insertTables(order: TableName[], data: Partial<Record<TableName, { id: string }[]>>, onProgress?: (msg: string) => void) {
   for (const table of order) {
-    const rows = data[table] ?? [];
+    const rows = await withoutExistingKeys(table, (data[table] ?? []) as unknown as Record<string, unknown>[]) as unknown as { id: string }[];
     onProgress?.(`Loading ${table.replace(/_/g, ' ')}…`);
     for (let i = 0; i < rows.length; i += 200) await db.insertMany(table, rows.slice(i, i + 200) as never[], { silent: true });
   }
@@ -268,11 +268,27 @@ export async function topUpLocalSample() {
     db.list('accounts'), db.list('policies'), db.list('claims'), db.list('staff'), db.list('carriers'),
   ]);
   if (!accounts.length || !staff.length) return;
-  const empty = (await Promise.all(EXTRA_ORDER.map(async (t) => ((await db.list(t, { limit: 1 })).length ? null : t)))).filter((t): t is TableName => !!t);
+  // Each table is topped up at most once per browser: a table the user emptied on purpose stays empty.
+  const done = new Set<string>(readToppedUp());
+  const empty: TableName[] = [];
+  for (const t of EXTRA_ORDER) {
+    if (done.has(t)) continue;
+    if (!(await db.list(t, { limit: 1 })).length) empty.push(t);
+    done.add(t);
+  }
+  writeToppedUp([...done]);
   if (!empty.length) return;
   const extras = buildExtras({ accounts, policies, claims, staff, carriers });
   await insertTables(empty, extras);
   db.touchAll(empty);
+}
+
+const TOPPED_UP_KEY = 'northstar-ams:sample-topped-up';
+function readToppedUp(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(TOPPED_UP_KEY) ?? '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+function writeToppedUp(tables: string[]) {
+  try { localStorage.setItem(TOPPED_UP_KEY, JSON.stringify(tables)); } catch { /* storage unavailable */ }
 }
 
 export function defaultSettings() {

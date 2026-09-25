@@ -24,6 +24,22 @@ type FormValues = {
   adjuster_phone: string;
 };
 
+/**
+ * Why the loss date isn't covered by the policy, or null. Policies renew in place, so any earlier term on
+ * the transaction history counts (from the first new business / renewal / rewrite on file); a loss on or
+ * after the cancellation date of a cancelled policy isn't covered.
+ */
+async function coverageProblem(policyId: string, dateOfLoss: string) {
+  const [p, txns] = await Promise.all([db.get('policies', policyId), db.list('policy_transactions', { eq: { policy_id: policyId } })]);
+  if (!p) return null;
+  const starts = txns.filter((t) => t.type === 'New Business' || t.type === 'Renewal' || t.type === 'Rewrite').map((t) => t.effective_date);
+  const first = [p.effective_date, ...starts].sort()[0];
+  if (dateOfLoss < first || dateOfLoss > p.expiration_date) return `Loss date is outside policy ${p.policy_number}'s coverage (${fmtDate(first)} – ${fmtDate(p.expiration_date)})`;
+  const cancel = txns.filter((t) => t.type === 'Cancellation' && !t.description?.startsWith('Non-renewal')).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+  if (p.status === 'Cancelled' && cancel && dateOfLoss >= cancel.effective_date) return `Policy ${p.policy_number} was cancelled effective ${fmtDate(cancel.effective_date)}, before this loss`;
+  return null;
+}
+
 const money = (s: string) => (s.trim() === '' ? null : Number(s.replace(/[$,\s]/g, '')));
 
 /** First Notice of Loss (create) or claim edit form. */
@@ -72,6 +88,11 @@ export function ClaimFormModal({ claim, accountId, onClose, onSaved }: { claim?:
     setBusy(true);
     setError(null);
     try {
+      // Only checked when the loss date / policy is new or changed, so older claims stay editable.
+      if (v.policy_id && (!claim || claim.policy_id !== v.policy_id || claim.date_of_loss !== v.date_of_loss)) {
+        const problem = await coverageProblem(v.policy_id, v.date_of_loss);
+        if (problem) { setErrors({ date_of_loss: problem }); return; }
+      }
       const values: Partial<Claim> = {
         account_id: v.account_id!,
         policy_id: v.policy_id,

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button, LoadingBlock, cx, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db, uuid } from '@/lib/db';
-import { fmtPhone, today } from '@/lib/format';
+import { fmtPhone, parseDate, toISODate, today } from '@/lib/format';
 import { href, navigate } from '@/lib/router';
 import { US_STATES, type Account, type AccountAddress, type AccountContact } from '@/lib/types';
 import { enqueueAutomation } from '@/modules/admin/automation-engine';
@@ -110,6 +110,8 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
   const [assign, setAssign] = useState<'producer' | 'csr' | null>(null);
   const [busy, setBusy] = useState(false);
   const saving = useRef(false);
+  // Id of the account once it exists, so a retry after a later step fails updates it instead of inserting another.
+  const savedId = useRef<string | null>(accountId ?? null);
   const [f, setF] = useState({
     business_name: '', email: '', phone: '', phone_ext: '', fax: '', website: '', legal_entity_type: '', customer_since: today(), tax_id: '', gl_code: '',
     account_name: '', applicant_type: 'Prospect/Lead', date_business_started: '', preferred_language: 'English', vip: false, labels: [] as string[],
@@ -135,7 +137,7 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
       if (!live || !a) { setLoaded(true); return; }
       setF({
         business_name: a.business_name ?? '', email: a.email ?? '', phone: a.phone ?? '', phone_ext: a.phone_ext ?? '', fax: a.fax ?? '', website: a.website ?? '',
-        legal_entity_type: a.legal_entity_type ?? '', customer_since: a.customer_since ?? a.created_at.slice(0, 10), tax_id: a.tax_id ?? '', gl_code: a.gl_code ?? '',
+        legal_entity_type: a.legal_entity_type ?? '', customer_since: a.customer_since ?? toISODate(parseDate(a.created_at) ?? new Date()), tax_id: a.tax_id ?? '', gl_code: a.gl_code ?? '',
         account_name: a.account_name ?? '', applicant_type: APPLICANT_TYPES.find((t) => t.status === a.status)?.label ?? 'Prospect/Lead',
         date_business_started: a.date_business_started ?? '', preferred_language: a.preferred_language ?? 'English', vip: a.vip ?? false, labels: a.labels ?? [],
         naics_code: a.naics_code ?? '', sic_code: a.sic_code ?? '', nature_of_business: a.nature_of_business ?? '', naics_description: a.naics_description ?? '',
@@ -215,24 +217,30 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
         address: primary ? [primary.street.trim(), primary.unit.trim() && `Unit ${primary.unit.trim()}`].filter(Boolean).join(', ') : null,
         city: primary ? n(primary.city) : null, state: primary ? n(primary.state) : null, zip: primary ? n(primary.zip) : null, policy_type: 'Commercial',
       };
-      const account = editing ? await db.update('accounts', accountId!, payload) : await db.insert('accounts', { ...payload, notes: null });
+      const account = savedId.current ? await db.update('accounts', savedId.current, payload) : await db.insert('accounts', { ...payload, notes: null });
+      savedId.current = account.id;
 
+      // Newly inserted child rows get their ids recorded so a retry updates them.
       for (const id of removedAddrIds) await db.remove('account_addresses', id);
+      setRemovedAddrIds([]);
       for (const a of addrs) {
         const row = {
           account_id: account.id, address_type: a.address_type, street: a.street.trim(), unit: n(a.unit), street2: n(a.street2), city: n(a.city), state: n(a.state),
           county: n(a.county), zip: n(a.zip), zip_suffix: n(a.zip_suffix), years_at_address: intOrNull(a.years), months_at_address: intOrNull(a.months),
           is_primary: a.is_primary, country: a.address_type === 'Mailing' ? 'United States' : null,
         };
-        if (a.id) await db.update('account_addresses', a.id, row); else await db.insert('account_addresses', row);
+        if (a.id) await db.update('account_addresses', a.id, row);
+        else { const saved = await db.insert('account_addresses', row); setAddr(a.key, { id: saved.id }); }
       }
       for (const id of removedContactIds) await db.remove('account_contacts', id);
+      setRemovedContactIds([]);
       for (const c of contacts) {
         const row = {
           account_id: account.id, first_name: c.first_name.trim(), last_name: c.last_name.trim(), title: n(c.title), email: n(c.email), phone: n(fmtPhone(c.phone)),
           is_primary: c.is_primary, is_secondary: !c.is_primary && c.is_secondary, client_center_access: c.client_center, relationship: c.is_primary ? 'Owner' : null,
         };
-        if (c.id) await db.update('account_contacts', c.id, row); else await db.insert('account_contacts', row);
+        if (c.id) await db.update('account_contacts', c.id, row);
+        else { const saved = await db.insert('account_contacts', row); setContacts((l) => l.map((y) => (y.key === c.key ? { ...y, id: saved.id } : y))); }
       }
       if (!editing) { try { await enqueueAutomation('Applicant Created', { account_id: account.id }); } catch { /* automations never block saving */ } }
       toast(editing ? 'Applicant saved' : `${account.business_name} created`);

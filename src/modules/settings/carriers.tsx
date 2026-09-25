@@ -137,7 +137,14 @@ function CarrierModal({ carrier, all, policyCount, onClose }: { carrier: Carrier
       const values = { name, naic: v.naic.trim() || null, lines: v.lines, commission_rate: rate, phone: v.phone.trim() || null, website: website || null, appointed: v.appointed, downloads_enabled: v.downloads_enabled };
       if (carrier) {
         await db.update('carriers', carrier.id, values);
-        if (renamed) await renameWhere('policies', 'carrier', carrier.name, name);
+        if (renamed) {
+          // Everything that references the carrier by name.
+          await renameWhere('policies', 'carrier', carrier.name, name);
+          await renameWhere('carrier_rating_setup', 'carrier', carrier.name, name);
+          await renameWhere('commission_statements', 'carrier', carrier.name, name);
+          await renameWhere('commission_rules', 'carrier', carrier.name, name);
+          await renameWhere('quotes', 'selected_carrier', carrier.name, name);
+        }
         toast(`${name} updated`);
       } else {
         await db.insert('carriers', values);

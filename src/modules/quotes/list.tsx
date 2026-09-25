@@ -1,4 +1,4 @@
-import { Calculator, CheckCircle2, Eye, FilePlus2, Pencil, Percent, Trash2, TrendingUp } from 'lucide-react';
+import { Calculator, Car, CheckCircle2, Eye, FilePlus2, Pencil, Percent, Trash2, TrendingUp } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
   Button, DataTable, EmptyState, ErrorBanner, Menu, PageHeader, Panel, Pills, SearchInput, Select, StatCard, StatusBadge, useFeedback, type Column,
@@ -38,7 +38,7 @@ function rowMenu(q: Quote, label: string, remove: (q: Quote, label: string) => v
   return (
     <Menu items={[
       { label: 'Open', icon: <Eye size={14} />, onClick: () => navigate(`/quotes/${q.id}`) },
-      { label: 'Edit & re-rate', icon: <Pencil size={14} />, disabled: q.status === 'Bound', onClick: () => navigate(`/quotes/new?quote=${q.id}`) },
+      { label: 'Edit & re-rate', icon: <Pencil size={14} />, disabled: q.status === 'Bound', onClick: () => navigate((q.input as { workflow?: unknown } | null)?.workflow ? `/accounts/${q.account_id}/auto-quote/${q.id}?step=review` : `/quotes/new?quote=${q.id}`) },
       'divider',
       { label: 'Delete', icon: <Trash2 size={14} />, danger: true, onClick: () => remove(q, label) },
     ]} />
@@ -170,6 +170,8 @@ export function QuoteList({ accountId }: { accountId: string }) {
   const { remove } = useQuoteActions();
   const label = account ? accountName(account) : 'this account';
   const newQuote = () => navigate(`/quotes/new?account=${accountId}${account?.account_type === 'Commercial' ? `&line=${encodeURIComponent('General Liability')}` : ''}`);
+  // Quotes built in the auto quoting workflow reopen there.
+  const open = (q: Quote) => navigate(readInput(q) && (q.input as { workflow?: unknown }).workflow ? `/accounts/${accountId}/auto-quote/${q.id}` : `/quotes/${q.id}`);
 
   const columns: Column<Quote>[] = [
     { key: 'line', header: 'Line', sortValue: (q) => q.line_of_business, render: (q) => <span className="font-semibold text-ink-900">{q.line_of_business}</span> },
@@ -185,14 +187,17 @@ export function QuoteList({ accountId }: { accountId: string }) {
   ];
 
   return (
-    <Panel title="Quotes" actions={<Button size="sm" variant="primary" icon={<FilePlus2 size={13} />} onClick={newQuote}>New Quote</Button>} bodyClassName="p-0">
+    <Panel title="Quotes" actions={<>
+      {account?.account_type !== 'Commercial' && <Button size="sm" icon={<Car size={13} />} onClick={() => navigate(`/accounts/${accountId}/auto-quote`)}>Auto quote</Button>}
+      <Button size="sm" variant="primary" icon={<FilePlus2 size={13} />} onClick={newQuote}>New Quote</Button>
+    </>} bodyClassName="p-0">
       <ErrorBanner message={quotes.error} />
       <DataTable
         dense
         columns={columns}
         rows={quotes.data}
         loading={quotes.loading && !quotes.data.length}
-        onRowClick={(q) => navigate(`/quotes/${q.id}`)}
+        onRowClick={open}
         initialSort={{ key: 'created', dir: 'desc' }}
         empty={<EmptyState icon={<Calculator size={22} />} title="No quotes for this account" message="Rate multiple carriers at once with the comparative rater." action={<Button variant="primary" icon={<FilePlus2 size={15} />} onClick={newQuote}>New Quote</Button>} />}
       />

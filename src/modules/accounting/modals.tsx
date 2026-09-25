@@ -194,7 +194,7 @@ export function PaymentModal({ invoice, invoices, onClose, onSaved }: {
           <Field label="Amount" required error={errors.amount}>
             <Input type="number" min="0" step="0.01" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} />
           </Field>
-          <Field label="Payment date" required error={errors.date}>
+          <Field label="Payment date" required error={errors.date} hint={current && Number(current.amount_paid) > 0 ? "Becomes the invoice's last payment date" : undefined}>
             <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </Field>
         </div>

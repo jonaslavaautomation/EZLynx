@@ -3,8 +3,8 @@ import { useRef, useState } from 'react';
 import { Button, ErrorBanner, Modal, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
-import { downloadCsv, fmtPhone } from '@/lib/format';
-import type { Account, AccountStatus } from '@/lib/types';
+import { downloadCsv, fmtPhone, parseDate, toISODate, today } from '@/lib/format';
+import { US_STATES, type Account, type AccountStatus } from '@/lib/types';
 
 /* Bulk-create applicants from a CSV file (columns matched by header name, case-insensitive). */
 
@@ -15,6 +15,20 @@ const ALIASES: Record<string, string> = {
   'zip code': 'zip', zipcode: 'zip', 'postal code': 'zip', 'date of birth': 'dob', birthdate: 'dob', 'account type': 'type', source: 'lead_source',
 };
 const STATUSES: AccountStatus[] = ['Prospect', 'Active', 'Pending', 'Inactive'];
+const STATE_NAMES: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA', colorado: 'CO', connecticut: 'CT', delaware: 'DE', 'district of columbia': 'DC',
+  florida: 'FL', georgia: 'GA', hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA', kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME',
+  maryland: 'MD', massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO', montana: 'MT', nebraska: 'NE', nevada: 'NV',
+  'new hampshire': 'NH', 'new jersey': 'NJ', 'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND', ohio: 'OH', oklahoma: 'OK',
+  oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI', 'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT', vermont: 'VT',
+  virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI', wyoming: 'WY',
+};
+
+/** "TX", "tx", "Texas" → "TX"; null when it isn't a US state. */
+function toState(v: string) {
+  const s = v.trim().replace(/\./g, '').replace(/\s+/g, ' ');
+  return US_STATES.includes(s.toUpperCase()) ? s.toUpperCase() : STATE_NAMES[s.toLowerCase()] ?? null;
+}
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Minimal RFC 4180 parser: quoted fields, escaped quotes, commas and newlines inside quotes. */
@@ -38,12 +52,17 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((v) => v.trim()));
 }
 
-/** Accepts YYYY-MM-DD or M/D/YYYY; returns YYYY-MM-DD or null. */
+/** Accepts YYYY-MM-DD or M/D/YYYY; returns YYYY-MM-DD, or null when malformed or not a real date (e.g. 02/30). */
 function toDate(v: string) {
   const s = v.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  return m ? `${m[3]}-${m[1].padStart(2, '0')}-${m[2].padStart(2, '0')}` : null;
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const us = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const [y, m, d] = iso ? [iso[1], iso[2], iso[3]] : us ? [us[3], us[1], us[2]] : [];
+  if (!y || !m || !d || Number(y) < 1900 || Number(m) < 1 || Number(m) > 12 || Number(d) < 1 || Number(d) > 31) return null;
+  const out = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+  // Round-trip through the local-date parser: rolled-over dates (Feb 30 → Mar 2) don't match.
+  const parsed = parseDate(out);
+  return parsed && toISODate(parsed) === out ? out : null;
 }
 
 type Parsed = { ok: Partial<Account>[]; errors: string[] };
@@ -62,13 +81,16 @@ function toAccounts(rows: string[][], producer: string | null): Parsed {
     if (!commercial && (!first || !last)) return errors.push(`Row ${line}: first and last name are required`);
     if (email && !EMAIL_RE.test(email)) return errors.push(`Row ${line}: invalid email "${email}"`);
     const dob = get('dob') ? toDate(get('dob')) : null;
-    if (get('dob') && !dob) return errors.push(`Row ${line}: date of birth must be YYYY-MM-DD or MM/DD/YYYY`);
+    if (get('dob') && !dob) return errors.push(`Row ${line}: date of birth "${get('dob')}" must be a valid date as YYYY-MM-DD or MM/DD/YYYY`);
+    if (dob && dob > today()) return errors.push(`Row ${line}: date of birth cannot be in the future`);
+    const state = get('state') ? toState(get('state')) : null;
+    if (get('state') && !state) return errors.push(`Row ${line}: unknown state "${get('state')}"`);
     const status = STATUSES.find((s) => s.toLowerCase() === get('status').toLowerCase()) ?? 'Prospect';
     const n = (v: string) => v || null;
     ok.push({
       account_type: commercial ? 'Commercial' : 'Personal', first_name: first || get('business_name'), last_name: last || '', business_name: commercial ? get('business_name') : null,
       email: email || '', phone: n(fmtPhone(get('phone'))), mobile_phone: n(fmtPhone(get('mobile_phone'))), address: n(get('address')), city: n(get('city')),
-      state: n(get('state').toUpperCase().slice(0, 2)), zip: n(get('zip')), dob: commercial ? null : dob, status, lead_source: n(get('lead_source')), notes: n(get('notes')),
+      state, zip: n(get('zip')), dob: commercial ? null : dob, status, lead_source: n(get('lead_source')), notes: n(get('notes')),
       producer, csr: null, policy_type: commercial ? 'Commercial' : null, marital_status: null, occupation: null,
     });
   });
@@ -102,12 +124,27 @@ export function ImportModal({ onClose }: { onClose: () => void }) {
     if (!parsed?.ok.length) return;
     setBusy(true);
     setError(null);
+    const plural = (k: number) => `${k} applicant${k === 1 ? '' : 's'}`;
+    let rows = parsed.ok;
+    let saved = 0;
     try {
-      for (let i = 0; i < parsed.ok.length; i += 200) await db.insertMany('accounts', parsed.ok.slice(i, i + 200));
-      toast(`Imported ${parsed.ok.length} applicant${parsed.ok.length === 1 ? '' : 's'}`);
+      // Skip rows whose email is already on file, so importing the same file again doesn't duplicate.
+      const existing = new Set((await db.list('accounts')).map((a) => a.email?.trim().toLowerCase()).filter(Boolean));
+      rows = parsed.ok.filter((a) => !a.email || !existing.has(a.email.toLowerCase()));
+      const dupes = parsed.ok.length - rows.length;
+      while (saved < rows.length) {
+        const chunk = rows.slice(saved, saved + 200);
+        await db.insertMany('accounts', chunk);
+        saved += chunk.length;
+      }
+      toast(`Imported ${plural(rows.length)}${dupes ? ` · skipped ${dupes} already on file (same email)` : ''}`);
       onClose();
     } catch (e) {
-      setError((e as Error).message);
+      // Keep only the rows that weren't saved, so a retry doesn't import the saved ones twice.
+      if (saved) setParsed({ ok: rows.slice(saved), errors: parsed.errors });
+      setError(saved
+        ? `${plural(saved)} were imported before an error: ${(e as Error).message}. The remaining ${rows.length - saved} are still listed; import again to add only those.`
+        : (e as Error).message);
     } finally {
       setBusy(false);
     }

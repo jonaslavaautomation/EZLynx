@@ -175,3 +175,6 @@ footer a { font-weight: 600; }
 .help-glossary dd { margin: 2px 0 0; }
 .help-note { background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 8px 10px; color: #7f1d1d; }
 @media (max-width: 760px) { .help-table th { width: auto; white-space: normal; } }
+
+/* Auto quoting workflow: briefly highlight a field reached from a Fix link */
+.aq-flash { outline: 2px solid #f59e0b; outline-offset: 3px; border-radius: 6px; transition: outline-color 0.4s; }

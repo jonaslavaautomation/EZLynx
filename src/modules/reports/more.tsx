@@ -204,7 +204,8 @@ export function AgencySummary({ data: d }: { data: ReportData }) {
   const rows = useMemo<ProducerRow[]>(() => {
     const names = uniq([...staff.filter((s) => s.role === 'Producer' || s.role === 'Agency Owner').map((s) => s.name), ...d.accounts.map((a) => a.producer), ...active.map((p) => producerOf(p, d.accountsById))]);
     const acctProducer = (id: string | null) => (id ? d.accountsById.get(id)?.producer || 'Unassigned' : 'Unassigned');
-    const list = [...names, 'Unassigned'].map((name) => {
+    // producerOf() can already yield 'Unassigned' — keep it once, last.
+    const list = [...names.filter((n) => n !== 'Unassigned'), 'Unassigned'].map((name) => {
       const accts = d.accounts.filter((a) => (a.producer || 'Unassigned') === name);
       const pols = active.filter((p) => producerOf(p, d.accountsById) === name);
       const quotes = d.quotes.filter((q) => acctProducer(q.account_id) === name);

@@ -49,6 +49,14 @@ export async function signIn(staff_name: string, { trusted = false }: { trusted?
   emit();
 }
 
+/** Keeps this browser signed in when an admin renames the signed-in staff member. */
+export function renameSessionUser(oldName: string, newName: string) {
+  const s = getSession();
+  if (s?.staff_name !== oldName) return;
+  write(KEY, { ...s, staff_name: newName });
+  emit();
+}
+
 export async function signOut() {
   const s = getSession();
   if (s) await logEvent(s.staff_name, 'User Logout', s.trusted);

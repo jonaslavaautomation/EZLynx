@@ -138,7 +138,7 @@ export function PolicyDetail({ id }: { id: string }) {
       </Panel>
 
       {editing && <PolicyFormModal accountId={p.account_id} policy={p} onClose={() => setEditing(false)} />}
-      {tx && <TransactionModal kind={tx} policy={p} lastCancel={lastCancel} onClose={() => setTx(null)} />}
+      {tx && <TransactionModal kind={tx} policy={p} lastCancel={lastCancel} txns={txns.data} onClose={() => setTx(null)} />}
     </div>
   );
 }

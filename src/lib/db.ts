@@ -236,6 +236,28 @@ let mode: DbMode = 'local';
 let ready: Promise<DbMode> | null = null;
 const listeners = new Set<(table: TableName) => void>();
 
+/**
+ * Natural unique keys enforced by the SQL migrations (besides id). Seeding and backup import skip rows whose
+ * key already exists so they don't fail halfway on a duplicate-key error.
+ */
+const NATURAL_KEYS: Partial<Record<TableName, (r: Record<string, unknown>) => string>> = {
+  app_config: (r) => String(r.key ?? ''),
+  user_settings: (r) => String(r.staff_name ?? ''),
+  integrations: (r) => String(r.integration_key ?? ''),
+  carrier_rating_setup: (r) => String(r.carrier ?? ''),
+  suppressions: (r) => `${r.channel}|${String(r.address ?? '').toLowerCase()}`,
+  training_progress: (r) => `${r.staff_name}|${r.lesson_key}`,
+  training_registrations: (r) => `${r.session_key}|${r.staff_name}`,
+};
+
+/** Drops rows whose natural key is already stored (or repeats earlier in `rows`). Tables without one pass through. */
+export async function withoutExistingKeys<T extends Record<string, unknown>>(table: TableName, rows: T[]): Promise<T[]> {
+  const keyOf = NATURAL_KEYS[table];
+  if (!keyOf || !rows.length) return rows;
+  const seen = new Set((await db.list(table)).map((r) => keyOf(r as unknown as Record<string, unknown>)));
+  return rows.filter((r) => { const k = keyOf(r); if (seen.has(k)) return false; seen.add(k); return true; });
+}
+
 export function uuid() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
@@ -333,6 +355,14 @@ function cascadeLocal(table: TableName, ids: string[]) {
 
 // ── mode detection ──
 
+/** Supabase is configured but didn't answer (network, timeout, auth). */
+export class SupabaseUnreachable extends Error {
+  constructor(detail: string) { super(`Could not reach the Supabase database (${detail}).`); this.name = 'SupabaseUnreachable'; }
+}
+
+const isMissingSchema = (e: { message: string; code?: string }) =>
+  e.code === 'PGRST205' || e.code === '42P01' || /does not exist|schema cache|Could not find the table/i.test(e.message);
+
 export function initDb(): Promise<DbMode> {
   if (ready) return ready;
   ready = (async () => {
@@ -345,13 +375,18 @@ export function initDb(): Promise<DbMode> {
       const probe = supabase.from('login_events').select('id').limit(1);
       const { error } = await Promise.race([
         probe,
-        new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),
+        new Promise<{ error: { message: string; code?: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout', code: 'TIMEOUT' } }), 10000)),
       ]);
-      mode = error ? 'local' : 'supabase';
-    } catch {
-      mode = 'local';
+      if (!error) return (mode = 'supabase');
+      // Missing table (migration not applied yet): run on browser storage. Anything else is an outage, not a
+      // reason to quietly switch this browser onto a separate demo agency.
+      if (isMissingSchema(error)) return (mode = 'local');
+      throw new SupabaseUnreachable(error.message);
+    } catch (e) {
+      if (e instanceof SupabaseUnreachable) { ready = null; throw e; }
+      ready = null;
+      throw new SupabaseUnreachable((e as Error).message);
     }
-    return mode;
   })();
   return ready;
 }
@@ -504,8 +539,10 @@ export const db = {
     } else {
       const { error } = await supabase.from(table).delete().eq('id', id);
       fail(error);
-      // FK cascades happen server-side; tell dependent screens to refresh.
-      (CASCADES[table] ?? []).forEach((rule) => emit(rule.table));
+      // FK cascades happen server-side (and chain: account → policies → statement lines); tell every dependent screen to refresh.
+      const seen = new Set<TableName>();
+      const walk = (t: TableName) => (CASCADES[t] ?? []).forEach((rule) => { if (!seen.has(rule.table)) { seen.add(rule.table); emit(rule.table); walk(rule.table); } });
+      walk(table);
     }
     emit(table);
   },

@@ -44,10 +44,30 @@ export async function createPolicy(values: NewPolicy): Promise<Policy> {
     expiration_date: values.expiration_date || addMonths(values.effective_date, values.term_months),
   });
   await addTransaction(policy, 'New Business', policy.effective_date, policy.premium, `New ${policy.line_of_business} policy with ${policy.carrier}`);
+  // A policy entered as Cancelled/Expired/Non-Renewed (e.g. history) neither bills nor activates the account.
+  if (policy.status !== 'Active' && policy.status !== 'Pending') return policy;
   if (policy.billing_type === 'Agency Bill') await createInvoice({ account_id: policy.account_id, policy_id: policy.id, amount: policy.premium, description: `${policy.line_of_business} premium — ${policy.policy_number}`, due_date: policy.effective_date });
   const account = await db.get('accounts', policy.account_id);
   if (account && account.status !== 'Active') await db.update('accounts', account.id, { status: 'Active' });
   return policy;
+}
+
+/**
+ * Moves policy statuses along with the calendar: Active past its expiration → Expired, Pending whose
+ * term has started → Active (or Expired if the whole term is already past). Renewed policies carry the
+ * renewal term's dates on the row, so they are never expired early. Returns the number updated.
+ */
+export async function sweepPolicyStatuses() {
+  const t = today();
+  const policies = await db.list('policies', { in: { column: 'status', values: ['Active', 'Pending'] } });
+  let changed = 0;
+  for (const p of policies) {
+    const next = p.expiration_date && p.expiration_date < t ? 'Expired' : p.status === 'Pending' && p.effective_date <= t ? 'Active' : null;
+    if (!next || next === p.status) continue;
+    await db.update('policies', p.id, { status: next });
+    changed++;
+  }
+  return changed;
 }
 
 export async function createInvoice(values: Pick<Invoice, 'account_id' | 'amount' | 'due_date'> & Partial<Invoice>) {

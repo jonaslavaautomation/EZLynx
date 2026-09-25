@@ -86,7 +86,8 @@ export function useSubmit() {
 
 /**
  * Sends Scheduled campaigns whose time has come. Runs when `campaigns` loads/changes and every 30s while
- * mounted; `sendCampaign` re-checks the stored status and refuses concurrent sends of the same campaign.
+ * mounted; `sendCampaign` atomically claims the campaign first, so another tab running this same scheduler
+ * can't send it twice (the loser's "already sent" error is not toasted).
  */
 export function useScheduledRunner(campaigns: EmailCampaign[]) {
   const { settings, me, loading } = useAppData();
