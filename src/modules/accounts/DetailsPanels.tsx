@@ -5,7 +5,7 @@ import { db } from '@/lib/db';
 import { fmtDate, fmtPhone, today } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { ADDRESS_TYPES, US_STATES, type Account, type AccountAddress, type AccountContact } from '@/lib/types';
-import { NaicsLookup } from '@/modules/accounts/CreateApplicant';
+import { NaicsLookup } from '@/modules/accounts/NaicsLookup';
 import { natureOfBusiness } from '@/modules/accounts/naics';
 
 /* Overview panels for the data captured by Create Applicant: addresses, contacts & roles, business classification. */

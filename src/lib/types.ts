@@ -62,6 +62,19 @@ export type Account = BaseRow & {
   bridge_email: boolean;
   contact_method: string | null;
   contact_time: string | null;
+  // Commercial Applicant info
+  phone_ext: string | null;
+  fax: string | null;
+  website: string | null;
+  legal_entity_type: string | null;
+  /** Federal tax ID (FEIN) of the business. */
+  tax_id: string | null;
+  gl_code: string | null;
+  date_business_started: string | null;
+  // Lead Info
+  lead_priority: string | null;
+  probability_of_sale: number | null;
+  lead_status: string | null;
 };
 
 export type ContactPhone = { type: string; number: string };

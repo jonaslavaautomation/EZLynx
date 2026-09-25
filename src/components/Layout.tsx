@@ -1,5 +1,5 @@
 import {
-  AlertTriangle, Bell, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
+  AlertTriangle, Bell, Check, ListFilter, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
   FolderOpen, HelpCircle, Loader2, Menu as MenuIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -18,11 +18,13 @@ import type { Account, Policy } from '@/lib/types';
 export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickAdd: (kind: QuickAddKind) => void }) {
   const route = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [route.path]);
 
   return (
-    <div className="app-shell">
-      <TopBar onMenu={() => setMobileOpen(true)} onQuickAdd={onQuickAdd} />
+    <div className={cx('app-shell', notifOpen && 'notif-open')}>
+      <TopBar onMenu={() => setMobileOpen(true)} onQuickAdd={onQuickAdd} notifOpen={notifOpen} onToggleNotif={() => setNotifOpen((v) => !v)} />
+      {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
       <SideNav mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">{children}</main>
@@ -50,7 +52,7 @@ function StatusFooter() {
 
 export type QuickAddKind = 'account' | 'commercial' | 'quote' | 'policy' | 'activity' | 'claim' | 'message';
 
-function TopBar({ onMenu, onQuickAdd }: { onMenu: () => void; onQuickAdd: (k: QuickAddKind) => void }) {
+function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () => void; onQuickAdd: (k: QuickAddKind) => void; notifOpen: boolean; onToggleNotif: () => void }) {
   const { me } = useAppData();
   return (
     <header className="topbar">
@@ -61,7 +63,7 @@ function TopBar({ onMenu, onQuickAdd }: { onMenu: () => void; onQuickAdd: (k: Qu
         <button className="cta-button" onClick={() => onQuickAdd('quote')}><Calculator size={16} /> <span className="hidden sm:inline">Quick Quote</span></button>
         <QuickAddMenu onPick={onQuickAdd} />
         <a className="top-icon hide-sm" href={href('/activities')} aria-label="My activities" title="My activities"><ClipboardList size={20} /></a>
-        <NotificationsMenu />
+        <NotificationsButton open={notifOpen} onToggle={onToggleNotif} />
         <a className="top-icon hide-sm" href={href('/help')} aria-label="Help & training" title="Help & training"><HelpCircle size={20} /></a>
         <a className="avatar-link" href={href('/settings?tab=agency')} title={me ? `Acting as ${me.name} (${me.role})` : 'Choose user'}>
           <Avatar name={me?.name ?? '?'} color={me?.color} size={30} />
@@ -114,7 +116,8 @@ function QuickAddMenu({ onPick }: { onPick: (k: QuickAddKind) => void }) {
 
 // ── Notifications: derived alerts ──
 
-type Alert = { id: string; icon: ReactNode; title: string; detail: string; to: string; tone: 'red' | 'amber' | 'teal' | 'purple' };
+type AlertKind = 'Tasks' | 'Renewals' | 'Messages' | 'eSignature';
+type Alert = { id: string; kind: AlertKind; icon: ReactNode; title: string; detail: string; to: string; tone: 'red' | 'amber' | 'teal' | 'purple' };
 
 export function useAlerts(): Alert[] {
   const { me, settings } = useAppData();
@@ -130,49 +133,110 @@ export function useAlerts(): Alert[] {
     const out: Alert[] = [];
     const mine = activities.data.filter((a) => !me || a.assigned_to === me.name);
     const overdue = mine.filter((a) => (daysUntil(a.due_date) ?? 1) < 0);
-    if (overdue.length) out.push({ id: 'overdue', icon: <AlertTriangle size={15} />, title: `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`, detail: overdue.slice(0, 2).map((a) => a.subject).join(' · '), to: '/activities?view=overdue', tone: 'red' });
+    if (overdue.length) out.push({ id: 'overdue', kind: 'Tasks', icon: <AlertTriangle size={15} />, title: `${overdue.length} overdue task${overdue.length > 1 ? 's' : ''}`, detail: overdue.slice(0, 2).map((a) => a.subject).join(' · '), to: '/activities?view=overdue', tone: 'red' });
     const dueToday = mine.filter((a) => daysUntil(a.due_date) === 0);
-    if (dueToday.length) out.push({ id: 'today', icon: <CalendarClock size={15} />, title: `${dueToday.length} task${dueToday.length > 1 ? 's' : ''} due today`, detail: dueToday.slice(0, 2).map((a) => a.subject).join(' · '), to: '/activities?view=today', tone: 'amber' });
+    if (dueToday.length) out.push({ id: 'today', kind: 'Tasks', icon: <CalendarClock size={15} />, title: `${dueToday.length} task${dueToday.length > 1 ? 's' : ''} due today`, detail: dueToday.slice(0, 2).map((a) => a.subject).join(' · '), to: '/activities?view=today', tone: 'amber' });
     const soon = policies.data.filter((p) => { const d = daysUntil(p.expiration_date); return d !== null && d >= 0 && d <= Math.min(30, settings?.renewal_reminder_days ?? 60); });
-    if (soon.length) out.push({ id: 'renewals', icon: <FolderOpen size={15} />, title: `${soon.length} polic${soon.length > 1 ? 'ies' : 'y'} renewing within 30 days`, detail: soon.slice(0, 2).map((p) => `${names.get(p.account_id) ?? ''} ${p.line_of_business}`).join(' · '), to: '/policies?view=renewals', tone: 'teal' });
-    messages.data.slice(0, 5).forEach((m) => out.push({ id: m.id, icon: <MessageSquare size={15} />, title: `New text from ${names.get(m.account_id) ?? 'a client'}`, detail: m.body, to: `/messages?account=${m.account_id}`, tone: 'purple' }));
-    docs.data.slice(0, 3).forEach((d) => out.push({ id: d.id, icon: <FileSignature size={15} />, title: 'eSignature declined', detail: `${d.name} · ${names.get(d.account_id ?? '') ?? ''}`, to: '/documents?tab=esign', tone: 'red' }));
+    if (soon.length) out.push({ id: 'renewals', kind: 'Renewals', icon: <FolderOpen size={15} />, title: `${soon.length} polic${soon.length > 1 ? 'ies' : 'y'} renewing within 30 days`, detail: soon.slice(0, 2).map((p) => `${names.get(p.account_id) ?? ''} ${p.line_of_business}`).join(' · '), to: '/policies?view=renewals', tone: 'teal' });
+    messages.data.slice(0, 5).forEach((m) => out.push({ id: m.id, kind: 'Messages', icon: <MessageSquare size={15} />, title: `New text from ${names.get(m.account_id) ?? 'a client'}`, detail: m.body, to: `/messages?account=${m.account_id}`, tone: 'purple' }));
+    docs.data.slice(0, 3).forEach((d) => out.push({ id: d.id, kind: 'eSignature', icon: <FileSignature size={15} />, title: 'eSignature declined', detail: `${d.name} · ${names.get(d.account_id ?? '') ?? ''}`, to: '/documents?tab=esign', tone: 'red' }));
     return out;
   }, [activities.data, policies.data, messages.data, docs.data, names, me, settings]);
 }
 
-function NotificationsMenu() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useOutside(ref, open, () => setOpen(false));
+const READ_KEY = 'northstar-ams:read-alerts';
+function readIds(): string[] {
+  try { const v = JSON.parse(localStorage.getItem(READ_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
+}
+
+/** Bell button: shows the unread count and toggles the docked Notifications panel. */
+function NotificationsButton({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   const alerts = useAlerts();
-  const tone = { red: 'bg-red-50 text-red-600', amber: 'bg-amber-50 text-amber-600', teal: 'bg-brand-50 text-brand-600', purple: 'bg-violet-50 text-violet-600' };
+  const [read] = useReadAlerts();
+  const unread = alerts.filter((a) => !read.includes(a.id)).length;
   return (
-    <div className="relative" ref={ref}>
-      <button className="top-icon notification" aria-label={`Notifications (${alerts.length})`} title="Notifications" onClick={() => setOpen(!open)}>
-        <Bell size={20} />{alerts.length > 0 && <i>{alerts.length > 9 ? '9+' : alerts.length}</i>}
-      </button>
-      {open && (
-        <div className="top-pop w-80 right-0">
-          <div className="flex items-center justify-between px-3 py-2 border-b border-ink-100">
-            <span className="text-[13px] font-semibold text-ink-900">Notifications</span>
-            <span className="text-xs text-ink-400">{alerts.length} alert{alerts.length === 1 ? '' : 's'}</span>
-          </div>
-          {alerts.length === 0 && <div className="px-3 py-8 text-center text-[13px] text-ink-400">You're all caught up.</div>}
-          <div className="max-h-96 overflow-y-auto">
-            {alerts.map((a) => (
-              <a key={a.id} href={href(a.to)} onClick={() => setOpen(false)} className="flex gap-2.5 px-3 py-2.5 hover:bg-ink-50 border-b border-ink-50 last:border-0">
-                <span className={cx('w-7 h-7 rounded-full grid place-items-center shrink-0', tone[a.tone])}>{a.icon}</span>
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-ink-900">{a.title}</span>
-                  <span className="block text-xs text-ink-400 truncate">{a.detail}</span>
-                </span>
-              </a>
-            ))}
-          </div>
+    <button className={cx('top-icon notification', open && 'text-white')} aria-label={`Notifications (${unread} unread)`} aria-expanded={open} title="Notifications" onClick={onToggle}>
+      <Bell size={20} />{unread > 0 && <i>{unread > 9 ? '9+' : unread}</i>}
+    </button>
+  );
+}
+
+// Read state is per browser; it survives reloads and is shared between the button and the panel.
+const readListeners = new Set<() => void>();
+function useReadAlerts() {
+  const [ids, setIds] = useState(readIds);
+  useEffect(() => { const fn = () => setIds(readIds()); readListeners.add(fn); return () => { readListeners.delete(fn); }; }, []);
+  const update = (next: string[]) => {
+    try { localStorage.setItem(READ_KEY, JSON.stringify(next.slice(-500))); } catch { /* storage unavailable */ }
+    readListeners.forEach((fn) => fn());
+  };
+  return [ids, update] as const;
+}
+
+/** Docked right-hand Notifications panel with filters and read / unread state. */
+function NotificationsPanel({ onClose }: { onClose: () => void }) {
+  const alerts = useAlerts();
+  const [read, setRead] = useReadAlerts();
+  const [showRead, setShowRead] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [kinds, setKinds] = useState<AlertKind[]>([]);
+  const tone = { red: 'bg-red-50 text-red-600', amber: 'bg-amber-50 text-amber-600', teal: 'bg-brand-50 text-brand-600', purple: 'bg-violet-50 text-violet-600' };
+  const visible = alerts.filter((a) => (showRead || !read.includes(a.id)) && (!kinds.length || kinds.includes(a.kind)));
+  const markRead = (id: string) => setRead([...read.filter((x) => x !== id), id]);
+  const markUnread = (id: string) => setRead(read.filter((x) => x !== id));
+  const unreadVisible = visible.filter((a) => !read.includes(a.id));
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+  return (
+    <aside className="notif-panel" aria-label="Notifications">
+      <div className="flex items-center justify-between h-[34px] px-2.5 bg-[#263238] text-white">
+        <span className="text-[13px] font-semibold">Notifications</span>
+        <button type="button" aria-label="Close notifications" onClick={onClose} className="bg-transparent text-white"><X size={20} /></button>
+      </div>
+      <div className="flex items-center justify-between h-[50px] px-2.5 border-b border-ink-200">
+        <button type="button" onClick={() => setFiltersOpen(!filtersOpen)} aria-expanded={filtersOpen} className="inline-flex items-center gap-2 bg-transparent text-[13px] font-semibold text-ink-900">
+          <ListFilter size={16} /> Filters{kinds.length ? ` (${kinds.length})` : ''}
+        </button>
+        <button type="button" onClick={() => setShowRead(!showRead)} className="bg-transparent text-[13px] font-semibold text-brand-600">{showRead ? 'Hide read' : 'Show read'}</button>
+      </div>
+      {filtersOpen && (
+        <div className="flex flex-wrap gap-1.5 px-2.5 py-2.5 border-b border-ink-100">
+          {(['Tasks', 'Renewals', 'Messages', 'eSignature'] as AlertKind[]).map((k) => (
+            <button key={k} type="button" aria-pressed={kinds.includes(k)} onClick={() => setKinds(kinds.includes(k) ? kinds.filter((x) => x !== k) : [...kinds, k])}
+              className={cx('h-7 px-2.5 rounded-full border text-xs font-semibold', kinds.includes(k) ? 'bg-brand-500 border-brand-500 text-white' : 'bg-white border-ink-200 text-ink-700')}>{k}</button>
+          ))}
+          {kinds.length > 0 && <button type="button" onClick={() => setKinds([])} className="h-7 px-2 bg-transparent text-xs text-ink-500 underline">Clear</button>}
         </div>
       )}
-    </div>
+      {unreadVisible.length > 1 && (
+        <div className="flex justify-end px-2.5 pt-2"><button type="button" onClick={() => setRead([...new Set([...read, ...unreadVisible.map((a) => a.id)])])} className="bg-transparent text-xs font-semibold text-brand-600">Mark all read</button></div>
+      )}
+      <div className="flex-1 overflow-y-auto">
+        {visible.length === 0 ? (
+          <div className="h-full min-h-[240px] flex flex-col items-center justify-center gap-2 text-[13px] text-ink-800">
+            <Bell size={34} className="text-ink-500 fill-ink-500" />
+            No notifications found.
+          </div>
+        ) : visible.map((a) => {
+          const isRead = read.includes(a.id);
+          return (
+            <div key={a.id} className={cx('group flex gap-2.5 px-3 py-3 border-b border-ink-50', isRead ? 'bg-white opacity-70' : 'bg-brand-50/40')}>
+              <span className={cx('w-7 h-7 rounded-full grid place-items-center shrink-0', tone[a.tone])}>{a.icon}</span>
+              <a href={href(a.to)} onClick={() => markRead(a.id)} className="min-w-0 flex-1">
+                <span className="block text-[13px] font-semibold text-ink-900">{a.title}</span>
+                <span className="block text-xs text-ink-500 line-clamp-2">{a.detail}</span>
+              </a>
+              <button type="button" onClick={() => (isRead ? markUnread(a.id) : markRead(a.id))} title={isRead ? 'Mark unread' : 'Mark read'} aria-label={isRead ? 'Mark unread' : 'Mark read'} className="self-start bg-transparent text-ink-400 hover:text-ink-800">
+                {isRead ? <Bell size={14} /> : <Check size={14} />}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 

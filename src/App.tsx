@@ -8,7 +8,8 @@ import { db, initDb, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
-import { CreateApplicant } from '@/modules/accounts/CreateApplicant';
+import { ApplicantEditor } from '@/modules/accounts/ApplicantEditor';
+import { CommercialApplicant } from '@/modules/accounts/CommercialApplicant';
 import { PersonalApplicant } from '@/modules/accounts/PersonalApplicant';
 import { AccountingPage } from '@/modules/accounting';
 import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
@@ -57,8 +58,8 @@ function Routes() {
   switch (section) {
     case undefined: page = <Dashboard />; break;
     case 'accounts':
-      if (id === 'new') page = params.get('type') === 'Commercial' ? <CreateApplicant type="Commercial" /> : <PersonalApplicant />;
-      else if (id && segments[2] === 'edit') page = <PersonalApplicant accountId={id} />;
+      if (id === 'new') page = params.get('type') === 'Commercial' ? <CommercialApplicant /> : <PersonalApplicant />;
+      else if (id && segments[2] === 'edit') page = <ApplicantEditor accountId={id} />;
       else page = id ? <AccountDetail id={id} /> : <AccountsPage />;
       break;
     case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;
