@@ -139,6 +139,9 @@ export function buildSeed(seed = 42): SeedData {
       dob: commercial ? null : `${int(1955, 2001)}-${String(int(1, 12)).padStart(2, '0')}-${String(int(1, 28)).padStart(2, '0')}`,
       marital_status: commercial ? null : pick(['Married', 'Single', 'Married', 'Divorced']), occupation: commercial ? null : pick(['Engineer', 'Teacher', 'Nurse', 'Sales Manager', 'Retired', 'Accountant', 'Contractor']),
       mobile_phone: `(737) 555-${String(2000 + i * 53).slice(-4)}`, producer: pick(producers), csr: pick(csrs), lead_source: pick(SOURCES), notes: null, labels: [], customer_since: null, naics_code: null, sic_code: null, nature_of_business: null, naics_description: null, operations_description: null,
+      prefix: null, middle_initial: null, suffix: null, maiden_name: null, nickname: null, gender: null, ssn_last4: null, dl_number: null, dl_status: null,
+      dl_state: null, education: null, industry: null, occupation_years: null, prior_employer_years: null, account_name: null, preferred_language: 'English',
+      vip: false, phones: [], emails: [], bridge_email: false, contact_method: null, contact_time: null,
     };
     out.accounts.push(a);
 

@@ -234,7 +234,7 @@ export function AccountDetail({ id }: { id: string }) {
           <Button variant="primary" icon={<Calculator size={15} />} onClick={() => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine)}`)}>New quote</Button>
           <Button icon={<MessageSquare size={15} />} onClick={() => setTab('messages')}>Text</Button>
           <Button icon={<Mail size={15} />} onClick={() => { window.location.href = `mailto:${a.email}`; }}>Email</Button>
-          <Button icon={<Pencil size={15} />} onClick={() => setEditing(true)}>Edit</Button>
+          <Button icon={<Pencil size={15} />} onClick={() => (commercial ? setEditing(true) : navigate(`/accounts/${a.id}/edit`))}>Edit</Button>
           <Menu items={[
             { label: 'Log activity / task', icon: <Calendar size={14} />, onClick: () => setTab('activities') },
             { label: 'Add policy', icon: <FolderOpen size={14} />, onClick: () => setTab('policies') },

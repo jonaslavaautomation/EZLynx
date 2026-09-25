@@ -9,6 +9,7 @@ import { navigate, useRoute } from '@/lib/router';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
 import { CreateApplicant } from '@/modules/accounts/CreateApplicant';
+import { PersonalApplicant } from '@/modules/accounts/PersonalApplicant';
 import { AccountingPage } from '@/modules/accounting';
 import { ActivitiesPage, ActivityFormModal } from '@/modules/activities';
 import { ClaimDetail, ClaimFormModal, ClaimsPage } from '@/modules/claims';
@@ -55,7 +56,11 @@ function Routes() {
   let page: ReactNode;
   switch (section) {
     case undefined: page = <Dashboard />; break;
-    case 'accounts': page = id === 'new' ? <CreateApplicant type={params.get('type') === 'Commercial' ? 'Commercial' : 'Personal'} /> : id ? <AccountDetail id={id} /> : <AccountsPage />; break;
+    case 'accounts':
+      if (id === 'new') page = params.get('type') === 'Commercial' ? <CreateApplicant type="Commercial" /> : <PersonalApplicant />;
+      else if (id && segments[2] === 'edit') page = <PersonalApplicant accountId={id} />;
+      else page = id ? <AccountDetail id={id} /> : <AccountsPage />;
+      break;
     case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;
     case 'quotes': page = id === 'new' ? <QuoteWizard accountId={params.get('account')} line={params.get('line')} /> : id ? <QuoteDetail id={id} /> : <QuotesPage />; break;
     case 'activities': page = <ActivitiesPage />; break;
