@@ -1,28 +1,18 @@
 import {
-  ArrowLeft, ArrowRight, BarChart3, Calculator, CalendarClock, CheckCircle2, ClipboardList, FolderOpen, PlugZap, RefreshCw, ShieldAlert, Sparkles,
+  ArrowLeft, ArrowRight, BarChart3, Calculator, CalendarClock, CheckCircle2, ClipboardList, FolderOpen, PlugZap, ShieldAlert, Sparkles,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Avatar, Badge, StatCard, cx, useFeedback } from '@/components/ui';
 import { useAlerts } from '@/components/Layout';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { commissionOf } from '@/lib/domain';
-import { accountName, daysUntil, fmtDate, fmtMoney, fmtNumber, fmtRelative } from '@/lib/format';
+import { accountName, daysUntil, fmtDate, fmtMoney, fmtNumber } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { useESignCounts } from '@/modules/documents';
 import { href, navigate } from '@/lib/router';
 import type { ESignStatus } from '@/lib/types';
-
-function Card({ title, children, className = '', action }: { title: string; children: ReactNode; className?: string; action?: ReactNode }) {
-  return <section className={`card ${className}`}><div className="card-heading"><h2>{title}</h2>{action}</div>{children}</section>;
-}
-
-function StatRow({ label, value, to }: { label: string; value: ReactNode; to?: string }) {
-  if (to) return <a className="stat-row px-1 -mx-1" href={href(to)}><span>{label}</span><strong>{value}</strong></a>;
-  return <div className="stat-row"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-const dash = (n: number) => (n ? fmtNumber(n) : '-');
+import { Card, ClaimsDownloads, PerformanceGoals, PolicyDownloads, StatRow, UnderwritingRequests, dash } from '@/modules/dashboard/widgets';
 
 const SLIDES = [
   { kicker: 'COMPARATIVE RATER', title: <>Quote smarter.<br /><em>Bind faster.</em></>, cta: 'Start a quote', to: '/quotes/new', bg: '#351018', img: 'https://images.pexels.com/photos/7731330/pexels-photo-7731330.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
@@ -38,7 +28,7 @@ function Promo() {
   }, []);
   const s = SLIDES[i];
   return (
-    <div className="promo-wrap">
+    <div className="promo-wrap xl:col-span-2">
       <button className="carousel-arrow left" onClick={() => setI((i + SLIDES.length - 1) % SLIDES.length)} aria-label="Previous"><ArrowLeft size={18} /></button>
       <div className="promo-card" style={{ background: s.bg }}>
         <div className="promo-image" style={{ ['--promo-img' as string]: `url('${s.img}')` }} />
@@ -58,7 +48,6 @@ export function Dashboard() {
   const { me, settings, appointedCarriers, staffColor } = useAppData();
   const { toast } = useFeedback();
   const policies = useTable('policies', {});
-  const tx = useTable('policy_transactions', {});
   const activities = useTable('activities', { eq: { status: 'Open' } }, ['activities']);
   const inProgress = useTable('activities', { eq: { status: 'In Progress' } });
   const messages = useTable('messages', {});
@@ -66,16 +55,12 @@ export function Dashboard() {
   const quotes = useTable('quotes', {});
   const accounts = useTable('accounts', {});
   const alerts = useAlerts();
-  const [refreshedAt, setRefreshedAt] = useState(() => new Date().toISOString());
 
   const names = useMemo(() => new Map(accounts.data.map((a) => [a.id, accountName(a)])), [accounts.data]);
   const active = policies.data.filter((p) => p.status === 'Active');
   const written = active.reduce((s, p) => s + Number(p.premium), 0);
   const commission = active.reduce((s, p) => s + commissionOf(p), 0);
 
-  const week = tx.data.filter((t) => (Date.now() - new Date(t.created_at).getTime()) / 86400000 <= 7);
-  const weekCount = (type: string) => week.filter((t) => t.type === type).length;
-  const downloaded = policies.data.filter((p) => p.source === 'Download' && (Date.now() - new Date(p.created_at).getTime()) / 86400000 <= 7).length;
 
   const renewals = active
     .map((p) => ({ p, d: daysUntil(p.expiration_date) ?? 999 }))
@@ -120,7 +105,7 @@ export function Dashboard() {
         <StatCard label="Open quotes · claims" value={`${openQuotes} · ${openClaims}`} hint="Pipeline and claims in progress" icon={<Calculator size={17} />} tone="purple" onClick={() => navigate('/quotes')} />
       </div>
 
-      <div className="grid gap-3.5 grid-cols-1 md:grid-cols-2 xl:grid-cols-4 items-start">
+      <div className="grid gap-3.5 grid-cols-1 md:grid-cols-2 xl:grid-cols-5 items-start">
         <Promo />
 
         <Card title="Need Help Getting Started?">
@@ -128,11 +113,13 @@ export function Dashboard() {
           <div className="help-links">
             <a href={href('/settings?tab=agency')}>Agency profile & users</a>
             <a href={href('/settings?tab=carriers')}>Carrier appointments</a>
-            <a href={href('/accounts?new=Personal')}>Add your first account</a>
+            <a href={href('/accounts/new?type=Personal')}>Add your first account</a>
             <a href={href('/settings?tab=data')}>Import data or load samples</a>
           </div>
           <button className="ask-button" onClick={() => navigate('/quotes/new')}><Sparkles size={16} /> Run a quote</button>
         </Card>
+
+        <PerformanceGoals />
 
         <Card title="Text Messages">
           <StatRow label="Sent / Received" value={dash(sms.length)} to="/messages" />
@@ -140,20 +127,23 @@ export function Dashboard() {
           <StatRow label="Email sent" value={dash(messages.data.filter((m) => m.channel === 'Email').length)} to="/messages" />
         </Card>
 
+
         <Card title="Carrier Integration" action={<PlugZap size={18} className="text-ink-400" />}>
           <p className="text-xs leading-relaxed text-ink-600 mb-3">{appointedCarriers.length} appointed carriers · {appointedCarriers.filter((c) => c.downloads_enabled).length} with policy downloads enabled.</p>
           <div className="flex flex-wrap gap-1.5 mb-4">{appointedCarriers.slice(0, 6).map((c) => <Badge key={c.id} tone="teal">{c.name}</Badge>)}</div>
           <button className="extension-button" onClick={() => navigate('/settings?tab=carriers')}>Manage Carriers</button>
         </Card>
 
-        <Card title="Policy Activity" action={<button className="bg-transparent text-ink-600 hover:text-brand-600" aria-label="Refresh" onClick={() => { policies.reload(); tx.reload(); setRefreshedAt(new Date().toISOString()); }}><RefreshCw size={18} /></button>}>
-          <p className="card-note">(Last 7 Days) - updated {fmtRelative(refreshedAt)}</p>
-          <StatRow label="Cancellations" value={dash(weekCount('Cancellation'))} to="/policies?view=cancelled" />
-          <StatRow label="Renewals" value={dash(weekCount('Renewal'))} to="/policies?view=renewals" />
-          <StatRow label="New Policies" value={dash(weekCount('New Business'))} to="/policies" />
-          <StatRow label="Endorsements" value={dash(weekCount('Endorsement'))} to="/policies" />
-          <StatRow label="Downloaded" value={dash(downloaded)} to="/policies" />
+        <Card title="eSignature">
+          {(['Completed', 'Pending', 'Canceled', 'Declined', 'Expired', 'Failed'] as ESignStatus[]).map((s) => <StatRow key={s} label={s} value={dash(esign[s])} to="/documents?tab=esign" />)}
+          <StatRow label="All Envelopes" value={dash(esign.total)} to="/documents?tab=esign" />
         </Card>
+
+        <UnderwritingRequests />
+
+        <PolicyDownloads />
+
+        <ClaimsDownloads />
 
         <Card title="Upcoming Renewals" action={<a className="text-xs font-semibold" href={href('/policies?view=renewals')}>Queue</a>}>
           <p className="card-note">Next {settings?.renewal_reminder_days ?? 60} days · {renewals.length} policies · {fmtMoney(renewals.reduce((s, r) => s + Number(r.p.premium), 0))}</p>
@@ -171,11 +161,6 @@ export function Dashboard() {
           {alerts.slice(0, 5).map((a) => (
             <a key={a.id} href={href(a.to)} className="stat-row px-1 -mx-1"><span className="truncate">{a.title}</span><ArrowRight size={13} className="text-ink-300 shrink-0" /></a>
           ))}
-        </Card>
-
-        <Card title="eSignature" className="xl:row-span-2">
-          {(['Completed', 'Pending', 'Canceled', 'Declined', 'Expired', 'Failed'] as ESignStatus[]).map((s) => <StatRow key={s} label={s} value={dash(esign[s])} to="/documents?tab=esign" />)}
-          <StatRow label="All Envelopes" value={dash(esign.total)} to="/documents?tab=esign" />
         </Card>
 
         <Card title="My Tasks" className="md:col-span-2 xl:col-span-3" action={<a className="text-xs font-semibold" href={href('/activities')}>All activities</a>}>

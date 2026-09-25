@@ -552,6 +552,39 @@ export type Integration = BaseRow & {
   activated_by: string | null;
 };
 
+/** Per-user settings (User Settings page). Password and TOTP fields drive the training-grade sign-in screen. */
+export type UserSettings = BaseRow & {
+  staff_name: string;
+  first_name: string | null;
+  middle_initial: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  mobile_phone: string | null;
+  role_detail: string | null;
+  preferences: Record<string, unknown>;
+  acord: Record<string, unknown>;
+  /** Sanitized HTML. */
+  email_signature: string | null;
+  reply_to: string | null;
+  signature_insert: 'auto' | 'smart_tag';
+  signature_global_default: boolean;
+  display_global: boolean;
+  password_hash: string | null;
+  password_salt: string | null;
+  password_updated_at: string | null;
+  totp_secret: string | null;
+  totp_enabled: boolean;
+};
+
+export type LoginEvent = BaseRow & {
+  staff_name: string;
+  event: string; // User Login, User Logout, Failed Login, Password Changed, Two-Factor Enabled…
+  ip: string | null;
+  user_agent: string | null;
+  trusted: boolean;
+};
+
 export type TableMap = {
   accounts: Account;
   drivers: Driver;
@@ -595,6 +628,8 @@ export type TableMap = {
   integrations: Integration;
   account_addresses: AccountAddress;
   account_contacts: AccountContact;
+  user_settings: UserSettings;
+  login_events: LoginEvent;
 };
 
 export type TableName = keyof TableMap;
