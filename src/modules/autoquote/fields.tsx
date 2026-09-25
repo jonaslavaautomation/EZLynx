@@ -60,8 +60,8 @@ export function Switch({ checked, onChange, label, disabled, field }: { checked:
     <div data-field={field}>
       <label className={cx('inline-flex items-center gap-2.5 text-[14px] text-ink-800 select-none', disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer')}>
         <button type="button" role="switch" aria-checked={checked} aria-label={label} disabled={disabled} onClick={() => onChange(!checked)}
-          className={cx('relative inline-flex h-[14px] w-[34px] shrink-0 items-center rounded-full transition-colors', checked ? 'bg-brand-300' : 'bg-ink-300')}>
-          <span className={cx('absolute h-5 w-5 rounded-full shadow transition-transform grid place-items-center', checked ? 'translate-x-[15px] bg-brand-600' : '-translate-x-[1px] bg-ink-500')}>
+          className={cx('relative inline-flex h-[14px] w-[34px] shrink-0 items-center rounded-full transition-colors', checked ? 'bg-[#ce93d8]' : 'bg-ink-300')}>
+          <span className={cx('absolute h-5 w-5 rounded-full shadow transition-transform grid place-items-center', checked ? 'translate-x-[15px] bg-[#7b1fa2]' : '-translate-x-[1px] bg-ink-500')}>
             {!checked && <span className="w-2 h-0.5 bg-white rounded" />}
           </span>
         </button>

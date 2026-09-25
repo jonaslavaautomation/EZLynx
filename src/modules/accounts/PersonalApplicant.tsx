@@ -249,6 +249,8 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
       if (!editing) { try { await enqueueAutomation('Applicant Created', { account_id: account.id }); } catch { /* automations never block saving */ } }
       toast(editing ? 'Applicant saved' : `${account.first_name} ${account.last_name} created`);
       if (then === 'overview') navigate(`/accounts/${account.id}`);
+      // Go to auto opens the full auto quoting workflow; other lines use the quick rater.
+      else if (then === 'Personal Auto') navigate(`/accounts/${account.id}/auto-quote`);
       else navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent(then)}`);
     } catch (e) {
       toast((e as Error).message, 'error');

@@ -210,6 +210,9 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
     go('results');
   };
 
+  // Dialogs render in a portal: give them the workflow's teal theme while it's open.
+  useEffect(() => { document.body.classList.add('theme-quote-dialogs'); return () => document.body.classList.remove('theme-quote-dialogs'); }, []);
+
   const ctx: Ctx = { w, up, issues, allIssues, account, autoCarriers, hidePrefilled, go };
   const stepStatus = (k: StepKey) => {
     if (k === 'review') return allIssues.length ? 'warn' : 'ok';
@@ -218,7 +221,7 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
 
   return (
     <WorkflowCtx.Provider value={ctx}>
-      <div className="-mx-5 -mt-4 flex min-h-[calc(var(--vh100)-104px)]">
+      <div className="theme-quote -mx-5 -mt-4 flex min-h-[calc(var(--vh100)-104px)]">
         <ApplicantDrawer account={account} />
         <div className="flex-1 min-w-0 bg-[#f7f7f7]">
           <RecordTabs accountId={account.id} />
@@ -231,8 +234,8 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
             <div className="flex-1" />
             <label className="inline-flex items-center gap-2 text-[12.5px] text-ink-800 cursor-pointer">
               <button type="button" role="switch" aria-checked={hidePrefilled} aria-label="Hide Prefilled Answers" onClick={() => { setHidePrefilled(!hidePrefilled); writeLs(HIDE_KEY, hidePrefilled ? '0' : '1'); }}
-                className={cx('relative w-8 h-4 rounded-full transition-colors', hidePrefilled ? 'bg-brand-400' : 'bg-ink-300')}>
-                <span className={cx('absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm grid place-items-center shadow transition-all', hidePrefilled ? 'left-[14px] bg-brand-600 text-white' : 'left-[-2px] bg-ink-500')}>{hidePrefilled && <Check size={12} strokeWidth={3} />}</span>
+                className={cx('relative w-8 h-4 rounded-full transition-colors', hidePrefilled ? 'bg-[#ce93d8]' : 'bg-ink-300')}>
+                <span className={cx('absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-sm grid place-items-center shadow transition-all', hidePrefilled ? 'left-[14px] bg-[#7b1fa2] text-white' : 'left-[-2px] bg-ink-500')}>{hidePrefilled && <Check size={12} strokeWidth={3} />}</span>
               </button>
               Hide Prefilled Answers
             </label>
@@ -278,11 +281,11 @@ function Stepper({ view, status, visited }: { view: View; status: (k: StepKey) =
             <li key={s.key} className="relative z-10 flex flex-col items-center w-24">
               <button type="button" onClick={() => go(s.key)} aria-current={active ? 'step' : undefined} aria-label={label}
                 className={cx('relative w-11 h-11 rounded-full grid place-items-center text-white transition-colors',
-                  last ? (st === 'ok' ? 'bg-emerald-600' : 'bg-orange-500') : active ? 'bg-brand-700' : 'bg-ink-400 hover:bg-ink-500')}>
+                  last ? (st === 'ok' ? 'bg-[#00875a]' : 'bg-[#f5a623]') : active ? 'bg-brand-600' : 'bg-[#78909c] hover:bg-[#607d8b]')}>
                 <Icon size={20} />
                 {!active && !last && (visited.includes(s.key) || st === 'warn') && (
-                  <span className={cx('absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full grid place-items-center border-2 border-white', st === 'ok' ? 'bg-emerald-600' : 'bg-orange-400')}>
-                    {st === 'ok' ? <Check size={10} strokeWidth={3} /> : <span className="text-[10px] font-bold leading-none">!</span>}
+                  <span className={cx('absolute -top-1 -right-1 w-[18px] h-[18px] grid place-items-center', st === 'ok' && 'rounded-full border-2 border-white bg-[#00875a]')}>
+                    {st === 'ok' ? <Check size={10} strokeWidth={3} /> : <AlertTriangle size={17} className="text-white fill-[#f5a623] drop-shadow" strokeWidth={2.2} />}
                   </span>
                 )}
               </button>
@@ -325,7 +328,8 @@ const RESEARCH: { key: string; label: string; url: (q: string, a: Account) => st
 
 function ApplicantDrawer({ account: a }: { account: Account }) {
   const [open, setOpen] = useState(readLs(DRAWER_KEY) !== '0');
-  const [map, setMap] = useState(false);
+  const [research, setResearch] = useState<(typeof RESEARCH)[number] | null>(null);
+  const properties = useTable('properties', { eq: { account_id: a.id } });
   const [fav, setFav] = useState(() => (readLs(FAV_KEY) ?? '').split(',').includes(a.id));
   const { settings } = useAppData();
   const { toast } = useFeedback();
@@ -377,9 +381,7 @@ function ApplicantDrawer({ account: a }: { account: Account }) {
         {addr ? <div className="mt-0.5 leading-snug">{a.address}<br />{[a.city?.toUpperCase(), [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div> : <div className="text-ink-400">No address on file</div>}
         {addr && (
           <div className="mt-2 flex flex-col gap-2">
-            {RESEARCH.map((r) => r.embed
-              ? <button key={r.key} type="button" onClick={() => setMap(true)} className="text-left text-brand-700 hover:underline inline-flex items-center gap-1">{r.label} <ExternalLink size={11} /></button>
-              : <a key={r.key} href={r.url(addr, a)} target="_blank" rel="noopener noreferrer" className="text-brand-700 hover:underline inline-flex items-center gap-1">{r.label} <ExternalLink size={11} /></a>)}
+            {RESEARCH.map((r) => <button key={r.key} type="button" onClick={() => setResearch(r)} className="text-left text-brand-700 hover:underline inline-flex items-center gap-1">{r.label} <ExternalLink size={11} /></button>)}
           </div>
         )}
       </div>
@@ -395,14 +397,33 @@ function ApplicantDrawer({ account: a }: { account: Account }) {
         <a href={href('/marketplace/mine')} className="mt-2 flex items-center justify-center gap-1.5 h-8 rounded border border-ink-300 text-brand-700 font-semibold hover:bg-brand-50"><Plug size={13} /> Integrations</a>
       </div>
       <button type="button" aria-label="Collapse applicant panel" onClick={toggle} className="mt-auto self-end pt-4 text-ink-600 hover:text-ink-900"><ChevronLeft size={16} /></button>
-      {map && (
-        <Modal title="Map" subtitle={addr} size="lg" onClose={() => setMap(false)} footer={<>
-          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`} target="_blank" rel="noopener noreferrer" className="text-[13px] text-brand-700 hover:underline inline-flex items-center gap-1 mr-auto">Open in Google Maps <ExternalLink size={12} /></a>
-          <Button onClick={() => setMap(false)}>Close</Button>
-        </>}>
-          <iframe title={`Map of ${addr}`} src={RESEARCH[0].url(addr, a)} className="w-full h-[420px] rounded border border-ink-200" loading="lazy" referrerPolicy="no-referrer" />
-        </Modal>
-      )}
+      {research && (() => {
+        // Most research sites refuse to load inside another page, so the preview shows the map and the property on
+        // file, and the button opens the site itself in a new tab.
+        const home = properties.data.find((p) => p.address && addr.toLowerCase().includes(p.address.toLowerCase())) ?? properties.data[0];
+        const site = research.key === 'map' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : research.url(addr, a);
+        const facts: [string, string | number | null | undefined][] = home ? [
+          ['Year built', home.year_built], ['Square feet', home.square_feet?.toLocaleString('en-US')], ['Construction', home.construction],
+          ['Roof', [home.roof_type, home.roof_year].filter(Boolean).join(', ')], ['Protection class', home.protection_class], ['Dwelling value', home.dwelling_value ? `$${Number(home.dwelling_value).toLocaleString('en-US')}` : null],
+        ] : [];
+        return (
+          <Modal title={research.label} subtitle={addr} size="lg" onClose={() => setResearch(null)} footer={<>
+            <a href={site} target="_blank" rel="noopener noreferrer" className="mr-auto"><Button variant="primary" icon={<ExternalLink size={14} />}>Open {research.label === 'Map' ? 'Google Maps' : research.label}</Button></a>
+            <Button onClick={() => setResearch(null)}>Close</Button>
+          </>}>
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-4">
+              <iframe title={`Map of ${addr}`} src={RESEARCH[0].url(addr, a)} className="w-full h-[380px] rounded border border-ink-200" loading="lazy" referrerPolicy="no-referrer" />
+              <div className="text-[13px]">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-400 mb-1">Property on file</div>
+                {facts.length ? (
+                  <dl className="space-y-1">{facts.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{k}</dt><dd className="text-ink-900 text-right">{v || '—'}</dd></div>)}</dl>
+                ) : <p className="text-ink-500">No property details on file for this applicant. Add them under Details.</p>}
+                <p className="text-[11.5px] text-ink-400 mt-4">{research.key === 'map' ? 'Street map from Google Maps.' : `${research.label} opens in a new tab with this address.`}</p>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </aside>
   );
 }

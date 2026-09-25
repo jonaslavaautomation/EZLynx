@@ -239,7 +239,7 @@ function IncidentModal({ kind, initial, onClose }: { kind: IncidentKind; initial
         <OSelect label="Type" required="proceed" value={x.type} onChange={(type) => set({ type, at_fault: kind === 'accidents' ? !/Not-at-fault|parked|Hit and run/.test(type) : x.at_fault })} options={meta.types} />
         {kind !== 'violations' && <OInput label="Amount Paid" inputMode="numeric" value={x.amount ? `$${Number(x.amount).toLocaleString('en-US')}` : ''} onChange={(v) => set({ amount: v.replace(/\D/g, '').slice(0, 7) })} />}
         {kind === 'accidents' && (
-          <label className="flex items-center gap-2 text-[13px] text-ink-800"><input type="checkbox" className="w-4 h-4 accent-[#dc2626]" checked={x.at_fault} onChange={(e) => set({ at_fault: e.target.checked })} /> Driver was at fault</label>
+          <label className="flex items-center gap-2 text-[13px] text-ink-800"><input type="checkbox" className="w-4 h-4 accent-[#7b1fa2]" checked={x.at_fault} onChange={(e) => set({ at_fault: e.target.checked })} /> Driver was at fault</label>
         )}
         <OInput label="Description" value={x.description} onChange={(description) => set({ description })} maxLength={120} />
       </div>

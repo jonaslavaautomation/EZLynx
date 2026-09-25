@@ -1,5 +1,16 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Dancing+Script:wght@500&display=swap');
 @tailwind base;
+
+/* Brand palette as RGB channels so Tailwind's brand-* classes can be re-themed per screen. */
+:root {
+  --brand-50: 254 242 242; --brand-100: 254 226 226; --brand-200: 254 202 202; --brand-300: 252 165 165; --brand-400: 248 113 113;
+  --brand-500: 220 38 38; --brand-600: 185 28 28; --brand-700: 153 27 27; --brand-800: 127 29 29; --brand-900: 101 20 20;
+}
+/* Quoting workflow: teal primary actions (also applied to its dialogs, which render in a portal). */
+.theme-quote, body.theme-quote-dialogs [role='dialog'] {
+  --brand-50: 224 242 241; --brand-100: 178 223 219; --brand-200: 128 203 196; --brand-300: 77 182 172; --brand-400: 38 166 154;
+  --brand-500: 0 121 107; --brand-600: 0 105 92; --brand-700: 0 77 64; --brand-800: 0 64 58; --brand-900: 0 51 46;
+}
 @tailwind components;
 @tailwind utilities;
 
@@ -177,4 +188,5 @@ footer a { font-weight: 600; }
 @media (max-width: 760px) { .help-table th { width: auto; white-space: normal; } }
 
 /* Auto quoting workflow: briefly highlight a field reached from a Fix link */
-.aq-flash { outline: 2px solid #f59e0b; outline-offset: 3px; border-radius: 6px; transition: outline-color 0.4s; }
+.aq-flash { border-radius: 6px; animation: aq-pulse 0.8s ease-in-out 3; }
+@keyframes aq-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(229 57 53 / 0); } 50% { box-shadow: 0 0 0 4px rgb(229 57 53 / 0.55); } }
