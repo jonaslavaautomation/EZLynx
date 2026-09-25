@@ -63,7 +63,8 @@ const SCHEMA: { [K in TableName]: { [C in keyof Row<K>]-?: ColSpec } } = {
     nature_of_business: 't', naics_description: 't', operations_description: 't', prefix: 't', middle_initial: 't', suffix: 't', maiden_name: 't',
     nickname: 't', gender: 't', ssn_last4: 't', dl_number: 't', dl_status: 't', dl_state: 't', education: 't', industry: 't', occupation_years: 'i',
     prior_employer_years: 'i', account_name: 't', preferred_language: 't', vip: ['b', false], phones: ['j', []], emails: ['j', []],
-    bridge_email: ['b', false], contact_method: 't', contact_time: 't',
+    bridge_email: ['b', false], contact_method: 't', contact_time: 't', phone_ext: 't', fax: 't', website: 't', legal_entity_type: 't', tax_id: 't',
+    gl_code: 't', date_business_started: 'd', lead_priority: 't', probability_of_sale: 'i', lead_status: 't',
   },
   drivers: {
     id: 'u', created_at: 'ts', account_id: 'u', first_name: 't', last_name: 't', dob: 'd', gender: 't', marital_status: 't', relationship: 't',
@@ -334,7 +335,7 @@ export function initDb(): Promise<DbMode> {
       // `agency_settings` only exists once the full AMS migration is applied; a project that only has
       // the original `accounts` table fails this probe and falls back to local mode.
       // Probe the newest migration's table: if any migration is missing, stay in browser-storage mode.
-      const probe = supabase.from('account_addresses').select('id, years_at_address').limit(1);
+      const probe = supabase.from('accounts').select('id, lead_status').limit(1);
       const { error } = await Promise.race([
         probe,
         new Promise<{ error: { message: string } }>((resolve) => setTimeout(() => resolve({ error: { message: 'timeout' } }), 6000)),

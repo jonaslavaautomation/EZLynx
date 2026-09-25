@@ -85,6 +85,17 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #dc2626; text-d
 .nav-tooltip { position: fixed; left: calc(var(--sidebar-w) + 4px); transform: translateY(-50%); z-index: 45; background: #fff; color: #1c1414; font-size: 12px; padding: 3px 8px; border: 1px solid #cfd8dc; border-radius: 2px; box-shadow: 0 2px 6px #0003; pointer-events: none; white-space: nowrap; }
 .sidebar-scrim { display: none; }
 
+/* ── Notifications panel (docked right) ── */
+.app-shell { --notif-w: 0px; }
+.app-shell.notif-open { --notif-w: 310px; }
+.notif-panel { position: fixed; top: 50px; bottom: 28px; right: 0; width: 310px; background: #fff; border-left: 1px solid #ded6d6; z-index: 35; display: flex; flex-direction: column; box-shadow: -4px 0 14px #0000000d; }
+.app-shell.notif-open .main-content { margin-right: var(--notif-w); }
+.app-shell.notif-open footer { right: var(--notif-w); }
+@media (max-width: 760px) {
+  .notif-panel { width: 100%; bottom: 0; z-index: 75; }
+  .app-shell.notif-open .main-content { margin-right: 0; }
+}
+
 /* ── Main content ── */
 .main-content { margin-left: var(--sidebar-w); padding: 66px 20px 32px; transition: margin-left .15s ease; min-width: 0; }
 

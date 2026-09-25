@@ -142,6 +142,8 @@ export function buildSeed(seed = 42): SeedData {
       prefix: null, middle_initial: null, suffix: null, maiden_name: null, nickname: null, gender: null, ssn_last4: null, dl_number: null, dl_status: null,
       dl_state: null, education: null, industry: null, occupation_years: null, prior_employer_years: null, account_name: null, preferred_language: 'English',
       vip: false, phones: [], emails: [], bridge_email: false, contact_method: null, contact_time: null,
+      phone_ext: null, fax: null, website: null, legal_entity_type: commercial ? pick(['LLC', 'Corporation', 'Sole Proprietor', 'Partnership']) : null, tax_id: null,
+      gl_code: null, date_business_started: null, lead_priority: null, probability_of_sale: null, lead_status: null,
     };
     out.accounts.push(a);
 
