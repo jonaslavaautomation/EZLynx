@@ -1,9 +1,11 @@
 import { BarChart3, BookOpenText, Folder, Gift, HelpCircle, LayoutDashboard, Network, Plug, Settings, SquareUser, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Logo } from '@/components/Logo';
 import { cx } from '@/components/ui';
 import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
+import { appZoom } from '@/lib/zoom';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, AccountContact, Driver, LineOfBusiness, Quote } from '@/lib/types';
 
@@ -304,6 +306,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
   return (
     <div ref={rootRef} onMouseLeave={scheduleClose} onMouseEnter={() => window.clearTimeout(closeTimer.current)}>
       <aside className={cx('sidebar', mobileOpen && 'mobile-open')} aria-label="Main navigation">
+        <a href={href('/')} className="rail-logo" aria-label="Workspace home" onClick={() => onNavigate()}><Logo size={34} /></a>
         <nav>
           {MENU.map(({ key, label, icon: Icon }) => (
             <button
@@ -315,14 +318,14 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
               aria-expanded={open === key}
               onMouseEnter={(e) => {
                 const r = e.currentTarget.getBoundingClientRect();
-                setTip({ label, top: r.top + r.height / 2 });
+                setTip({ label, top: (r.top + r.height / 2) / appZoom() });
                 clearTimers();
                 // Switch instantly between menus; small delay before the first one so passing the mouse over doesn't flash it.
                 if (open) show(key);
                 else openTimer.current = window.setTimeout(() => show(key), 120);
               }}
               onMouseLeave={() => { window.clearTimeout(openTimer.current); setTip(null); }}
-              onFocus={(e) => { const r = e.currentTarget.getBoundingClientRect(); setTip({ label, top: r.top + r.height / 2 }); }}
+              onFocus={(e) => { const r = e.currentTarget.getBoundingClientRect(); setTip({ label, top: (r.top + r.height / 2) / appZoom() }); }}
               onBlur={() => setTip(null)}
               onClick={() => {
                 clearTimers();

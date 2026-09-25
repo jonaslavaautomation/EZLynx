@@ -67,7 +67,7 @@ export function BoardView({ rows, lookup, onEdit }: { rows: Activity[]; lookup: 
             <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">{col.status}</span>
             <Badge>{col.total}</Badge>
           </div>
-          <div className="flex-1 px-2 pb-2 space-y-2 max-h-[65vh] overflow-y-auto">
+          <div className="flex-1 px-2 pb-2 space-y-2 max-h-[calc(var(--vh100)*0.65)] overflow-y-auto">
             {col.items.length === 0 && <div className="text-xs text-ink-400 text-center py-6">Drop tasks here</div>}
             {col.items.map((a) => {
               const acct = a.account_id ? lookup.accounts.get(a.account_id) : undefined;

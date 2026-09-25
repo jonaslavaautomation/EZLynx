@@ -96,7 +96,7 @@ export function MessagesPage({ accountId }: { accountId: string | null }) {
         actions={<Button variant="primary" icon={<Plus size={15} />} onClick={() => setComposeOpen(true)}>New message</Button>}
       />
       <ErrorBanner message={messages.error} />
-      <div className="bg-white border border-[#e3e3e3] rounded shadow-card flex h-[calc(100vh-190px)] min-h-[480px] overflow-hidden">
+      <div className="bg-white border border-[#e3e3e3] rounded shadow-card flex h-[calc(var(--vh100)-190px)] min-h-[480px] overflow-hidden">
         {/* Conversation list */}
         <aside className={cx('w-full md:w-80 lg:w-96 md:border-r border-ink-100 flex-col min-w-0 shrink-0', accountId ? 'hidden md:flex' : 'flex')}>
           <div className="p-3 border-b border-ink-100 space-y-2">

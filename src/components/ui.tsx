@@ -393,7 +393,7 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
   const width = { sm: 'max-w-md', md: 'max-w-2xl', lg: 'max-w-4xl', xl: 'max-w-6xl' }[size];
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-start justify-center bg-ink-900/40 p-3 sm:p-6 overflow-y-auto" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className={cx('w-full bg-white rounded-md shadow-pop my-auto flex flex-col max-h-[calc(100vh-24px)] sm:max-h-[calc(100vh-48px)]', width)} role="dialog" aria-modal="true">
+      <div className={cx('w-full bg-white rounded-md shadow-pop my-auto flex flex-col max-h-[calc(var(--vh100)-24px)] sm:max-h-[calc(var(--vh100)-48px)]', width)} role="dialog" aria-modal="true">
         <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-ink-100">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-ink-900">{title}</h2>

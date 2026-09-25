@@ -289,7 +289,7 @@ export function LineChart({ labels, series, height = 220, format = plain, axisFo
   const onMove = (e: MouseEvent<SVGRectElement>) => {
     const rect = (e.currentTarget as SVGRectElement).getBoundingClientRect();
     const px = e.clientX - rect.left;
-    setIdx(Math.max(0, Math.min(n - 1, Math.round((px / plotW) * (n - 1)))));
+    setIdx(Math.max(0, Math.min(n - 1, Math.round((px / (rect.width || plotW)) * (n - 1)))));
   };
   const tip: Tip = idx === null ? null : {
     x: x(idx), y: Math.min(...series.map((s) => y(s.data[idx] ?? 0))), title: labels[idx],

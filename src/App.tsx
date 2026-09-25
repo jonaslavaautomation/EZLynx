@@ -109,7 +109,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
     try { await fn(); onDone(); } catch (e) { setError((e as Error).message); setBusy(null); }
   };
   return (
-    <div className="min-h-screen grid place-items-center bg-[#f8f6f6] p-4">
+    <div className="min-h-[var(--vh100)] grid place-items-center bg-[#f8f6f6] p-4">
       <div className="w-full max-w-lg bg-white rounded-md shadow-pop border border-ink-100 p-7">
         <Logo size={44} className="mb-4" />
         <h1 className="text-xl font-semibold text-ink-900">Welcome to Northstar AMS</h1>
@@ -141,10 +141,10 @@ export default function App() {
   }, []);
 
   if (boot.state === 'loading') {
-    return <div className="min-h-screen grid place-items-center bg-[#f8f6f6]"><div className="flex flex-col items-center gap-3 text-[13px] text-ink-500"><Logo size={48} /><span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin text-brand-500" /> Loading your agency…</span></div></div>;
+    return <div className="min-h-[var(--vh100)] grid place-items-center bg-[#f8f6f6]"><div className="flex flex-col items-center gap-3 text-[13px] text-ink-500"><Logo size={48} /><span className="flex items-center gap-2"><Loader2 size={16} className="animate-spin text-brand-500" /> Loading your agency…</span></div></div>;
   }
   if (boot.state === 'error') {
-    return <div className="min-h-screen grid place-items-center p-4"><div className="max-w-md w-full"><ErrorBanner message={`Could not start: ${boot.message}`} /></div></div>;
+    return <div className="min-h-[var(--vh100)] grid place-items-center p-4"><div className="max-w-md w-full"><ErrorBanner message={`Could not start: ${boot.message}`} /></div></div>;
   }
   if (boot.state === 'onboarding') return <FeedbackProvider><Onboarding onDone={() => setBoot({ state: 'ready', mode: boot.mode })} /></FeedbackProvider>;
 
