@@ -203,7 +203,7 @@ export function SubmitView({ onSubmit }: { onSubmit: (carriers: string[], saveTo
             <div key={c} className="grid grid-cols-[1.2fr_1fr_1fr_1fr] items-center gap-3 px-4 py-4 border-b border-ink-100 last:border-b-0">
               <CarrierMark name={c} />
               <label className="inline-flex items-center gap-3 text-[14px] text-ink-800 cursor-pointer">
-                <input type="checkbox" className="w-5 h-5 accent-[#b91c1c]" disabled={busy} checked={picked.includes(c)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, c] : p.filter((x) => x !== c)))} /> Auto
+                <input type="checkbox" className="w-5 h-5 accent-[#7b1fa2]" disabled={busy} checked={picked.includes(c)} onChange={(e) => setPicked((p) => (e.target.checked ? [...p, c] : p.filter((x) => x !== c)))} /> Auto
               </label>
               <span className="text-[13px] tracking-wide">
                 {st === 'rating' ? <span className="inline-flex items-center gap-2 text-brand-700"><Loader2 size={14} className="animate-spin" /> RATING…</span>
@@ -216,7 +216,7 @@ export function SubmitView({ onSubmit }: { onSubmit: (carriers: string[], saveTo
         })}
       </div>
       <label className="flex items-center gap-2 mt-4 text-[13px] text-ink-700">
-        <input type="checkbox" className="w-4 h-4 accent-[#b91c1c]" checked={saveBack} disabled={busy} onChange={(e) => setSaveBack(e.target.checked)} />
+        <input type="checkbox" className="w-4 h-4 accent-[#7b1fa2]" checked={saveBack} disabled={busy} onChange={(e) => setSaveBack(e.target.checked)} />
         Save drivers and vehicles to the applicant record
       </label>
       {error && <div className="text-[13px] text-red-600 mt-3">{error}</div>}
@@ -294,7 +294,7 @@ export function ResultsView({ quoteId, results, alt }: { quoteId: string | null;
         <div className="inline-flex rounded border border-ink-200 overflow-hidden" role="group" aria-label="Payment plan">
           {(['full', 'monthly', 'eft'] as PayPlan[]).map((p) => (
             <button key={p} type="button" aria-pressed={plan === p} onClick={() => setPlan(p)}
-              className={cx('h-8 px-3 text-[13px] font-semibold inline-flex items-center gap-1.5', plan === p ? 'bg-brand-700 text-white' : 'bg-white text-ink-700 hover:bg-ink-50', p !== 'full' && 'border-l border-ink-200')}>
+              className={cx('h-8 px-3 text-[13px] font-semibold inline-flex items-center gap-1.5', plan === p ? 'bg-[#7b1fa2] text-white' : 'bg-white text-ink-700 hover:bg-ink-50', p !== 'full' && 'border-l border-ink-200')}>
               {plan === p && <CheckCircle2 size={13} />}{PAY_LABEL[p]}
             </button>
           ))}
