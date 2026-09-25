@@ -1,19 +1,21 @@
 import {
   AlertTriangle, Bell, Check, ListFilter, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
-  FolderOpen, HelpCircle, Loader2, Menu as MenuIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
+  FolderOpen, HelpCircle, Loader2, LogOut, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo, Wordmark } from '@/components/Logo';
 import { SideNav } from '@/components/SideNav';
 import { AutomationTicker } from '@/modules/admin';
 import { SupportChatHost } from '@/modules/support';
-import { Avatar, cx } from '@/components/ui';
+import { Avatar, cx, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { accountName, daysUntil, fmtDate, fmtPhone } from '@/lib/format';
 import { useDebounced, useTable } from '@/lib/hooks';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, Policy } from '@/lib/types';
+import { signOut } from '@/modules/usersettings/session';
+import { usernameOf } from '@/modules/usersettings/tabs-profile';
 
 export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickAdd: (kind: QuickAddKind) => void }) {
   const route = useRoute();
@@ -53,7 +55,6 @@ function StatusFooter() {
 export type QuickAddKind = 'account' | 'commercial' | 'quote' | 'policy' | 'activity' | 'claim' | 'message';
 
 function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () => void; onQuickAdd: (k: QuickAddKind) => void; notifOpen: boolean; onToggleNotif: () => void }) {
-  const { me } = useAppData();
   return (
     <header className="topbar">
       <a className="brand-lockup" href={href('/')} aria-label="Workspace home"><Logo size={32} /><Wordmark height={17} className="brand-wordmark" /></a>
@@ -65,11 +66,45 @@ function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () =
         <a className="top-icon hide-sm" href={href('/activities')} aria-label="My activities" title="My activities"><ClipboardList size={20} /></a>
         <NotificationsButton open={notifOpen} onToggle={onToggleNotif} />
         <a className="top-icon hide-sm" href={href('/help')} aria-label="Help & training" title="Help & training"><HelpCircle size={20} /></a>
-        <a className="avatar-link" href={href('/settings?tab=agency')} title={me ? `Acting as ${me.name} (${me.role})` : 'Choose user'}>
-          <Avatar name={me?.name ?? '?'} color={me?.color} size={30} />
-        </a>
+        <UserMenu />
       </div>
     </header>
+  );
+}
+
+function UserMenu() {
+  const { me } = useAppData();
+  const { confirm } = useFeedback();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutside(ref, open, () => setOpen(false));
+  const logout = async () => {
+    setOpen(false);
+    if (await confirm({ title: 'Log out?', message: 'You will return to the sign-in screen.', confirmLabel: 'Logout' })) {
+      await signOut();
+      navigate('/');
+    }
+  };
+  return (
+    <div className="relative" ref={ref}>
+      <button className="avatar-link" aria-label="User menu" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title={me ? `${me.name} (${me.role})` : 'User'}>
+        <Avatar name={me?.name ?? '?'} color={me?.color} size={30} />
+      </button>
+      {open && (
+        <div className="top-pop w-56" role="menu">
+          <div className="px-4 pt-2.5 pb-2 border-b border-ink-100">
+            <div className="text-[13px] font-semibold text-ink-900 truncate">{me?.name}</div>
+            <div className="text-xs text-ink-400 truncate" data-testid="menu-username">{me ? usernameOf(me.name) : ''}</div>
+          </div>
+          <a role="menuitem" href={href('/user-settings')} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-800 hover:bg-ink-50">
+            <SettingsIcon size={15} className="text-ink-500" /> User settings
+          </a>
+          <button role="menuitem" onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-800 hover:bg-ink-50 text-left">
+            <LogOut size={15} className="text-ink-500" /> Logout
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

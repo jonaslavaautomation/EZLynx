@@ -1,7 +1,7 @@
 /** Recently opened applicants (accounts), most recent first. Kept per browser, like a user's history. */
 
 const KEY = 'northstar-ams:recent-accounts';
-const MAX = 10;
+const MAX = 25; // largest "recent applicants" choice in User Settings → Preferences
 const EVENT = 'northstar-ams:recent-change';
 
 export function getRecentAccountIds(): string[] {

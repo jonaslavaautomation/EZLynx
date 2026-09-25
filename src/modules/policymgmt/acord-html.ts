@@ -71,6 +71,12 @@ export type AcordContext = {
   authorizedRep?: string | null;
   /** Extra default values from a Settings → form template, printed as a section. */
   templateFields?: [string, string][];
+  /** User Settings → ACORD Forms: which address to use for correspondence. */
+  preferredAddress?: 'applicant' | 'agency' | 'producer';
+  /** The preparing user's contact details (User Settings → Account). */
+  producerContact?: { name: string; email: string | null; phone: string | null } | null;
+  /** The preparing user's signature (typed text or an uploaded image data URL). */
+  signature?: { text: string | null; image: string | null } | null;
 };
 
 export const acordDocTitle = (f: AcordForm) => `ACORD ${f.code} — data for ${f.title}`;
@@ -88,7 +94,16 @@ export function buildAcordHtml(ctx: AcordContext) {
     ['Agency', s?.name], ['Phone', s?.phone ? fmtPhone(s.phone) : null], ['Email', s?.email],
     ['Address', s?.address], ['City / State / ZIP', s ? cityLine(s) : null], ['Agency license #', s?.license_number],
     ['Producer', p?.producer || a.producer], ['Customer service rep', a.csr], ['Prepared by', ctx.preparedBy],
+    ...(ctx.producerContact ? [['Preparer email', ctx.producerContact.email], ['Preparer phone', ctx.producerContact.phone ? fmtPhone(ctx.producerContact.phone) : null]] as [string, unknown][] : []),
   ])}`);
+
+  if (ctx.preferredAddress) {
+    const lines = ctx.preferredAddress === 'applicant' ? [accountName(a), a.address, cityLine(a)]
+      : ctx.preferredAddress === 'agency' ? [s?.name, s?.address, s ? cityLine(s) : null]
+        : [ctx.producerContact?.name ?? ctx.preparedBy, s?.name, s?.address, s ? cityLine(s) : null];
+    const label = { applicant: 'Applicant', agency: 'Agency', producer: 'Producer' }[ctx.preferredAddress];
+    parts.push(`<h2>Preferred address (${label})</h2><p class="val" style="white-space:pre-wrap">${lines.filter(Boolean).map((l) => esc(l)).join('<br>') || '<span class="blank">not on file</span>'}</p>`);
+  }
 
   parts.push(`<h2>${form.certificate ? 'Named insured' : 'Applicant'}</h2>${kv([
     ['Name', accountName(a)], ['Entity type', commercial ? 'Business' : 'Individual'], ['Contact', commercial ? `${a.first_name} ${a.last_name}` : null],
@@ -157,7 +172,13 @@ export function buildAcordHtml(ctx: AcordContext) {
     ])}<p class="muted">Payroll, class codes and officer elections are collected from the insured for the form.</p>`);
   }
 
-  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${STYLE}</style></head><body>
+  const sig = ctx.signature;
+  const img = sig?.image && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(sig.image) ? sig.image : null;
+  if (img || sig?.text?.trim()) {
+    parts.push(`<h2>Producer signature</h2>${img ? `<img src="${img}" alt="Signature" style="max-height:70px;max-width:320px">` : `<div style="font-family:'Dancing Script',cursive;font-size:30px">${esc(sig!.text!.trim())}</div>`}<p class="muted">${esc(ctx.preparedBy ?? '')} · ${esc(fmtDate(new Date().toISOString()))}</p>`);
+  }
+
+  return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>${sig?.text && !img ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500&display=swap">' : ''}<style>${STYLE}</style></head><body>
 <button class="print" onclick="window.print()">Print</button>
 <div class="page">
   <div class="bar">

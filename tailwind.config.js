@@ -3,7 +3,7 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
-      fontFamily: { sans: ['"DM Sans"', 'Arial', 'sans-serif'] },
+      fontFamily: { sans: ['"DM Sans"', 'Arial', 'sans-serif'], signature: ['"Dancing Script"', 'cursive'] },
       colors: {
         // brand red (links, primary actions)
         brand: { 50: '#fef2f2', 100: '#fee2e2', 200: '#fecaca', 300: '#fca5a5', 400: '#f87171', 500: '#dc2626', 600: '#b91c1c', 700: '#991b1b', 800: '#7f1d1d', 900: '#651414' },

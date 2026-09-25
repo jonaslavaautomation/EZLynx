@@ -27,6 +27,8 @@ import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies'
 import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
 import { ReportsPage } from '@/modules/reports';
 import { SettingsPage } from '@/modules/settings';
+import { SessionGate } from '@/modules/usersettings/SessionGate';
+import { UserSettingsPage } from '@/modules/usersettings';
 
 // Runs once per page load (StrictMode mounts effects twice; seeding must not run twice).
 let bootOnce: Promise<Boot> | null = null;
@@ -71,6 +73,7 @@ function Routes() {
     case 'accounting': page = <AccountingPage />; break;
     case 'reports': page = <ReportsPage />; break;
     case 'settings': page = <SettingsPage />; break;
+    case 'user-settings': page = <UserSettingsPage />; break;
     case 'help': page = <HelpPage />; break;
     case 'policy-mgmt': page = <PolicyMgmtRoutes segments={segments.slice(1)} />; break;
     case 'comm': page = <CommRoutes segments={segments.slice(1)} />; break;
@@ -152,7 +155,9 @@ export default function App() {
   return (
     <FeedbackProvider>
       <AppDataProvider>
-        <Shell />
+        <SessionGate>
+          <Shell />
+        </SessionGate>
       </AppDataProvider>
     </FeedbackProvider>
   );
