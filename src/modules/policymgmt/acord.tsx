@@ -14,15 +14,20 @@ import { acordUserContext, useMySettings } from '@/modules/usersettings/data';
 import { useCertificateSettings, useFormTemplates } from '@/modules/admin/integration';
 import { fieldLabel } from '@/modules/admin/templates';
 import { ACORD_FORMS, acordDocTitle, buildAcordHtml, type AcordForm } from './acord-html';
+import { Acord25PdfModal, LicensedFormsPanel, useAcordFile } from './acord25';
 
 export function AcordPage() {
   const { toast } = useFeedback();
   const [q, setQ] = useState('');
   const [form, setForm] = useState<AcordForm | null>(null);
+  // With the agency's fillable ACORD 25 uploaded, ACORD 25 fills the real PDF; the data sheet stays available.
+  const acord25 = useAcordFile('25').file;
+  const [dataSheet, setDataSheet] = useState(false);
   const docs = useTable('documents', { order: { column: 'created_at', ascending: false } });
   const accounts = useTable('accounts');
   const am = useMemo(() => new Map(accounts.data.map((a) => [a.id, a])), [accounts.data]);
   const recent = useMemo(() => docs.data.filter((d) => d.name.toUpperCase().startsWith('ACORD')).slice(0, 50), [docs.data]);
+  const close = () => { setForm(null); setDataSheet(false); };
 
   const forms = useMemo(() => {
     const t = q.trim().toLowerCase();
@@ -52,6 +57,7 @@ export function AcordPage() {
   return (
     <div>
       <PageHeader title="ACORD Library" subtitle="Pre-fill ACORD form data from the account and policy on file" icon={<Library size={20} />} actions={<SearchInput value={q} onChange={setQ} placeholder="Search forms…" className="w-full sm:w-64" />} />
+      <LicensedFormsPanel />
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mb-4">
         {forms.map((f) => (
           <div key={f.code} className="bg-white border border-[#e3e3e3] rounded shadow-card p-4 flex flex-col min-w-0">
@@ -79,7 +85,9 @@ export function AcordPage() {
         <DataTable columns={columns} rows={recent} loading={docs.loading} dense pageSize={10} initialSort={{ key: 'created', dir: 'desc' }}
           empty={<EmptyState icon={<FileText size={22} />} title="No ACORD data sheets yet" message="Choose a form above and fill it from an account to create one. It is saved to the account’s documents." />} />
       </Panel>
-      {form && <FillModal form={form} onClose={() => setForm(null)} />}
+      {form && form.code === '25' && acord25 && !dataSheet
+        ? <Acord25PdfModal file={acord25} onClose={close} onDataSheet={() => setDataSheet(true)} />
+        : form && <FillModal form={form} onClose={close} />}
     </div>
   );
 }

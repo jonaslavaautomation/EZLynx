@@ -40,6 +40,13 @@ export type LinesConfig = Record<string, LineSetting>;
 /** Monthly targets shown on the dashboard Performance Goals tile. */
 export type GoalsConfig = { monthly_new_policies: number; monthly_new_premium: number; quote_close_pct: number; tasks_on_time_pct: number };
 
+/** An agency-licensed fillable ACORD PDF uploaded to the ACORD Library (the file itself never ships with the app). */
+export type AcordFileRef = {
+  name: string; storage_path: string | null; data_url: string | null; size_bytes: number;
+  field_count: number; edition: string; uploaded_at: string; uploaded_by: string | null;
+};
+export type AcordFilesConfig = { forms: Record<string, AcordFileRef> };
+
 export type ConfigMap = {
   activity: ActivityConfig;
   certificates: CertificateConfig;
@@ -47,6 +54,7 @@ export type ConfigMap = {
   email_subscriptions: EmailSubscriptionsConfig;
   lines: LinesConfig;
   goals: GoalsConfig;
+  acord_files: AcordFilesConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -61,6 +69,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   plugins: { enabled: {} },
   email_subscriptions: { subscriptions: {} },
   goals: { monthly_new_policies: 10, monthly_new_premium: 15000, quote_close_pct: 35, tasks_on_time_pct: 85 },
+  acord_files: { forms: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 
