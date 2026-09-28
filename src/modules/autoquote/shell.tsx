@@ -113,18 +113,22 @@ export function QuoteStepper({ steps, view, status, visited, onGo }: {
   );
 }
 
-export function RecordTabs({ accountId }: { accountId: string }) {
-  const tabs: [string, string][] = [
-    ['Overview', ''], ['Policies', 'policies'], ['Details', 'household'], ['Quotes', 'quotes'], ['Lead Info', 'overview'],
-    ['Documents', 'documents'], ['Certificates', 'certificates'], ['Activity', 'activities'], ['Invoices', 'billing'],
-  ];
+/** The applicant record's tabs (also shown above the quoting workflows, where Quotes is active). */
+export const RECORD_TABS = [
+  { key: 'overview', label: 'Overview' }, { key: 'policies', label: 'Policies' }, { key: 'details', label: 'Details' }, { key: 'quotes', label: 'Quotes' },
+  { key: 'lead', label: 'Lead Info' }, { key: 'documents', label: 'Documents' }, { key: 'certificates', label: 'Certificates' }, { key: 'activities', label: 'Activity' },
+  { key: 'billing', label: 'Invoices' }, { key: 'claims', label: 'Claims' }, { key: 'messages', label: 'Messages' },
+] as const;
+export type RecordTab = (typeof RECORD_TABS)[number]['key'];
+
+export function RecordTabs({ accountId, active = 'quotes' }: { accountId: string; active?: RecordTab }) {
   return (
-    <div className="flex gap-0 overflow-x-auto bg-white border-b border-ink-200 px-2">
-      {tabs.map(([label, tab]) => {
-        const to = tab === 'certificates' ? '/policy-mgmt/acord' : `/accounts/${accountId}${tab && tab !== 'overview' ? `?tab=${tab}` : ''}`;
-        const active = label === 'Quotes';
+    <div className="flex gap-0 overflow-x-auto bg-white border-b border-ink-200 px-2" role="tablist" aria-label="Applicant record">
+      {RECORD_TABS.map((t) => {
+        const on = t.key === active;
         return (
-          <a key={label} href={href(to)} className={cx('px-4 py-2.5 text-[12.5px] font-semibold tracking-wide whitespace-nowrap border-b-2', active ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-600 hover:text-ink-900')}>{label}</a>
+          <a key={t.key} role="tab" aria-selected={on} href={href(`/accounts/${accountId}${t.key === 'overview' ? '' : `?tab=${t.key}`}`)}
+            className={cx('px-5 py-3 text-[13px] font-semibold tracking-wide whitespace-nowrap border-b-2 transition-colors', on ? 'border-brand-600 text-brand-600' : 'border-transparent text-ink-600 hover:text-ink-900 hover:bg-ink-50')}>{t.label}</a>
         );
       })}
     </div>
@@ -149,6 +153,15 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
   const { settings } = useAppData();
   const { toast } = useFeedback();
   const quotes = useTable('quotes', { eq: { account_id: a.id } });
+  const contacts = useTable('account_contacts', { eq: { account_id: a.id } });
+  const drivers = useTable('drivers', { eq: { account_id: a.id } });
+  // Co-applicant: the secondary contact, else a spouse on the driver list.
+  const coContact = contacts.data.find((c) => c.is_secondary);
+  const coDriver = drivers.data.find((d) => d.relationship === 'Spouse');
+  const co = a.account_type === 'Commercial' ? null : coContact
+    ? { name: `${coContact.first_name} ${coContact.last_name}`.trim(), first: coContact.first_name, last: coContact.last_name, relationship: coContact.relationship ?? 'Co-Applicant', email: coContact.email, phone: coContact.mobile_phone ?? coContact.phone }
+    : coDriver ? { name: `${coDriver.first_name} ${coDriver.last_name}`, first: coDriver.first_name, last: coDriver.last_name, relationship: 'Spouse', email: null, phone: null } : null;
+  const title = co ? (co.last === a.last_name ? `${a.first_name} & ${co.first} ${a.last_name}` : `${a.first_name} ${a.last_name} & ${co.name}`) : accountName(a);
   const openQuotes = quotes.data.filter((q) => q.status === 'Draft' || q.status === 'Rated').length;
   const addr = [a.address, a.city, [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   const toggle = () => { setOpen(!open); writeLs(DRAWER_KEY, open ? '0' : '1'); };
@@ -174,7 +187,7 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
   if (!open) {
     return (
       <aside className="w-[34px] shrink-0 bg-white border-r border-ink-200 flex flex-col items-center py-3 text-ink-800">
-        <div className="text-[14px] font-semibold text-brand-700 [writing-mode:vertical-rl] rotate-180 mb-6 whitespace-nowrap">{accountName(a)}</div>
+        <div className="text-[14px] font-semibold text-brand-700 [writing-mode:vertical-rl] rotate-180 mb-6 whitespace-nowrap">{title}</div>
         <div className="flex flex-col items-center gap-4 mt-auto mb-4">{icons}</div>
         <button type="button" aria-label="Expand applicant panel" onClick={toggle} className="text-ink-600 hover:text-ink-900"><ChevronRight size={16} /></button>
       </aside>
@@ -182,7 +195,7 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
   }
   return (
     <aside className="w-[220px] shrink-0 bg-white border-r border-ink-200 px-3 py-3 text-[11.5px] text-ink-800 flex flex-col">
-      <a href={href(`/accounts/${a.id}`)} className="text-[18px] font-semibold text-brand-700 hover:underline leading-tight">{accountName(a)}</a>
+      <a href={href(`/accounts/${a.id}`)} className="text-[18px] font-bold uppercase text-brand-600 hover:underline leading-tight" data-testid="applicant-title">{title}</a>
       <div className="grid grid-cols-4 gap-3 mt-3 text-ink-800 place-items-start">{icons}</div>
       <dl className="mt-4 space-y-0.5">
         <div><dt className="inline font-semibold">Type: </dt><dd className="inline">{a.status ?? 'Unknown'}</dd></div>
@@ -206,6 +219,15 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
         <a href={`mailto:${a.email}`} className="text-brand-700 hover:underline break-all">{a.email}</a>
         {(a.mobile_phone || a.phone) && <div><span className="font-semibold">{a.mobile_phone ? 'Mobile' : 'Phone'}:</span> <a href={`tel:${a.mobile_phone || a.phone}`} className="text-brand-700 hover:underline">{fmtPhone(a.mobile_phone || a.phone)}</a></div>}
       </div>
+      {co && (
+        <div className="mt-4" data-testid="co-applicant">
+          <div className="text-[13px] font-semibold text-ink-900">Co-Applicant</div>
+          <div>{co.name.toUpperCase()}</div>
+          <div className="text-ink-600">({co.relationship})</div>
+          {co.email ? <a href={`mailto:${co.email}`} className="text-brand-700 hover:underline break-all">{co.email}</a> : <div className="text-ink-600">No email available</div>}
+          {co.phone && <div><span className="font-semibold">Mobile:</span> {fmtPhone(co.phone)}</div>}
+        </div>
+      )}
       <div className="mt-4">
         <div className="text-[13px] font-semibold text-ink-900">Connected Apps</div>
         <div className="text-ink-600">Quickly access integrations related to this applicant.</div>

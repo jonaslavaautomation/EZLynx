@@ -1,6 +1,6 @@
 import {
   AlertTriangle, Bell, Check, ListFilter, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
-  FolderOpen, HelpCircle, Loader2, LogOut, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, User, UserPlus, X,
+  FolderOpen, HelpCircle, LayoutGrid, Loader2, LogOut, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, Sparkles, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo, Wordmark } from '@/components/Logo';
@@ -10,10 +10,10 @@ import { SupportChatHost } from '@/modules/support';
 import { Avatar, cx, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
-import { accountName, daysUntil, fmtDate, fmtPhone } from '@/lib/format';
+import { accountName, daysUntil } from '@/lib/format';
 import { useDebounced, useTable } from '@/lib/hooks';
 import { href, navigate, useRoute } from '@/lib/router';
-import type { Account, Policy } from '@/lib/types';
+import type { Account } from '@/lib/types';
 import { signOut } from '@/modules/usersettings/session';
 import { usernameOf } from '@/modules/usersettings/tabs-profile';
 
@@ -62,11 +62,13 @@ function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () =
       <GlobalSearch />
       <div className="top-actions">
         <button className="cta-button" onClick={() => onQuickAdd('quote')}><Calculator size={16} /> <span className="hidden sm:inline">Quick Quote</span></button>
+        <AiButton />
+        <UserMenu />
         <QuickAddMenu onPick={onQuickAdd} />
         <a className="top-icon hide-sm" href={href('/activities')} aria-label="My activities" title="My activities"><ClipboardList size={20} /></a>
         <NotificationsButton open={notifOpen} onToggle={onToggleNotif} />
+        <a className="top-icon hide-sm" href={href('/marketplace/mine')} aria-label="Apps and integrations" title="Apps and integrations"><LayoutGrid size={20} /></a>
         <a className="top-icon hide-sm" href={href('/help')} aria-label="Help & training" title="Help & training"><HelpCircle size={20} /></a>
-        <UserMenu />
       </div>
     </header>
   );
@@ -278,9 +280,14 @@ function NotificationsPanel({ onClose }: { onClose: () => void }) {
 
 // ── Global search: accounts + policies ──
 
-type Hit = { kind: 'account'; row: Account } | { kind: 'policy'; row: Policy; account?: Account };
+/** A search match: the account, plus what matched when it wasn't the account itself (a contact or a policy). */
+type Hit = { row: Account; contact?: string; policy?: string };
+
+const STATUS_PILL: Record<string, string> = { Active: 'bg-[#1e8e3e]', Inactive: 'bg-[#d93025]', Pending: 'bg-[#e37400]', Prospect: 'bg-[#5f6b7a]' };
+const SHOWN = 5;
 
 function GlobalSearch() {
+  const { settings } = useAppData();
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [hits, setHits] = useState<Hit[]>([]);
@@ -307,110 +314,129 @@ function GlobalSearch() {
     let live = true;
     setLoading(true);
     Promise.all([
-      db.search('accounts', ['first_name', 'last_name', 'business_name', 'email', 'phone', 'mobile_phone', 'city'], term, 8),
-      db.search('policies', ['policy_number', 'carrier'], term, 6),
+      db.search('accounts', ['first_name', 'last_name', 'business_name', 'email', 'phone', 'mobile_phone', 'city', 'address', 'zip'], term, 50),
+      db.search('policies', ['policy_number'], term, 10),
+      // Co-applicants and contacts (e.g. searching a spouse's first name finds the household)
+      db.search('account_contacts', ['first_name', 'last_name', 'email', 'phone', 'mobile_phone'], term, 20),
       // "Sarah Mitchell" — match first + last name together
-      term.includes(' ') ? db.search('accounts', ['last_name'], term.split(/\s+/).pop()!, 20) : Promise.resolve([] as Account[]),
-    ]).then(async ([accts, pols, byLast]) => {
+      term.includes(' ') ? db.search('accounts', ['last_name'], term.split(/\s+/).pop()!, 50) : Promise.resolve([] as Account[]),
+    ]).then(async ([accts, pols, contacts, byLast]) => {
       const lower = term.toLowerCase();
       const full = byLast.filter((a) => `${a.first_name} ${a.last_name}`.toLowerCase().includes(lower));
-      const allAccts = [...new Map([...full, ...accts].map((a) => [a.id, a])).values()].slice(0, 8);
-      const ids = [...new Set(pols.map((p) => p.account_id))];
-      const owners = ids.length ? await db.list('accounts', { in: { column: 'id', values: ids } }) : [];
+      const byId = new Map<string, Hit>();
+      for (const a of [...full, ...accts]) byId.set(a.id, { row: a });
+      const extraIds = [...new Set([...contacts.map((c) => c.account_id), ...pols.map((p) => p.account_id)].filter((id) => !byId.has(id)))];
+      const owners = extraIds.length ? await db.list('accounts', { in: { column: 'id', values: extraIds } }) : [];
+      for (const o of owners) byId.set(o.id, { row: o });
+      for (const c of contacts) { const h = byId.get(c.account_id); if (h && !h.contact) h.contact = `${c.first_name} ${c.last_name}`.trim(); }
+      for (const p of pols) { const h = byId.get(p.account_id); if (h && !h.policy) h.policy = `${p.policy_number} · ${p.line_of_business}`; }
       if (!live) return;
-      setHits([
-        ...allAccts.map((row) => ({ kind: 'account' as const, row })),
-        ...pols.map((row) => ({ kind: 'policy' as const, row, account: owners.find((o) => o.id === row.account_id) })),
-      ]);
+      setHits([...byId.values()]);
       setCursor(0);
     }).catch(() => { if (live) setHits([]); }).finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [debounced]);
 
-  const go = (h: Hit) => {
-    navigate(h.kind === 'account' ? `/accounts/${h.row.id}` : `/policies/${h.row.id}`);
-    setOpen(false);
-    setQ('');
-    inputRef.current?.blur();
-  };
+  const close = () => { setOpen(false); setQ(''); inputRef.current?.blur(); };
+  const go = (h: Hit) => { navigate(`/accounts/${h.row.id}`); close(); };
+  const showAll = () => { navigate(`/accounts?q=${encodeURIComponent(q.trim())}`); close(); };
+  const shown = hits.slice(0, SHOWN);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(hits.length - 1, c + 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(shown.length - 1, c + 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor((c) => Math.max(0, c - 1)); }
+    else if (e.key === 'Escape') setOpen(false);
     else if (e.key === 'Enter') {
       // Only jump to a hit if the results belong to what's typed now (not a stale, still-loading query).
-      if (hits[cursor] && !loading && debounced === q) go(hits[cursor]);
-      else if (q.trim()) { navigate(`/accounts?q=${encodeURIComponent(q.trim())}`); setOpen(false); }
+      if (shown[cursor] && !loading && debounced === q) go(shown[cursor]);
+      else if (q.trim()) showAll();
     }
   };
 
-  const accountHits = hits.filter((h) => h.kind === 'account');
-  const policyHits = hits.filter((h) => h.kind === 'policy');
-
   return (
     <div className="search-area" ref={ref}>
-      <Search size={18} className="search-icon-left" />
       <input
         ref={inputRef}
         value={q}
         onChange={(e) => { setQ(e.target.value); setOpen(true); }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="Search accounts, policies, phone, email…  ( / )"
-        className="search-input"
+        placeholder="Search"
+        className="search-input pl-4"
         aria-label="Global search"
       />
       {q && <button className="search-clear" onClick={() => { setQ(''); inputRef.current?.focus(); }} aria-label="Clear search"><X size={16} /></button>}
+      <Search size={20} className="mr-3 shrink-0 text-white" aria-hidden />
       {open && q.trim() && (
-        <div className="search-dropdown">
-          <div className="search-dropdown-header">
-            <span>{loading ? 'Searching…' : `${hits.length} result${hits.length === 1 ? '' : 's'} for "${q.trim()}"`}</span>
-            <a href={href(`/accounts?q=${encodeURIComponent(q.trim())}`)} onClick={() => setOpen(false)}>View all accounts</a>
-          </div>
-          {loading && hits.length === 0 && <div className="search-loading"><Loader2 size={22} className="spin" /><span>Searching…</span></div>}
-          {!loading && hits.length === 0 && <div className="search-empty"><User size={28} /><span>No matches. Press Enter to search all accounts.</span></div>}
-          <div className="search-results">
-            {accountHits.length > 0 && <div className="search-group">Accounts</div>}
-            {accountHits.map((h) => {
-              const a = h.row as Account;
-              const i = hits.indexOf(h);
+        <div className="absolute left-0 top-full mt-1 w-[440px] max-w-[92vw] bg-white rounded shadow-pop border border-[#e2e8f0] z-50 text-[#1a202c]" role="listbox" aria-label="Search results">
+          {loading && hits.length === 0 && <div className="flex items-center gap-2 px-4 py-6 text-[13px] text-[#718096]"><Loader2 size={16} className="animate-spin" /> Searching…</div>}
+          {!loading && hits.length === 0 && <div className="px-4 py-6 text-[13px] text-[#718096]">No matches for &ldquo;{q.trim()}&rdquo;. Press Enter to search all applicants.</div>}
+          <div className="max-h-[430px] overflow-y-auto">
+            {shown.map((h, i) => {
+              const a = h.row;
+              const commercial = a.account_type === 'Commercial';
               return (
-                <button key={a.id} className={cx('account-result', i === cursor && 'cursor')} onMouseEnter={() => setCursor(i)} onClick={() => go(h)}>
-                  <div className="account-avatar">{a.account_type === 'Commercial' ? <Building2 size={16} /> : `${a.first_name[0] ?? ''}${a.last_name[0] ?? ''}`}</div>
-                  <div className="account-info">
-                    <div className="account-name">{accountName(a)}</div>
-                    <div className="account-details">
-                      <span className="account-email">{a.email}</span>
-                      {a.phone && <span className="account-phone">{fmtPhone(a.phone)}</span>}
+                <button key={a.id} type="button" role="option" aria-selected={i === cursor} onMouseEnter={() => setCursor(i)} onClick={() => go(h)}
+                  className={cx('w-full text-left px-4 pt-3 pb-2.5 border-b border-[#e2e8f0] last:border-b-0 transition-colors', i === cursor ? 'bg-[#f2f4f7]' : 'bg-white')}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0 text-[14px] leading-[1.4]">
+                      <div className="font-bold uppercase truncate">{commercial ? a.business_name || accountName(a) : `${a.first_name} ${a.last_name}`}</div>
+                      {a.address && <div className="uppercase">{a.address}</div>}
+                      {(a.city || a.state) && <div className="uppercase">{[a.city, [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(' ')}</div>}
+                      <div>Assigned Producer: <span className="uppercase">{a.producer ?? 'Unassigned'}</span></div>
+                      <div>CSR: <span className="uppercase">{a.csr ?? 'Unassigned'}</span></div>
+                      <div>Agency: {settings?.name ?? '—'}</div>
+                      <div>Contact: <span className="uppercase">{h.contact ?? `${a.first_name} ${a.last_name}`}</span></div>
+                      {h.policy && <div className="text-[#718096] text-[12.5px]">Policy: {h.policy}</div>}
                     </div>
-                    <div className="account-meta">
-                      {a.account_type && <span className="account-tag">{a.account_type}</span>}
-                      {a.status && <span className={`account-status ${a.status.toLowerCase()}`}>{a.status}</span>}
-                      {a.city && a.state && <span className="account-location">{a.city}, {a.state}</span>}
-                    </div>
+                    <span className="text-[12px] uppercase tracking-wide text-[#4a5568] shrink-0">{commercial ? 'Commercial' : 'Personal'}</span>
                   </div>
-                </button>
-              );
-            })}
-            {policyHits.length > 0 && <div className="search-group">Policies</div>}
-            {policyHits.map((h) => {
-              const p = h.row as Policy;
-              const i = hits.indexOf(h);
-              return (
-                <button key={p.id} className={cx('account-result', i === cursor && 'cursor')} onMouseEnter={() => setCursor(i)} onClick={() => go(h)}>
-                  <div className="account-avatar policy"><FolderOpen size={16} /></div>
-                  <div className="account-info">
-                    <div className="account-name">{p.policy_number} · {p.line_of_business}</div>
-                    <div className="account-details">
-                      <span className="account-email">{h.kind === 'policy' && h.account ? accountName(h.account) : ''}</span>
-                      <span className="account-phone">{p.carrier} · exp {fmtDate(p.expiration_date)}</span>
-                    </div>
-                    <div className="account-meta"><span className={`account-status ${p.status.toLowerCase()}`}>{p.status}</span></div>
+                  <div className="flex justify-end mt-1">
+                    <span className={cx('inline-flex items-center h-[22px] px-2.5 rounded-full text-[12px] font-medium text-white', STATUS_PILL[a.status ?? 'Prospect'] ?? STATUS_PILL.Prospect)}>{a.status ?? 'Prospect'}</span>
                   </div>
                 </button>
               );
             })}
           </div>
+          {hits.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#e2e8f0] text-[14px]">
+              <span className="text-[#1a202c]">Showing {shown.length} of {hits.length}</span>
+              <button type="button" onClick={showAll} className="text-[#007a78] font-medium hover:underline focus:outline-none focus-visible:underline">Show All Results</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Header "AI" button: catches you up on the open applicant, or offers quick ways to get to one. */
+function AiButton() {
+  const { path } = useRoute();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useOutside(ref, open, () => setOpen(false));
+  const m = /^\/accounts\/([^/]+)$/.exec(path);
+  const accountId = m && m[1] !== 'new' ? m[1] : null;
+  const click = () => {
+    if (accountId) { const qs = new URLSearchParams(window.location.hash.split('?')[1] ?? ''); qs.set('catchup', '1'); navigate(`/accounts/${accountId}?${qs}`, { replace: true }); return; }
+    setOpen((o) => !o);
+  };
+  const item = (label: string, onClick: () => void) => (
+    <button type="button" role="menuitem" onClick={() => { setOpen(false); onClick(); }} className="w-full text-left px-4 py-2 text-[13px] text-ink-800 hover:bg-ink-50">{label}</button>
+  );
+  return (
+    <div className="relative hide-sm" ref={ref}>
+      <button type="button" className="ai-pill" onClick={click} aria-haspopup={accountId ? undefined : 'menu'} aria-expanded={accountId ? undefined : open} title={accountId ? 'Catch me up on this applicant' : 'AI assist'}>
+        <Sparkles size={15} /> AI
+      </button>
+      {open && (
+        <div className="top-pop w-72" role="menu">
+          <div className="px-4 pt-2.5 pb-2 border-b border-ink-100 text-[12px] text-ink-500">Open an applicant and choose AI (or <b>Catch me up</b>) for a summary of the account.</div>
+          {item('Find an applicant', () => document.querySelector<HTMLInputElement>('.search-input')?.focus())}
+          {item('Recent applicants', () => navigate('/accounts'))}
+          {item('Upcoming renewals', () => navigate('/policies?view=renewals'))}
+          {item('My open tasks', () => navigate('/activities'))}
         </div>
       )}
     </div>
