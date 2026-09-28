@@ -37,11 +37,11 @@ export function OField({ label, required, filled, level, message, children, disa
 
 export const inputCls = 'w-full h-full bg-transparent outline-none px-3 text-[15px] text-ink-900 disabled:cursor-not-allowed';
 
-export function OInput(props: { label: string; value: string; onChange: (v: string) => void; required?: Level; level?: Level | null; message?: string; type?: string; disabled?: boolean; className?: string; maxLength?: number; inputMode?: 'numeric' | 'tel' | 'email'; max?: string; action?: ReactNode }) {
-  const { label, value, onChange, type = 'text', disabled, maxLength, inputMode, max, ...rest } = props;
+export function OInput(props: { label: string; value: string; onChange: (v: string) => void; required?: Level; level?: Level | null; message?: string; type?: string; disabled?: boolean; className?: string; maxLength?: number; inputMode?: 'numeric' | 'tel' | 'email'; max?: string; action?: ReactNode; list?: string }) {
+  const { label, value, onChange, type = 'text', disabled, maxLength, inputMode, max, list, ...rest } = props;
   return (
     <OField label={label} filled={!!value || type === 'date'} disabled={disabled} {...rest}>
-      <input aria-label={label} type={type} value={value} disabled={disabled} maxLength={maxLength} inputMode={inputMode} max={max} onChange={(e) => onChange(e.target.value)} className={inputCls} />
+      <input aria-label={label} type={type} value={value} disabled={disabled} maxLength={maxLength} inputMode={inputMode} max={max} list={list} autoComplete={list ? 'off' : undefined} onChange={(e) => onChange(e.target.value)} className={inputCls} />
     </OField>
   );
 }

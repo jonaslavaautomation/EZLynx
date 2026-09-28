@@ -282,7 +282,7 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
                 {labels.data.length === 0 && <div className="px-3 py-3 text-[13px] text-ink-500">No labels yet. <a href={href('/admin/labels')}>Manage labels</a></div>}
                 {labels.data.map((l) => (
                   <label key={l.id} className="flex items-center gap-2 px-3 py-2 text-[13px] hover:bg-ink-50 cursor-pointer">
-                    <input type="checkbox" className="w-4 h-4 accent-[#dc2626]" checked={f.labels.includes(l.id)} onChange={(e) => set('labels')(e.target.checked ? [...f.labels, l.id] : f.labels.filter((x) => x !== l.id))} />
+                    <input type="checkbox" className="w-4 h-4 accent-[#4b5563]" checked={f.labels.includes(l.id)} onChange={(e) => set('labels')(e.target.checked ? [...f.labels, l.id] : f.labels.filter((x) => x !== l.id))} />
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: l.color }} />{l.name}
                   </label>
                 ))}

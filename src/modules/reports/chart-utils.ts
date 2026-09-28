@@ -3,7 +3,7 @@
 /** Validated categorical palette (light surface), fixed order. */
 export const CHART_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
 /** Single-series accent (brand teal). */
-export const CHART_ACCENT = '#dc2626';
+export const CHART_ACCENT = '#4b5563';
 const OTHER_COLOR = '#beb3b3';
 
 export type ValueFormat = (n: number) => string;

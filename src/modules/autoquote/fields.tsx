@@ -19,6 +19,8 @@ export type Ctx = {
 };
 
 export const WorkflowCtx = createContext<Ctx | null>(null);
+/** Field → validation message for the open workflow (shared by the Auto and Home workflows). */
+export const IssuesCtx = createContext<Map<string, string>>(new Map());
 export function useWf() {
   const c = useContext(WorkflowCtx);
   if (!c) throw new Error('useWf outside workflow');
@@ -27,16 +29,16 @@ export function useWf() {
 
 type Opt = string | { value: string; label: string };
 
-export function WInput({ field, label, value, onChange, required, type, disabled, inputMode, maxLength, className, action, max }: {
+export function WInput({ field, label, value, onChange, required, type, disabled, inputMode, maxLength, className, action, max, list }: {
   field: string; label: string; value: string; onChange: (v: string) => void; required?: boolean; type?: string; disabled?: boolean;
-  inputMode?: 'numeric' | 'tel' | 'email'; maxLength?: number; className?: string; action?: ReactNode; max?: string;
+  inputMode?: 'numeric' | 'tel' | 'email'; maxLength?: number; className?: string; action?: ReactNode; max?: string; list?: string;
 }) {
-  const { issues } = useWf();
+  const issues = useContext(IssuesCtx);
   const msg = issues.get(field);
   return (
     <div data-field={field} className={className}>
       <OInput label={label} value={value} onChange={onChange} required={required ? 'rating' : undefined} level={msg ? 'rating' : null} message={msg}
-        type={type} disabled={disabled} inputMode={inputMode} maxLength={maxLength} action={action} max={max} />
+        type={type} disabled={disabled} inputMode={inputMode} maxLength={maxLength} action={action} max={max} list={list} />
     </div>
   );
 }
@@ -44,7 +46,7 @@ export function WInput({ field, label, value, onChange, required, type, disabled
 export function WSelect({ field, label, value, onChange, options, required, disabled, className }: {
   field: string; label: string; value: string; onChange: (v: string) => void; options: Opt[]; required?: boolean; disabled?: boolean; className?: string;
 }) {
-  const { issues } = useWf();
+  const issues = useContext(IssuesCtx);
   const msg = issues.get(field);
   return (
     <div data-field={field} className={className}>
@@ -54,7 +56,7 @@ export function WSelect({ field, label, value, onChange, options, required, disa
 }
 
 export function Switch({ checked, onChange, label, disabled, field }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean; field?: string }) {
-  const { issues } = useWf();
+  const issues = useContext(IssuesCtx);
   const msg = field ? issues.get(field) : undefined;
   return (
     <div data-field={field}>

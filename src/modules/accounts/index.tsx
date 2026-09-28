@@ -1,5 +1,5 @@
 import {
-  Building2, Calculator, Calendar, Car, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, Upload, User, Users,
+  Building2, Calculator, Calendar, Car, Home, Download, FileText, FolderOpen, Mail, MapPin, MessageSquare, Pencil, Phone, Plus, ShieldAlert, Trash2, Upload, User, Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -235,7 +235,8 @@ export function AccountDetail({ id }: { id: string }) {
             ? <Button variant="primary" icon={<Calculator size={15} />} onClick={() => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine)}`)}>New quote</Button>
             : <Menu align="left" trigger={<Button variant="primary" icon={<Calculator size={15} />}>New quote</Button>} items={[
               { label: 'Auto (quoting workflow)', icon: <Car size={14} />, onClick: () => navigate(`/accounts/${a.id}/auto-quote`) },
-              { label: 'Other lines (quick rater)', icon: <Calculator size={14} />, onClick: () => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine === 'Personal Auto' ? 'Homeowners' : primaryLine)}`) },
+              { label: 'Home (quoting workflow)', icon: <Home size={14} />, onClick: () => navigate(`/accounts/${a.id}/home-quote`) },
+              { label: 'Other lines (quick rater)', icon: <Calculator size={14} />, onClick: () => navigate(`/quotes/new?account=${a.id}&line=${encodeURIComponent(primaryLine === 'Personal Auto' || primaryLine === 'Homeowners' ? 'Renters' : primaryLine)}`) },
             ]} />}
           <Button icon={<MessageSquare size={15} />} onClick={() => setTab('messages')}>Text</Button>
           <Button icon={<Mail size={15} />} onClick={() => { window.location.href = `mailto:${a.email}`; }}>Email</Button>

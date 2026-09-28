@@ -1,5 +1,5 @@
 import { Copy, Loader2, Pencil, Search, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Modal, cx, useFeedback } from '@/components/ui';
 import { db } from '@/lib/db';
 import { fmtDate, fmtMoney, today } from '@/lib/format';
@@ -13,6 +13,7 @@ import {
   type Incident, type IncidentKind, type VehicleCoverage, type WVehicle,
 } from './model';
 import { costNewEstimate, decodeVin } from './rate';
+import { vehicleModels } from '@/modules/quotes/reference';
 import { CarrierQuestions, StepFooter, dropAnswers } from './steps-a';
 import { uuid } from '@/lib/db';
 
@@ -67,6 +68,13 @@ function VehicleCard({ v, index }: { v: WVehicle; index: number }) {
   };
 
   const makes = v.make && !MAKES.includes(v.make) ? [v.make, ...MAKES] : MAKES;
+  // Model suggestions for the chosen make and year (NHTSA); the field still accepts any model.
+  const [models, setModels] = useState<string[]>([]);
+  useEffect(() => {
+    let live = true;
+    void vehicleModels(v.make, v.year).then((m) => { if (live) setModels(m); });
+    return () => { live = false; };
+  }, [v.make, v.year]);
   return (
     <Card title={`Vehicle ${index + 1}`} subtitle={v.make ? vehicleName(v, index) : undefined} ok={clean(issues, `vehicle.${v.key}.`)}
       right={w.vehicles.length > 1 && <button type="button" onClick={remove} className="inline-flex items-center gap-1 text-[12px] text-red-600 hover:underline"><Trash2 size={13} /> Remove</button>}>
@@ -78,7 +86,8 @@ function VehicleCard({ v, index }: { v: WVehicle; index: number }) {
         </div>
         <WSelect field={f('year')} label="Year" required value={v.year} onChange={(year) => set({ year })} options={vehicleYears()} />
         <WSelect field={f('make')} label="Make" required value={v.make} onChange={(make) => set({ make })} options={makes} />
-        <WInput field={f('model')} label="Model" required value={v.model} onChange={(model) => set({ model })} maxLength={40} />
+        <WInput field={f('model')} label="Model" required value={v.model} onChange={(model) => set({ model })} maxLength={40} list={`models-${v.key}`} />
+        <datalist id={`models-${v.key}`}>{models.map((m) => <option key={m} value={m} />)}</datalist>
         <WInput field={f('sub_model')} label="Sub-Model" value={v.sub_model} onChange={(sub_model) => set({ sub_model })} maxLength={40} />
         <WInput field={f('purchase_date')} label="Purchase Date" required type="date" value={v.purchase_date} onChange={(purchase_date) => set({ purchase_date })} />
         <WSelect field={f('passive')} label="Passive Restraints" value={v.passive} onChange={(passive) => set({ passive })} options={PASSIVE} />

@@ -250,11 +250,11 @@ function ProposalTemplateModal({ template, all, onClose }: { template: ProposalT
 // ── Summary of Insurance ──
 
 const SOI_CSS = `*{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#231f1f;margin:0;background:#f7f3f3;font-size:13px}
-.page{max-width:860px;margin:24px auto;background:#fff;padding:36px;border:1px solid #e8e0e0}.bar{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #dc2626;padding-bottom:12px;margin-bottom:16px}
-.agency{font-size:18px;font-weight:700;color:#b91c1c}.muted{color:#7d6f6f;font-size:11.5px}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:18px 0 6px}
+.page{max-width:860px;margin:24px auto;background:#fff;padding:36px;border:1px solid #e8e0e0}.bar{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #374151;padding-bottom:12px;margin-bottom:16px}
+.agency{font-size:18px;font-weight:700;color:#1f2937}.muted{color:#7d6f6f;font-size:11.5px}h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;margin:18px 0 6px}
 table{width:100%;border-collapse:collapse;margin-top:4px}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid #efe9e9;vertical-align:top}th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#7d6f6f;background:#faf8f8}
 .pol{border:1px solid #efe9e9;border-radius:4px;padding:12px 14px;margin-top:10px}.right{text-align:right}.total{font-weight:700;font-size:14px;text-align:right;margin-top:12px}
-.disc{margin-top:22px;border-top:1px solid #efe9e9;padding-top:10px;color:#7d6f6f;font-size:11px}.print{position:fixed;top:14px;right:14px;background:#dc2626;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
+.disc{margin-top:22px;border-top:1px solid #efe9e9;padding-top:10px;color:#7d6f6f;font-size:11px}.print{position:fixed;top:14px;right:14px;background:#374151;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
 @media(max-width:640px){.page{padding:18px;margin:0}}@media print{body{background:#fff}.page{border:0;margin:0;max-width:none;padding:0}.print{display:none}}`;
 
 export function buildSoiHtml(o: { account: Account; policies: Policy[]; template: ProposalTemplate | null; settings: AgencySettings | null; agent: string | null }) {

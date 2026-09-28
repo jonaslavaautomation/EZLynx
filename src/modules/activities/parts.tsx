@@ -50,7 +50,7 @@ export function CompleteBox({ activity, label }: { activity: Activity; label?: s
       type="checkbox"
       aria-label={label ?? (done ? 'Reopen activity' : 'Mark complete')}
       title={done ? 'Reopen' : 'Mark complete'}
-      className="w-4 h-4 accent-[#dc2626] cursor-pointer align-middle"
+      className="w-4 h-4 accent-[#4b5563] cursor-pointer align-middle"
       checked={done}
       disabled={busy}
       onClick={(e) => e.stopPropagation()}

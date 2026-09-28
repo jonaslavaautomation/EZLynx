@@ -419,7 +419,7 @@ export function CampaignBuilder({ id, initialListId }: { id: string | null; init
                   ['draft', 'Save as draft', 'Keep working on it later.', <FilePen key="i" size={15} />],
                 ] as [When, string, string, ReactNode][]).map(([v, label, hint, icon]) => (
                   <label key={v} className={cx('flex items-start gap-3 border rounded px-3 py-2.5 cursor-pointer', when === v ? 'border-brand-300 bg-brand-50/50' : 'border-ink-200 hover:border-ink-300')}>
-                    <input type="radio" name="when" className="mt-1 accent-[#dc2626]" checked={when === v} onChange={() => { setWhen(v); setErrors({}); }} />
+                    <input type="radio" name="when" className="mt-1 accent-[#4b5563]" checked={when === v} onChange={() => { setWhen(v); setErrors({}); }} />
                     <span className="text-ink-500 mt-0.5">{icon}</span>
                     <span><span className="block text-[13px] font-semibold text-ink-900">{label}</span><span className="block text-xs text-ink-400">{hint}</span></span>
                   </label>

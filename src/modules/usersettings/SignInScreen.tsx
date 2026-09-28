@@ -97,7 +97,7 @@ export function SignInScreen() {
         )}
         {picked && (
           <label className="flex items-center gap-2 mt-4 text-[13px] text-ink-700 cursor-pointer">
-            <input type="checkbox" className="w-4 h-4 accent-[#dc2626]" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} /> Trust this computer
+            <input type="checkbox" className="w-4 h-4 accent-[#4b5563]" checked={trusted} onChange={(e) => setTrusted(e.target.checked)} /> Trust this computer
           </label>
         )}
         <button type="submit" disabled={!picked || busy} className="mt-5 w-full h-10 rounded bg-brand-500 hover:bg-brand-600 text-white text-[14px] font-semibold disabled:opacity-50 inline-flex items-center justify-center gap-2">

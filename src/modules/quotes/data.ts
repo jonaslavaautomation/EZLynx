@@ -14,6 +14,12 @@ export async function loadAccountRisk(accountId: string | null): Promise<Account
   return { account, drivers, vehicles, properties };
 }
 
+/** Quotes built in a quoting workflow reopen there (auto or home); null for quick-rater quotes. */
+export function workflowPath(q: { id: string; account_id: string; line_of_business: string; input: unknown }) {
+  if (!(q.input as { workflow?: unknown } | null)?.workflow) return null;
+  return `/accounts/${q.account_id}/${q.line_of_business === 'Homeowners' ? 'home-quote' : 'auto-quote'}/${q.id}`;
+}
+
 /** Appointed carriers that write `line`. */
 export const carriersForLine = (line: LineOfBusiness, appointed: Carrier[]) => appointed.filter((c) => c.lines.includes(line));
 

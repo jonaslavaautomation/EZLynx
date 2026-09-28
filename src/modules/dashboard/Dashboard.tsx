@@ -15,9 +15,9 @@ import type { ESignStatus } from '@/lib/types';
 import { Card, ClaimsDownloads, PerformanceGoals, PolicyDownloads, StatRow, UnderwritingRequests, dash } from '@/modules/dashboard/widgets';
 
 const SLIDES = [
-  { kicker: 'COMPARATIVE RATER', title: <>Quote smarter.<br /><em>Bind faster.</em></>, cta: 'Start a quote', to: '/quotes/new', bg: '#351018', img: 'https://images.pexels.com/photos/7731330/pexels-photo-7731330.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
-  { kicker: 'RENEWALS QUEUE', title: <>Never miss<br /><em>a renewal.</em></>, cta: 'Open renewals', to: '/policies?view=renewals', bg: '#5e1216', img: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
-  { kicker: 'REPORTS', title: <>Know your<br /><em>book cold.</em></>, cta: 'View reports', to: '/reports', bg: '#3d0b0e', img: 'https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
+  { kicker: 'COMPARATIVE RATER', title: <>Quote smarter.<br /><em>Bind faster.</em></>, cta: 'Start a quote', to: '/quotes/new', bg: '#2f343b', img: 'https://images.pexels.com/photos/7731330/pexels-photo-7731330.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
+  { kicker: 'RENEWALS QUEUE', title: <>Never miss<br /><em>a renewal.</em></>, cta: 'Open renewals', to: '/policies?view=renewals', bg: '#3b4452', img: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
+  { kicker: 'REPORTS', title: <>Know your<br /><em>book cold.</em></>, cta: 'View reports', to: '/reports', bg: '#343a46', img: 'https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
 ];
 
 function Promo() {
@@ -170,7 +170,7 @@ export function Dashboard() {
               const d = daysUntil(t.due_date);
               return (
                 <div key={t.id} className="flex items-center gap-3 px-1 py-2">
-                  <input type="checkbox" className="w-4 h-4 accent-[#dc2626] shrink-0" aria-label={`Complete ${t.subject}`} checked={false} onChange={() => void complete(t.id)} />
+                  <input type="checkbox" className="w-4 h-4 accent-[#4b5563] shrink-0" aria-label={`Complete ${t.subject}`} checked={false} onChange={() => void complete(t.id)} />
                   <div className="min-w-0 flex-1">
                     <div className="text-[13px] text-ink-900 truncate">{t.subject}</div>
                     <div className="text-xs text-ink-400 truncate">

@@ -137,7 +137,7 @@ export function ActivitiesPage() {
   const columns: Column<Activity>[] = [
     {
       key: 'sel', header: '', className: 'w-8',
-      render: (a) => <input type="checkbox" aria-label="Select row" className="w-4 h-4 accent-[#dc2626] cursor-pointer align-middle" checked={selected.has(a.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => toggleSel(a.id, e.target.checked)} />,
+      render: (a) => <input type="checkbox" aria-label="Select row" className="w-4 h-4 accent-[#4b5563] cursor-pointer align-middle" checked={selected.has(a.id)} onClick={(e) => e.stopPropagation()} onChange={(e) => toggleSel(a.id, e.target.checked)} />,
     },
     { key: 'done', header: 'Done', className: 'w-10', align: 'center', render: (a) => <CompleteBox activity={a} /> },
     {

@@ -35,7 +35,7 @@ function adjustments(w: Workflow, carrier: string, autoCarriers: string[]): Adj 
   // State and optional coverages (annual, per vehicle unless noted)
   const perVeh = w.vehicles.length;
   if (c.uim !== 'No Coverage') a.extras.push({ name: 'Underinsured Motorist', limit: c.uim, annual: 38 * perVeh });
-  if (c.umpd !== 'No Coverage' && c.um !== 'No Coverage') a.extras.push({ name: 'Uninsured Motorist PD', limit: Number(c.umpd).toLocaleString('en-US'), annual: ({ 25000: 30, 50000: 42, 100000: 60 } as Record<string, number>)[c.umpd] * perVeh || 0 });
+  if (c.umpd !== 'No Coverage' && c.um !== 'No Coverage') a.extras.push({ name: 'Uninsured Motorist PD', limit: Number(c.umpd).toLocaleString('en-US'), annual: ({ 15000: 24, 25000: 30, 50000: 42, 100000: 60 } as Record<string, number>)[c.umpd] * perVeh || 0 });
   if (c.pip !== 'No Coverage') a.extras.push({ name: 'Personal Injury Protection', limit: Number(c.pip).toLocaleString('en-US'), annual: ({ 2500: 64, 5000: 98, 10000: 150 } as Record<string, number>)[c.pip] * perVeh || 0 });
   if (c.adi !== 'No Coverage' && w.rating.state === 'TX') a.extras.push({ name: 'Auto Death Indemnity', limit: Number(c.adi).toLocaleString('en-US'), annual: ({ 5000: 8, 10000: 14 } as Record<string, number>)[c.adi] * rated.length || 0 });
   const glass = w.vehicles.filter((v) => vcov(v.key).full_glass && vcov(v.key).comp !== 'No Coverage').length;
