@@ -147,8 +147,6 @@ const RESEARCH: { key: string; label: string; url: (q: string, a: Account) => st
 
 export function ApplicantDrawer({ account: a }: { account: Account }) {
   const [open, setOpen] = useState(readLs(DRAWER_KEY) !== '0');
-  const [research, setResearch] = useState<(typeof RESEARCH)[number] | null>(null);
-  const properties = useTable('properties', { eq: { account_id: a.id } });
   const [fav, setFav] = useState(() => (readLs(FAV_KEY) ?? '').split(',').includes(a.id));
   const { settings } = useAppData();
   const { toast } = useFeedback();
@@ -208,9 +206,7 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
         <div className="text-[13px] font-semibold text-ink-900">Address</div>
         {addr ? <div className="mt-0.5 leading-snug">{a.address}<br />{[a.city?.toUpperCase(), [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div> : <div className="text-ink-400">No address on file</div>}
         {addr && (
-          <div className="mt-2 flex flex-col gap-2">
-            {RESEARCH.map((r) => <button key={r.key} type="button" onClick={() => setResearch(r)} className="text-left text-brand-700 hover:underline inline-flex items-center gap-1">{r.label} <ExternalLink size={11} /></button>)}
-          </div>
+          <ResearchLinks account={a} address={addr} className="mt-2 flex flex-col gap-2" />
         )}
       </div>
       <div className="mt-4">
@@ -234,33 +230,50 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
         <a href={href('/marketplace/mine')} className="mt-2 flex items-center justify-center gap-1.5 h-8 rounded border border-ink-300 text-brand-700 font-semibold hover:bg-brand-50"><Plug size={13} /> Integrations</a>
       </div>
       <button type="button" aria-label="Collapse applicant panel" onClick={toggle} className="mt-auto self-end pt-4 text-ink-600 hover:text-ink-900"><ChevronLeft size={16} /></button>
-      {research && (() => {
-        // Most research sites refuse to load inside another page, so the preview shows the map and the property on
-        // file, and the button opens the site itself in a new tab.
-        const home = properties.data.find((p) => p.address && addr.toLowerCase().includes(p.address.toLowerCase())) ?? properties.data[0];
-        const site = research.key === 'map' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : research.url(addr, a);
-        const facts: [string, string | number | null | undefined][] = home ? [
-          ['Year built', home.year_built], ['Square feet', home.square_feet?.toLocaleString('en-US')], ['Construction', home.construction],
-          ['Roof', [home.roof_type, home.roof_year].filter(Boolean).join(', ')], ['Protection class', home.protection_class], ['Dwelling value', home.dwelling_value ? `$${Number(home.dwelling_value).toLocaleString('en-US')}` : null],
-        ] : [];
-        return (
-          <Modal title={research.label} subtitle={addr} size="lg" onClose={() => setResearch(null)} footer={<>
-            <a href={site} target="_blank" rel="noopener noreferrer" className="mr-auto"><Button variant="primary" icon={<ExternalLink size={14} />}>Open {research.label === 'Map' ? 'Google Maps' : research.label}</Button></a>
-            <Button onClick={() => setResearch(null)}>Close</Button>
-          </>}>
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-4">
-              <iframe title={`Map of ${addr}`} src={RESEARCH[0].url(addr, a)} className="w-full h-[380px] rounded border border-ink-200" loading="lazy" referrerPolicy="no-referrer" />
-              <div className="text-[13px]">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-400 mb-1">Property on file</div>
-                {facts.length ? (
-                  <dl className="space-y-1">{facts.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{k}</dt><dd className="text-ink-900 text-right">{v || '—'}</dd></div>)}</dl>
-                ) : <p className="text-ink-500">No property details on file for this applicant. Add them under Details.</p>}
-                <p className="text-[11.5px] text-ink-400 mt-4">{research.key === 'map' ? 'Street map from Google Maps.' : `${research.label} opens in a new tab with this address.`}</p>
-              </div>
-            </div>
-          </Modal>
-        );
-      })()}
     </aside>
   );
+}
+
+/** Map / Zillow / Google Earth / Google Search / County Assessor links, each opening a preview with the property on file. */
+export function ResearchLinks({ account: a, address, className }: { account: Account; address: string; className?: string }) {
+  const [research, setResearch] = useState<(typeof RESEARCH)[number] | null>(null);
+  const properties = useTable('properties', { eq: { account_id: a.id } });
+  const addr = address;
+  return (
+    <>
+      <div className={className}>
+        {RESEARCH.map((r) => <button key={r.key} type="button" onClick={() => setResearch(r)} className="text-left text-brand-700 hover:underline inline-flex items-center gap-1">{r.label} <ExternalLink size={11} /></button>)}
+      </div>
+      {research && renderModal()}
+    </>
+  );
+
+  function renderModal() {
+    if (!research) return null;
+    // Most research sites refuse to load inside another page, so the preview shows the map and the property on
+    // file, and the button opens the site itself in a new tab.
+    const home = properties.data.find((p) => p.address && addr.toLowerCase().includes(p.address.toLowerCase())) ?? properties.data[0];
+    const site = research.key === 'map' ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}` : research.url(addr, a);
+    const facts: [string, string | number | null | undefined][] = home ? [
+      ['Year built', home.year_built], ['Square feet', home.square_feet?.toLocaleString('en-US')], ['Construction', home.construction],
+      ['Roof', [home.roof_type, home.roof_year].filter(Boolean).join(', ')], ['Protection class', home.protection_class], ['Dwelling value', home.dwelling_value ? `$${Number(home.dwelling_value).toLocaleString('en-US')}` : null],
+    ] : [];
+    return (
+      <Modal title={research.label} subtitle={addr} size="lg" onClose={() => setResearch(null)} footer={<>
+        <a href={site} target="_blank" rel="noopener noreferrer" className="mr-auto"><Button variant="primary" icon={<ExternalLink size={14} />}>Open {research.label === 'Map' ? 'Google Maps' : research.label}</Button></a>
+        <Button onClick={() => setResearch(null)}>Close</Button>
+      </>}>
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-4">
+          <iframe title={`Map of ${addr}`} src={RESEARCH[0].url(addr, a)} className="w-full h-[380px] rounded border border-ink-200" loading="lazy" referrerPolicy="no-referrer" />
+          <div className="text-[13px]">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-ink-400 mb-1">Property on file</div>
+            {facts.length ? (
+              <dl className="space-y-1">{facts.map(([k, v]) => <div key={k} className="flex justify-between gap-2"><dt className="text-ink-500">{k}</dt><dd className="text-ink-900 text-right">{v || '—'}</dd></div>)}</dl>
+            ) : <p className="text-ink-500">No property details on file for this applicant. Add them under Details.</p>}
+            <p className="text-[11.5px] text-ink-400 mt-4">{research.key === 'map' ? 'Street map from Google Maps.' : `${research.label} opens in a new tab with this address.`}</p>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
 }

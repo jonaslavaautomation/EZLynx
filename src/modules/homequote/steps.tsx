@@ -1,10 +1,11 @@
-import { Home, Layers, Loader2 } from 'lucide-react';
+import { AlertTriangle, ChevronRight, Home, Layers, Loader2 } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button, cx, useFeedback } from '@/components/ui';
 import { useTable } from '@/lib/hooks';
 import { US_STATES } from '@/lib/types';
 import { OField, TextBtn, inputCls } from '@/modules/accounts/applicant-fields';
 import { CarrierMark, Card, Help, Notice, SectionTitle, Switch, WInput, WSelect, clean } from '@/modules/autoquote/fields';
+import { ResearchLinks } from '@/modules/autoquote/shell';
 import { DOG_BREEDS, PRIOR_INSURERS } from '@/modules/quotes/reference';
 import { useHome } from './ctx';
 import {
@@ -19,7 +20,6 @@ import {
 const money = (x: string) => x.replace(/[^\d]/g, '');
 const moneyShow = (x: string) => (x ? `$${Number(x).toLocaleString('en-US')}` : '');
 const grid4 = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-5';
-const grid3 = 'grid grid-cols-1 md:grid-cols-3 gap-x-5 gap-y-5';
 
 export function StepFooter({ back, next, extra }: { back?: { label: string; to: string }; next?: { label: string; to: string }; extra?: ReactNode }) {
   const { go } = useHome();
@@ -46,49 +46,54 @@ export function CarrierQuestions({ step, title }: { step: CarrierQuestion['step'
     return { ...x, answers, prefilled: x.prefilled.filter((k) => !g.carriers.some((c) => k === answerKey(c, g.q.id))) };
   });
   const ok = groups.every((g) => g.carriers.every((c) => !issues.has(`answer.${answerKey(c, g.q.id)}`)));
+  // Questions asked by the same set of carriers sit together next to that carrier's mark.
+  const blocks = new Map<string, typeof groups>();
+  for (const g of groups) { const k = g.carriers.join('|'); blocks.set(k, [...(blocks.get(k) ?? []), g]); }
   return (
     <div className="mt-6">
       {title && <SectionTitle ok={ok}>{title}</SectionTitle>}
       <div className="divide-y divide-ink-100">
-        {groups.map((g) => {
-          const value = w.answers[answerKey(g.carriers[0], g.q.id)] ?? '';
-          const msg = g.carriers.map((c) => issues.get(`answer.${answerKey(c, g.q.id)}`)).find(Boolean);
-          return (
-            <div key={g.q.id} className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-3 py-3 items-start" data-field={`answer.${answerKey(g.carriers[0], g.q.id)}`}>
-              <div className="pt-1">
-                {g.carriers.length > 1
-                  ? <div className="flex flex-col items-center w-24 text-center"><span className="w-10 h-10 rounded-full bg-ink-500 grid place-items-center text-white"><Layers size={20} /></span><span className="text-[12px] text-ink-700 mt-1">Multiple</span><span className="text-[10px] text-ink-400">{g.carriers.length} carriers</span></div>
-                  : <CarrierMark name={g.carriers[0]} />}
-              </div>
-              <div className="max-w-[560px]">
-                <div className="text-[13px] text-ink-800 mb-1.5">{g.q.required && <span className="text-red-600">*</span>}{g.q.label}</div>
-                <div className="flex items-center gap-3">
-                  <select aria-label={g.q.label} value={value} onChange={(e) => set(g, e.target.value)}
-                    className={cx('flex-1 h-10 rounded border bg-white px-3 text-[14px] outline-none focus:border-brand-500', msg ? 'border-amber-500' : 'border-ink-300')}>
-                    <option value="">{g.q.required ? 'Select' : ''}</option>
-                    {g.q.options.map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                  <Help text={g.q.help} />
-                </div>
-                {msg && <div className="text-[11px] text-ink-600 mt-1">{msg}</div>}
-              </div>
+        {[...blocks.values()].map((list) => (
+          <div key={list[0].carriers.join('|')} className="grid grid-cols-1 md:grid-cols-[200px_minmax(0,1fr)] gap-3 py-3 items-start">
+            <div className="pt-6">
+              {list[0].carriers.length > 1
+                ? <div className="flex flex-col items-center w-24 text-center"><span className="w-10 h-10 rounded-full bg-ink-500 grid place-items-center text-white"><Layers size={20} /></span><span className="text-[12px] text-ink-700 mt-1">Multiple</span><span className="text-[10px] text-ink-400">{list[0].carriers.length} carriers</span></div>
+                : <CarrierMark name={list[0].carriers[0]} />}
             </div>
-          );
-        })}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-4">
+              {list.map((g) => {
+                const value = w.answers[answerKey(g.carriers[0], g.q.id)] ?? '';
+                const msg = g.carriers.map((c) => issues.get(`answer.${answerKey(c, g.q.id)}`)).find(Boolean);
+                return (
+                  <div key={g.q.id} data-field={`answer.${answerKey(g.carriers[0], g.q.id)}`}>
+                    <div className="text-[13px] text-ink-800 mb-1.5">{g.q.required && <span className="text-red-600">*</span>}{g.q.label}</div>
+                    <div className="flex items-center gap-3">
+                      <select aria-label={g.q.label} value={value} onChange={(e) => set(g, e.target.value)}
+                        className={cx('flex-1 min-w-0 h-10 rounded border bg-white px-3 text-[14px] outline-none focus:border-brand-500', msg ? 'border-amber-500' : 'border-ink-300')}>
+                        <option value="">{g.q.required ? 'Select' : ''}</option>
+                        {g.q.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                      </select>
+                      <Help text={g.q.help} />
+                    </div>
+                    {msg && <div className="text-[11px] text-ink-600 mt-1">{msg}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-/** Yes/no question with a toggle, as underwriting questions are laid out. */
-function Question({ label, checked, onChange, field, children }: { label: string; checked: boolean; onChange: (v: boolean) => void; field?: string; children?: ReactNode }) {
+/** Sub-heading inside a section, as EZLynx lays out "Home Info", "General Coverages", "Earthquake"… */
+function Sub({ children, warn, right }: { children: ReactNode; warn?: boolean; right?: ReactNode }) {
   return (
-    <div className="py-2.5 border-b border-ink-100 last:border-b-0" data-field={field}>
-      <div className="flex flex-wrap items-center gap-4 justify-between">
-        <span className="text-[14px] text-ink-800">{label}</span>
-        <Switch label={checked ? 'Yes' : 'No'} checked={checked} onChange={onChange} />
-      </div>
-      {checked && children && <div className="mt-3">{children}</div>}
+    <div className="flex flex-wrap items-center gap-2 mt-5 mb-3">
+      {warn && <AlertTriangle size={15} className="text-amber-500 fill-amber-100 shrink-0" />}
+      <h4 className="text-[14px] font-medium text-ink-900">{children}</h4>
+      {right && <div className="ml-auto">{right}</div>}
     </div>
   );
 }
@@ -142,13 +147,12 @@ export function RatingStep() {
             </div>
             <Button size="sm" disabled={!tpl} onClick={apply}>Apply</Button>
           </div>
-          {!templates.data.length && <div className="text-[11px] text-ink-400 mt-1">No templates yet: finish a quote and use "Save as template".</div>}
-          <textarea aria-label="Description" placeholder="Description" value={w.rating.description} maxLength={500}
-            onChange={(e) => up((x) => ({ ...x, rating: { ...x.rating, description: e.target.value } }))}
-            className="mt-6 w-full max-w-[460px] h-[80px] rounded border border-ink-300 bg-white p-3 text-[14px] outline-none focus:border-brand-500 resize-y" />
-          <div className="mt-5 max-w-[360px]">
+          <div className="mt-4 max-w-[360px]">
             <WSelect field="rating.form" label="Policy/Form Type" required value={w.rating.form} onChange={(form) => up((x) => ({ ...x, rating: { ...x.rating, form } }))} options={FORM_TYPES} />
           </div>
+          <textarea aria-label="Description" placeholder="Description" value={w.rating.description} maxLength={500}
+            onChange={(e) => up((x) => ({ ...x, rating: { ...x.rating, description: e.target.value } }))}
+            className="mt-4 w-full max-w-[560px] h-[110px] rounded border border-ink-300 bg-white p-3 text-[14px] outline-none focus:border-brand-500 resize-y" />
         </div>
         <div className="pt-2 lg:pt-10">
           <Notice>Spend less time answering carrier questions. Enable <b>Carrier Answers Prefill.</b></Notice>
@@ -190,7 +194,7 @@ export function PolicyStep() {
   return (
     <div>
       <SectionTitle ok={clean(issues, 'policy.prior', 'policy.years', 'policy.months', 'policy.credit', 'policy.package', 'policy.effective')}>Policy Information</SectionTitle>
-      <div className={grid3}>
+      <div className={grid4}>
         <WSelect field="policy.prior_carrier" label="Prior Carrier" required value={p.prior_carrier} onChange={(prior_carrier) => set({ prior_carrier })} options={[...new Set([...homeCarriers.map((c) => c.name), ...PRIOR_INSURERS])].sort((a, b) => a.localeCompare(b)).concat(OTHER_PRIORS)} />
         <WInput field="policy.prior_exp" label="Expiration Date (current policy)" required={!noPrior} type="date" value={p.prior_exp} onChange={(prior_exp) => set({ prior_exp })} disabled={noPrior} />
         <WInput field="policy.prior_premium" label="Prior Policy Premium" inputMode="numeric" value={moneyShow(p.prior_premium)} onChange={(x) => set({ prior_premium: money(x) })} disabled={noPrior} />
@@ -202,33 +206,34 @@ export function PolicyStep() {
           <WSelect field="policy.years_cont" label="Years with Continuous Coverage" required={!noPrior} value={p.years_cont} onChange={(years_cont) => set({ years_cont })} options={YEARS} disabled={noPrior} />,
           <WSelect field="policy.months_cont" label="Months" required={!noPrior} value={p.months_cont} onChange={(months_cont) => set({ months_cont })} options={MONTHS} disabled={noPrior} />,
         )}
-        <WSelect field="policy.credit_auth" label="Credit Check Authorized" required value={p.credit_auth} onChange={(credit_auth) => set({ credit_auth })} options={YES_NO} />
-        <WSelect field="policy.new_term" label="New Policy Term" value={p.new_term} onChange={(new_term) => set({ new_term })} options={['12 Month']} />
+        <div className="hidden lg:block lg:col-span-3" />
+        <WSelect field="policy.credit_auth" label="Credit Check and Other Underwriting Reports Authorized" required value={p.credit_auth} onChange={(credit_auth) => set({ credit_auth })} options={YES_NO} />
+        <div className="text-[13px] text-ink-800 pt-3" data-field="policy.new_term">New Policy Term - {p.new_term || '12 Month'}</div>
         <WSelect field="policy.package" label="Quote as Package" required value={p.package} onChange={(pkg) => set({ package: pkg })} options={YES_NO} />
         <WInput field="policy.effective" label="Effective Date (New Policy)" required type="date" value={p.effective} onChange={(effective) => set({ effective })} />
       </div>
 
       <SectionTitle ok={clean(issues, 'policy.employees', 'policy.losses')}>Underwriting Information</SectionTitle>
-      <div className="bg-white border border-ink-200 rounded px-4 max-w-[900px]">
-        <Question label="Has property insurance been cancelled, declined or non-renewed in the last 5 yrs?" checked={p.cancelled} onChange={(cancelled) => set({ cancelled })} />
-        <Question label="Is the home under construction?" checked={p.under_construction} onChange={(under_construction) => set({ under_construction })} />
-        <Question label="Trampoline" checked={p.trampoline} onChange={(trampoline) => set({ trampoline })} />
-        <Question label="Is there a business or daycare on the premises?" checked={p.business} onChange={(business) => set({ business, employees: business ? p.employees || '0' : '' })} field="policy.employees">
-          <div className="max-w-[220px]"><WInput field="policy.employees" label="# of Employees" required inputMode="numeric" value={p.employees} onChange={(x) => set({ employees: x.replace(/\D/g, '').slice(0, 3) })} /></div>
-        </Question>
-        <Question label="Is there a swimming pool on the premises?" checked={p.pool} onChange={(pool) => set({ pool })} />
-        <div className="py-3 max-w-[300px]"><WSelect field="policy.losses" label="Property losses in the last 5 years" required value={p.losses} onChange={(losses) => set({ losses })} options={LOSSES} /></div>
+      <div className="flex flex-wrap gap-x-7 gap-y-3">
+        <Switch label="Has property insurance been cancelled, declined or non-renewed in the last 5 yrs?" checked={p.cancelled} onChange={(cancelled) => set({ cancelled })} />
+        <Switch label="Is the home under construction?" checked={p.under_construction} onChange={(under_construction) => set({ under_construction })} />
+        <Switch label="Trampoline" checked={p.trampoline} onChange={(trampoline) => set({ trampoline })} />
+        <Switch label="Is there a business or daycare on the premises?" checked={p.business} onChange={(business) => set({ business, employees: business ? p.employees || '0' : '' })} />
+      </div>
+      <div className="flex flex-wrap items-start gap-5 mt-4">
+        <div className="w-full sm:w-[270px]"><WInput field="policy.employees" label="# of Employees" required={p.business} inputMode="numeric" value={p.business ? p.employees : '0'} disabled={!p.business} onChange={(x) => set({ employees: x.replace(/\D/g, '').slice(0, 3) })} /></div>
+        <div className="bg-white rounded shadow-card px-4 py-3"><Switch label="Is there a swimming pool on the premises?" checked={p.pool} onChange={(pool) => set({ pool })} /></div>
+        <div className="w-full sm:w-[270px]"><WSelect field="policy.losses" label="Property losses in the last 5 years" required value={p.losses} onChange={(losses) => set({ losses })} options={LOSSES} /></div>
       </div>
 
       <SectionTitle ok={clean(issues, 'policy.dog')}>Dog Information</SectionTitle>
-      <div className="bg-white border border-ink-200 rounded px-4 max-w-[900px]">
-        <Question label="Are dogs on the premises?" checked={p.dogs} onChange={(dogs) => set({ dogs, ...(dogs ? {} : { dog_breed: '', dog_bite: '' }) })} field="policy.dog_breed">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[560px] pb-1">
-            <WSelect field="policy.dog_breed" label="Breed" required value={p.dog_breed} onChange={(dog_breed) => set({ dog_breed })} options={DOG_BREEDS} />
-            <WSelect field="policy.dog_bite" label="Any bite history?" required value={p.dog_bite} onChange={(dog_bite) => set({ dog_bite })} options={YES_NO} />
-          </div>
-        </Question>
-      </div>
+      <Switch label="Are dogs on the premises?" checked={p.dogs} onChange={(dogs) => set({ dogs, ...(dogs ? {} : { dog_breed: '', dog_bite: '' }) })} />
+      {p.dogs && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[560px] mt-4">
+          <WSelect field="policy.dog_breed" label="Breed" required value={p.dog_breed} onChange={(dog_breed) => set({ dog_breed })} options={DOG_BREEDS} />
+          <WSelect field="policy.dog_bite" label="Any bite history?" required value={p.dog_bite} onChange={(dog_bite) => set({ dog_bite })} options={YES_NO} />
+        </div>
+      )}
       <CarrierQuestions step="policy" title="Additional Carrier Questions" />
       <StepFooter back={{ label: 'Rating', to: 'rating' }} next={{ label: 'Dwelling info', to: 'dwelling' }} />
     </div>
@@ -317,13 +322,15 @@ export function DwellingStep() {
   };
   const f = (k: string) => `dwelling.${k}`;
   const alt = d.alt_address;
+  const homeOk = clean(issues, 'dwelling.usage', 'dwelling.occupancy', 'dwelling.type', 'dwelling.stories', 'dwelling.sqft', 'dwelling.year_built', 'dwelling.style', 'dwelling.roof', 'dwelling.foundation', 'dwelling.walls', 'dwelling.full_baths', 'dwelling.heating');
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-4">
-        <TextBtn onClick={() => setLookup(true)}>Prefill Dwelling Info</TextBtn>
-        <TextBtn onClick={() => set({ alt_address: alt ?? { address: '', city: '', state: w.rating.state, zip: '' } })}>Add dwelling address</TextBtn>
-        {d.prefilled_at && <span className="text-[11px] text-ink-500 self-center">Prefilled — review each value with the insured.</span>}
-      </div>
+      <button type="button" onClick={() => setLookup(true)} className="w-full bg-white border border-ink-200 rounded shadow-card h-11 px-4 flex items-center gap-3 text-left hover:bg-ink-50">
+        <span className="text-[13px] font-medium text-ink-900">Prefill Dwelling Info</span>
+        {d.prefilled_at && <span className="text-[11.5px] text-ink-500">Prefilled {new Date(d.prefilled_at).toLocaleDateString('en-US')}. Review each value with the insured.</span>}
+        <ChevronRight size={17} className="ml-auto text-ink-600" />
+      </button>
+      <div className="mt-4 mb-2"><Button size="sm" variant="primary" onClick={() => set({ alt_address: alt ?? { address: '', city: '', state: w.rating.state, zip: '' } })} disabled={!!alt}>Add dwelling address</Button></div>
       {alt && (
         <Card title="Dwelling Address" right={<button type="button" className="text-[12px] text-red-600 hover:underline" onClick={() => set({ alt_address: null })}>Remove</button>}>
           <div className={grid4}>
@@ -334,49 +341,47 @@ export function DwellingStep() {
           </div>
         </Card>
       )}
-      <Card title="Home Info" ok={clean(issues, 'dwelling.usage', 'dwelling.occupancy', 'dwelling.type', 'dwelling.stories', 'dwelling.sqft', 'dwelling.year_built', 'dwelling.style', 'dwelling.roof', 'dwelling.foundation', 'dwelling.walls', 'dwelling.full_baths', 'dwelling.heating')}>
-        <div className={grid4}>
-          <WSelect field={f('usage')} label="Dwelling Usage" required value={d.usage} onChange={(usage) => set({ usage })} options={DWELLING_USAGE} />
-          <WSelect field={f('occupancy')} label="Occupancy Type" required value={d.occupancy} onChange={(occupancy) => set({ occupancy })} options={OCCUPANCY} />
-          <WSelect field={f('type')} label="Dwelling Type" required value={d.type} onChange={(type) => set({ type })} options={DWELLING_TYPE} />
-          <WSelect field={f('occupants')} label="Number of Occupants" value={d.occupants} onChange={(occupants) => set({ occupants })} options={OCCUPANTS} />
-          <WSelect field={f('stories')} label="Number of Stories" required value={d.stories} onChange={(stories) => set({ stories })} options={STORIES} />
-          <WInput field={f('sqft')} label="Square Footage" required inputMode="numeric" value={d.sqft} onChange={(x) => set({ sqft: x.replace(/\D/g, '').slice(0, 5) })} />
-          <WInput field={f('year_built')} label="Year Built" required inputMode="numeric" value={d.year_built} onChange={(x) => set({ year_built: x.replace(/\D/g, '').slice(0, 4) })} />
-          <WSelect field={f('style')} label="Construction Style" required value={d.style} onChange={(style) => set({ style })} options={CONSTRUCTION_STYLE} />
-          <WSelect field={f('roof_type')} label="Roof Type" required value={d.roof_type} onChange={(roof_type) => set({ roof_type })} options={ROOF_TYPE} />
-          <WInput field={f('roof_year')} label="Year Roof Replaced" inputMode="numeric" value={d.roof_year} onChange={(x) => set({ roof_year: x.replace(/\D/g, '').slice(0, 4) })} />
-          <WSelect field={f('foundation')} label="Foundation Type" required value={d.foundation} onChange={(foundation) => set({ foundation })} options={FOUNDATION} />
-          <WSelect field={f('roof_design')} label="Roof Design" required value={d.roof_design} onChange={(roof_design) => set({ roof_design })} options={ROOF_DESIGN} />
-          <WSelect field={f('walls')} label="Exterior Walls" required value={d.walls} onChange={(walls) => set({ walls })} options={EXTERIOR_WALLS} />
-          <WSelect field={f('full_baths')} label="Number Of Full Baths" required value={d.full_baths} onChange={(full_baths) => set({ full_baths })} options={BATHS} />
-          <WSelect field={f('half_baths')} label="Number Of Half Baths" value={d.half_baths} onChange={(half_baths) => set({ half_baths })} options={HALF_BATHS} />
-          <WSelect field={f('stoves')} label="# of Wood Burning Stoves" value={d.stoves} onChange={(stoves) => set({ stoves })} options={STOVES} />
-          <WSelect field={f('heating')} label="Heating Type" required value={d.heating} onChange={(heating) => set({ heating })} options={HEATING} />
-          <WSelect field={f('secondary_heat')} label="Secondary Heating Source Type" value={d.secondary_heat} onChange={(secondary_heat) => set({ secondary_heat })} options={SECONDARY_HEAT} />
-          <WSelect field={f('burglar_alarm')} label="Burglar Alarm" value={d.burglar_alarm} onChange={(burglar_alarm) => set({ burglar_alarm })} options={ALARM} />
-          <WSelect field={f('roof_ul')} label="Roof UL Classification" value={d.roof_ul} onChange={(roof_ul) => set({ roof_ul })} options={ROOF_UL} />
-        </div>
-        <div className="flex flex-wrap gap-x-8 gap-y-3 mt-5">
-          <Switch label="Dead Bolt" checked={d.dead_bolt} onChange={(dead_bolt) => set({ dead_bolt })} />
-          <Switch label="Fire Extinguisher" checked={d.extinguisher} onChange={(extinguisher) => set({ extinguisher })} />
-        </div>
-      </Card>
-      <Card title="Protective Devices" ok>
-        <div className={grid4}>
-          <WSelect field={f('fire_detection')} label="Fire Detection" value={d.fire_detection} onChange={(fire_detection) => set({ fire_detection })} options={DETECTION} />
-          <WSelect field={f('sprinkler')} label="Sprinkler System" value={d.sprinkler} onChange={(sprinkler) => set({ sprinkler })} options={SPRINKLER} />
-          <WSelect field={f('smoke_detector')} label="Smoke Detector" value={d.smoke_detector} onChange={(smoke_detector) => set({ smoke_detector })} options={DETECTION} />
-        </div>
-      </Card>
-      <Card title="Geographical Info" ok={clean(issues, 'dwelling.purchase', 'dwelling.station', 'dwelling.hydrant')}>
-        <div className={grid4}>
-          <WInput field={f('purchase_price')} label="Purchase Price" inputMode="numeric" value={moneyShow(d.purchase_price)} onChange={(x) => set({ purchase_price: money(x) })} />
-          <WInput field={f('purchase_date')} label="Purchase Date" required type="date" value={d.purchase_date} onChange={(purchase_date) => set({ purchase_date })} />
-          <WSelect field={f('station_miles')} label="Distance From Fire Station (miles)" required value={d.station_miles} onChange={(station_miles) => set({ station_miles })} options={DISTANCE_MILES} />
-          <WSelect field={f('hydrant_feet')} label="Feet From Hydrant" required value={d.hydrant_feet} onChange={(hydrant_feet) => set({ hydrant_feet })} options={HYDRANT_FEET} />
-        </div>
-      </Card>
+      <SectionTitle ok={clean(issues, 'dwelling.')}>Dwelling Information</SectionTitle>
+      <Sub warn={!homeOk} right={<ResearchLinks account={account} address={addr.replace(/^,\s*/, '')} className="flex flex-wrap gap-x-5 gap-y-1 text-[12.5px]" />}>Home Info</Sub>
+      <div className={grid4}>
+        <WSelect field={f('usage')} label="Dwelling Usage" required value={d.usage} onChange={(usage) => set({ usage })} options={DWELLING_USAGE} />
+        <WSelect field={f('occupancy')} label="Occupancy Type" required value={d.occupancy} onChange={(occupancy) => set({ occupancy })} options={OCCUPANCY} />
+        <WSelect field={f('type')} label="Dwelling Type" required value={d.type} onChange={(type) => set({ type })} options={DWELLING_TYPE} />
+        <WSelect field={f('occupants')} label="Number of Occupants" value={d.occupants} onChange={(occupants) => set({ occupants })} options={OCCUPANTS} />
+        <WSelect field={f('stories')} label="Number of Stories" required value={d.stories} onChange={(stories) => set({ stories })} options={STORIES} />
+        <WInput field={f('sqft')} label="Square Footage" required inputMode="numeric" value={d.sqft} onChange={(x) => set({ sqft: x.replace(/\D/g, '').slice(0, 5) })} />
+        <WInput field={f('year_built')} label="Year Built" required inputMode="numeric" value={d.year_built} onChange={(x) => set({ year_built: x.replace(/\D/g, '').slice(0, 4) })} />
+        <WSelect field={f('style')} label="Construction Style" required value={d.style} onChange={(style) => set({ style })} options={CONSTRUCTION_STYLE} />
+        <WSelect field={f('roof_type')} label="Roof Type (main material)" required value={d.roof_type} onChange={(roof_type) => set({ roof_type })} options={ROOF_TYPE} />
+        <WSelect field={f('foundation')} label="Foundation Type" required value={d.foundation} onChange={(foundation) => set({ foundation })} options={FOUNDATION} />
+        <WSelect field={f('roof_design')} label="Roof Design" required value={d.roof_design} onChange={(roof_design) => set({ roof_design })} options={ROOF_DESIGN} />
+        <WSelect field={f('walls')} label="Exterior Walls" required value={d.walls} onChange={(walls) => set({ walls })} options={EXTERIOR_WALLS} />
+        <WSelect field={f('full_baths')} label="Number Of Full Baths" required value={d.full_baths} onChange={(full_baths) => set({ full_baths })} options={BATHS} />
+        <WSelect field={f('half_baths')} label="Number Of Half Baths" value={d.half_baths} onChange={(half_baths) => set({ half_baths })} options={HALF_BATHS} />
+        <WSelect field={f('stoves')} label="# of Wood Burning Stoves" value={d.stoves} onChange={(stoves) => set({ stoves })} options={STOVES} />
+        <WSelect field={f('heating')} label="Heating Type" required value={d.heating} onChange={(heating) => set({ heating })} options={HEATING} />
+        <WSelect field={f('secondary_heat')} label="Secondary Heating Source Type" value={d.secondary_heat} onChange={(secondary_heat) => set({ secondary_heat })} options={SECONDARY_HEAT} />
+        <WSelect field={f('burglar_alarm')} label="Burglar Alarm" value={d.burglar_alarm} onChange={(burglar_alarm) => set({ burglar_alarm })} options={ALARM} />
+        <WSelect field={f('roof_ul')} label="Roof UL Classification" value={d.roof_ul} onChange={(roof_ul) => set({ roof_ul })} options={ROOF_UL} />
+        <div className="flex items-center"><Switch label="Dead Bolt" checked={d.dead_bolt} onChange={(dead_bolt) => set({ dead_bolt })} /></div>
+        <WInput field={f('roof_year')} label="Year Roof Replaced" inputMode="numeric" value={d.roof_year} onChange={(x) => set({ roof_year: x.replace(/\D/g, '').slice(0, 4) })} />
+      </div>
+      <div className="border-t border-ink-200 mt-6" />
+      <Sub>Protective Devices</Sub>
+      <div className={grid4}>
+        <WSelect field={f('fire_detection')} label="Fire Detection" value={d.fire_detection} onChange={(fire_detection) => set({ fire_detection })} options={DETECTION} />
+        <WSelect field={f('sprinkler')} label="Sprinkler System" value={d.sprinkler} onChange={(sprinkler) => set({ sprinkler })} options={SPRINKLER} />
+        <WSelect field={f('smoke_detector')} label="Smoke Detector" value={d.smoke_detector} onChange={(smoke_detector) => set({ smoke_detector })} options={DETECTION} />
+        <div className="flex items-center"><Switch label="Fire Extinguisher" checked={d.extinguisher} onChange={(extinguisher) => set({ extinguisher })} /></div>
+      </div>
+      <div className="border-t border-ink-200 mt-6" />
+      <Sub warn={!clean(issues, 'dwelling.purchase', 'dwelling.station', 'dwelling.hydrant')}>Geographical Info</Sub>
+      <div className={grid4}>
+        <WInput field={f('purchase_price')} label="Purchase Price" inputMode="numeric" value={moneyShow(d.purchase_price)} onChange={(x) => set({ purchase_price: money(x) })} />
+        <WInput field={f('purchase_date')} label="Purchase Date" required type="date" value={d.purchase_date} onChange={(purchase_date) => set({ purchase_date })} />
+        <WSelect field={f('station_miles')} label="Distance From Fire Station (miles)" required value={d.station_miles} onChange={(station_miles) => set({ station_miles })} options={DISTANCE_MILES} />
+        <WSelect field={f('hydrant_feet')} label="Feet From Hydrant" required value={d.hydrant_feet} onChange={(hydrant_feet) => set({ hydrant_feet })} options={HYDRANT_FEET} />
+      </div>
       <CarrierQuestions step="dwelling" title="Carrier Questions" />
       <StepFooter back={{ label: 'Policy info', to: 'policy' }} next={{ label: 'Coverage', to: 'coverage' }} />
       {lookup && <LookupOverlay onDone={finish} />}
@@ -395,24 +400,25 @@ export function CoverageStep() {
   const amt = (p: string) => (dwelling ? `$${Math.round((dwelling * num(p)) / 100).toLocaleString('en-US')}` : '—');
   const rc = replacementCost(w.dwelling);
   const pctField = (label: string, value: string, options: string[], key: 'other_pct' | 'pp_pct' | 'lou_pct') => (
-    <div className="grid grid-cols-[minmax(0,1fr)_110px] gap-2 items-center">
+    <div className="grid grid-cols-[minmax(0,1fr)_96px] gap-3 items-center">
       <WSelect field={`coverage.${key}`} label={label} value={value} onChange={(v) => set({ [key]: v } as Partial<HomeWorkflow['coverage']>)} options={options} />
-      <div className="text-[13px] text-ink-700 tabular-nums">{amt(value)}</div>
+      <div className="text-[12px] leading-tight"><div className="text-ink-500">Amount</div><div className="text-ink-800 tabular-nums">{amt(value)}</div></div>
     </div>
   );
   return (
     <div>
-      <SectionTitle ok={clean(issues, 'coverage.dwelling', 'coverage.replacement', 'coverage.liability', 'coverage.medpay', 'coverage.deductible', 'coverage.hurricane')}>General Coverages</SectionTitle>
+      <SectionTitle ok={clean(issues, 'coverage.')}>Coverage Information</SectionTitle>
+      <Sub>General Coverages</Sub>
       <div className={grid4}>
         <WInput field="coverage.dwelling" label="Dwelling" required inputMode="numeric" value={moneyShow(c.dwelling)} onChange={(x) => set({ dwelling: money(x) })} />
         <WInput field="coverage.replacement" label="Est. Replacement Cost" required inputMode="numeric" value={moneyShow(c.replacement)} onChange={(x) => set({ replacement: money(x) })}
           action={rc > 0 ? <button type="button" className="px-2 text-[11px] font-semibold text-brand-700 hover:underline whitespace-nowrap" onClick={() => set({ replacement: String(rc) })}>Calculate</button> : undefined} />
+        {pctField('Other Structures', c.other_pct, OTHER_STRUCT_PCT, 'other_pct')}
+        {pctField('Personal Property', c.pp_pct, PERSONAL_PROPERTY_PCT, 'pp_pct')}
+        {pctField('Loss Of Use', c.lou_pct, LOSS_OF_USE_PCT, 'lou_pct')}
         <WSelect field="coverage.liability" label="Personal Liability" required value={c.liability} onChange={(liability) => set({ liability })} options={LIABILITY.map((v) => ({ value: v, label: `$${Number(v).toLocaleString('en-US')}` }))} />
         <WSelect field="coverage.medpay" label="Medical Payments" required value={c.medpay} onChange={(medpay) => set({ medpay })} options={MEDPAY.map((v) => ({ value: v, label: `$${Number(v).toLocaleString('en-US')}` }))} />
         <WSelect field="coverage.deductible" label="All Perils Deductible" required value={c.deductible} onChange={(deductible) => set({ deductible })} options={DEDUCTIBLE.map((v) => ({ value: v, label: v.endsWith('%') ? v : `$${Number(v).toLocaleString('en-US')}` }))} />
-        {pctField('Other Structures %', c.other_pct, OTHER_STRUCT_PCT, 'other_pct')}
-        {pctField('Personal Property %', c.pp_pct, PERSONAL_PROPERTY_PCT, 'pp_pct')}
-        {pctField('Loss Of Use %', c.lou_pct, LOSS_OF_USE_PCT, 'lou_pct')}
         <WSelect field="coverage.theft_ded" label="Theft Deductible" value={c.theft_ded} onChange={(theft_ded) => set({ theft_ded })} options={THEFT_DED} />
         <WSelect field="coverage.wind_ded" label="Wind Deductible" value={c.wind_ded} onChange={(wind_ded) => set({ wind_ded })} options={WIND_DED} />
         <WSelect field="coverage.hurricane_ded" label="Hurricane Deductible" value={c.hurricane_ded} onChange={(hurricane_ded) => set({ hurricane_ded })} options={HURRICANE_DED} />
@@ -420,20 +426,23 @@ export function CoverageStep() {
       {rc > 0 && dwelling > 0 && dwelling < rc * 0.8 && <div className="mt-3"><Notice tone="red">Dwelling is below 80% of the estimated replacement cost (${rc.toLocaleString('en-US')}). Claims may be subject to coinsurance.</Notice></div>}
 
       <SectionTitle ok={clean(issues, 'coverage.interest', 'coverage.other_interests')}>Financial Interests Information</SectionTitle>
-      <div className="bg-white border border-ink-200 rounded px-4 max-w-[900px]">
-        {INTERESTS.map((it) => {
-          const v = c.interests[it.key];
-          return (
-            <Question key={it.key} label={it.label} checked={v.on} onChange={(on) => setInterest(it.key, { on })} field={`coverage.interest.${it.key}`}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[640px] pb-1">
-                <WInput field={`coverage.interest.${it.key}`} label="Name" required value={v.name} onChange={(name) => setInterest(it.key, { name })} maxLength={60} />
-                <WInput field={`coverage.interest.${it.key}.loan`} label="Loan Number" value={v.loan} onChange={(loan) => setInterest(it.key, { loan })} maxLength={30} />
-              </div>
-            </Question>
-          );
-        })}
-        <div className="py-3 max-w-[220px]"><WInput field="coverage.other_interests" label="# of Other Interests" required inputMode="numeric" value={c.other_interests} onChange={(x) => set({ other_interests: x.replace(/\D/g, '').slice(0, 2) })} /></div>
+      <div className="text-[14px] text-ink-900 mb-3">Financial Interests on the property to be insured</div>
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+        {INTERESTS.map((it) => <Switch key={it.key} label={it.label} checked={c.interests[it.key].on} onChange={(on) => setInterest(it.key, { on })} field={`coverage.interest.${it.key}.on`} />)}
+        <div className="w-full sm:w-[230px]"><WInput field="coverage.other_interests" label="# of Other Interests" required inputMode="numeric" value={c.other_interests} onChange={(x) => set({ other_interests: x.replace(/\D/g, '').slice(0, 2) })} /></div>
       </div>
+      {INTERESTS.filter((it) => c.interests[it.key].on).map((it) => {
+        const v = c.interests[it.key];
+        return (
+          <div key={it.key} className="mt-4">
+            <div className="text-[13px] font-medium text-ink-800 mb-2">{it.label}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[640px]">
+              <WInput field={`coverage.interest.${it.key}`} label="Name" required value={v.name} onChange={(name) => setInterest(it.key, { name })} maxLength={60} />
+              <WInput field={`coverage.interest.${it.key}.loan`} label="Loan Number" value={v.loan} onChange={(loan) => setInterest(it.key, { loan })} maxLength={30} />
+            </div>
+          </div>
+        );
+      })}
       <StepFooter back={{ label: 'Dwelling info', to: 'dwelling' }} next={{ label: 'Endorsements', to: 'endorsements' }} />
     </div>
   );
@@ -450,26 +459,25 @@ export function EndorsementsStep() {
   const f = (k: string) => `endorsements.${k}`;
   return (
     <div>
-      <SectionTitle ok>Endorsements</SectionTitle>
+      <SectionTitle ok={clean(issues, 'endorsements.')}>Endorsements Information</SectionTitle>
+      <Sub>Endorsements</Sub>
       <div className={grid4}>
         <WSelect field={f('additions')} label="Building Additions or Alterations" value={e.additions} onChange={(additions) => set({ additions })} options={dollars(E_ADDITIONS)} />
         <WSelect field={f('increased_rc')} label="Increased Replacement Cost Dwelling Percent" value={e.increased_rc} onChange={(increased_rc) => set({ increased_rc })} options={dollars(E_INCREASED_RC)} />
         <WSelect field={f('loss_assessment')} label="Loss Assessment" value={e.loss_assessment} onChange={(loss_assessment) => set({ loss_assessment })} options={dollars(E_LOSS_ASSESSMENT)} />
+        <div className="flex items-center"><Switch label="Identity Theft" checked={e.identity_theft} onChange={(identity_theft) => set({ identity_theft })} /></div>
         <WSelect field={f('ordinance')} label="Ordinance or Law" value={e.ordinance} onChange={(ordinance) => set({ ordinance })} options={dollars(E_ORDINANCE)} />
         <WSelect field={f('credit_card')} label="Increased Coverage on Credit Card" value={e.credit_card} onChange={(credit_card) => set({ credit_card })} options={dollars(E_CREDIT_CARD)} />
         <WSelect field={f('jewelry')} label="Increased Limit on Jewelry, Watches and Furs" value={e.jewelry} onChange={(jewelry) => set({ jewelry })} options={dollars(E_JEWELRY)} />
+        <div className="flex items-center"><Switch label="Replacement Cost Content" checked={e.rc_contents} onChange={(rc_contents) => set({ rc_contents })} /></div>
         <WSelect field={f('water_backup')} label="Water Backup" value={e.water_backup} onChange={(water_backup) => set({ water_backup })} options={dollars(E_WATER_BACKUP)} />
         <WSelect field={f('mold')} label="Increased Mold Property Damage" value={e.mold} onChange={(mold) => set({ mold })} options={dollars(E_MOLD)} />
-      </div>
-      <div className="flex flex-wrap gap-x-8 gap-y-3 mt-5">
-        <Switch label="Identity Theft" checked={e.identity_theft} onChange={(identity_theft) => set({ identity_theft })} />
-        <Switch label="Replacement Cost Content" checked={e.rc_contents} onChange={(rc_contents) => set({ rc_contents })} />
-        <Switch label="Personal Injury" checked={e.personal_injury} onChange={(personal_injury) => set({ personal_injury })} />
-        <Switch label="Special Personal Property" checked={e.special_pp} onChange={(special_pp) => set({ special_pp })} />
-        <Switch label="Sinkhole Collapse" checked={e.sinkhole} onChange={(sinkhole) => set({ sinkhole })} />
+        <div className="flex items-center"><Switch label="Personal Injury" checked={e.personal_injury} onChange={(personal_injury) => set({ personal_injury })} /></div>
+        <div className="flex items-center"><Switch label="Special Personal Property" checked={e.special_pp} onChange={(special_pp) => set({ special_pp })} /></div>
+        <div className="flex items-center"><Switch label="Sinkhole Collapse" checked={e.sinkhole} onChange={(sinkhole) => set({ sinkhole })} /></div>
       </div>
 
-      <SectionTitle ok={clean(issues, 'endorsements.eq')}>Earthquake</SectionTitle>
+      <Sub warn={!clean(issues, 'endorsements.eq')}>Earthquake</Sub>
       <div className={grid4}>
         <WSelect field={f('eq_zone')} label="Earthquake Zone" value={e.eq_zone} onChange={(eq_zone) => set({ eq_zone, ...(eq_zone === NONE ? { eq_ded: '', eq_veneer: '' } : { eq_ded: e.eq_ded || '10%', eq_veneer: e.eq_veneer || '0%' }) })} options={EQ_ZONE} />
         <WSelect field={f('eq_ded')} label="Deductible" required={e.eq_zone !== NONE} value={e.eq_ded} onChange={(eq_ded) => set({ eq_ded })} options={EQ_DED} disabled={e.eq_zone === NONE} />
@@ -477,17 +485,17 @@ export function EndorsementsStep() {
         <div className="flex items-center"><Switch label="Exclude Masonry Veneer" checked={e.eq_exclude_veneer} disabled={e.eq_zone === NONE} onChange={(eq_exclude_veneer) => set({ eq_exclude_veneer })} /></div>
       </div>
 
-      <SectionTitle ok={clean(issues, 'endorsements.biz')}>Business Pursuits</SectionTitle>
+      <Sub warn={!clean(issues, 'endorsements.biz')}>Business Pursuits</Sub>
       <div className={grid4}>
         <WInput field={f('biz_name')} label="Business Name" value={e.biz_name} onChange={(biz_name) => set({ biz_name })} maxLength={60} />
         <WSelect field={f('biz_class')} label="Business Class" required={!!e.biz_name.trim()} value={e.biz_class} onChange={(biz_class) => set({ biz_class })} options={BUSINESS_CLASS.filter(Boolean)} />
         <div className="flex items-center"><Switch label="Incidental Business" checked={e.incidental_business} onChange={(incidental_business) => set({ incidental_business })} /></div>
       </div>
 
-      <SectionTitle ok={clean(issues, 'endorsements.spp')}>Scheduled Personal Property</SectionTitle>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 max-w-[900px]">
+      <Sub warn={!clean(issues, 'endorsements.spp')}>Scheduled Personal Property</Sub>
+      <div className={grid4}>
         {SPP_CLASSES.map((sc) => (
-          <div key={sc.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-4 items-center">
+          <div key={sc.key} className="space-y-2">
             <WInput field={f(`spp.${sc.key}`)} label={sc.label} inputMode="numeric" value={moneyShow(e.spp[sc.key].amount)} onChange={(x) => setSpp(sc.key, { amount: money(x).slice(0, 7) })} />
             <Switch label="Breakage" checked={e.spp[sc.key].breakage} disabled={!e.spp[sc.key].amount} onChange={(breakage) => setSpp(sc.key, { breakage })} />
           </div>
