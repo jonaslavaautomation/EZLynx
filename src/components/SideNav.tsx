@@ -1,6 +1,5 @@
 import { BarChart3, BookOpenText, Folder, Gift, HelpCircle, LayoutDashboard, Network, Plug, Settings, SquareUser, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Logo } from '@/components/Logo';
 import { cx } from '@/components/ui';
 import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
@@ -311,7 +310,6 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
   return (
     <div ref={rootRef} onMouseLeave={scheduleClose} onMouseEnter={() => window.clearTimeout(closeTimer.current)}>
       <aside className={cx('sidebar', mobileOpen && 'mobile-open')} aria-label="Main navigation">
-        <a href={href('/')} className="rail-logo" aria-label="Workspace home" onClick={() => onNavigate()}><Logo size={34} /></a>
         <nav>
           {MENU.map(({ key, label, icon: Icon }) => (
             <button

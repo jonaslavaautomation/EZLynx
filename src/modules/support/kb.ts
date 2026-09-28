@@ -79,7 +79,7 @@ export const KB_ARTICLES: KbArticle[] = [
     body: [
       { steps: [
         'Open the applicant and confirm drivers (DOB, license, violations, accidents) and vehicles (year, make, model, VIN).',
-        'Click **New quote** (or **Quick Quote** in the top bar). The wizard pre-fills from the applicant.',
+        'Open the applicant and choose **Actions → Quote auto** or **Quote home** (or **+ → Quote** in the top bar). The quote pre-fills from the applicant.',
         'Step through Applicant → Risk details → Coverages → Carriers. Choose limits and deductibles on Coverages.',
         'Select carriers and click **Rate**. Expand a carrier to see coverage-level premiums; declined carriers show the reason.',
         'Click **Select & bind** on the chosen carrier, confirm the effective date and billing, and the policy is created.',

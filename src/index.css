@@ -29,7 +29,6 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #374151; text-d
 .topbar { height: 50px; background: #2d3740; color: #ffffff; display: flex; align-items: center; position: fixed; inset: 0 0 auto; z-index: 40; box-shadow: 0 1px 3px #0000004d; }
 .brand-lockup { height: 50px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 9px; flex: none; }
 .brand-wordmark { display: block; }
-.rail-logo { display: grid; place-items: center; height: 56px; border-bottom: 1px solid #3a4550; margin-bottom: 6px; flex: none; }
 .search-area { width: 460px; height: 100%; display: flex; align-items: center; color: #cfd8dc; font-size: 13px; border-bottom: 1px solid #6b7680; position: relative; }
 .search-icon-left { color: #cfd8dc; margin: 0 10px 0 16px; flex: none; }
 .search-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #ffffff; font-size: 13px; height: 100%; padding: 0 8px 0 0; }

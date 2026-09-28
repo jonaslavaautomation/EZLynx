@@ -61,7 +61,6 @@ function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () =
       <button className="mobile-menu" aria-label="Open navigation" onClick={onMenu}><MenuIcon size={20} /></button>
       <GlobalSearch />
       <div className="top-actions">
-        <button className="cta-button" onClick={() => onQuickAdd('quote')}><Calculator size={16} /> <span className="hidden sm:inline">Quick Quote</span></button>
         <AiButton />
         <UserMenu />
         <QuickAddMenu onPick={onQuickAdd} />
