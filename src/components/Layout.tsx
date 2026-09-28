@@ -41,10 +41,13 @@ function StatusFooter() {
   return (
     <footer>
       <span>{settings?.name ?? 'EZlynxLava AMS'} · Agency Management System</span>
-      <span className="flex items-center gap-1.5">
-        <Database size={11} />
-        {mode === 'supabase' ? 'Connected to Supabase' : <>Browser storage (demo mode) · <a href={href('/settings?tab=data')}>Connect Supabase</a></>}
-      </span>
+      {/* Only shown as a warning when work is NOT being saved to the shared database. */}
+      {mode !== 'supabase' && (
+        <span className="flex items-center gap-1.5">
+          <Database size={11} />
+          Browser storage (demo mode) · <a href={href('/settings?tab=data')}>Connect Supabase</a>
+        </span>
+      )}
     </footer>
   );
 }
