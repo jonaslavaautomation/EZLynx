@@ -24,7 +24,7 @@ export function OField({ label, required, filled, level, message, children, disa
         onFocusCapture={() => setFocus(true)}
         onBlurCapture={() => setFocus(false)}
       >
-        <span className={cx('pointer-events-none absolute left-3 transition-all bg-white px-0.5 whitespace-nowrap',
+        <span className={cx('pointer-events-none absolute left-3 transition-all bg-white px-0.5 whitespace-nowrap max-w-[calc(100%-1.5rem)] overflow-hidden text-ellipsis',
           float ? '-top-2 text-[11px] text-ink-500' : 'top-1/2 -translate-y-1/2 text-[15px] text-ink-400', disabled && !float && 'bg-transparent')}>
           {required && <span className="text-red-600">*</span>}{label}
         </span>

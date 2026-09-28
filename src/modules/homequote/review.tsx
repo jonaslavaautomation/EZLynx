@@ -112,11 +112,16 @@ export function ValidStep() {
         <>
           <Notice>Correcting the following items will increase the accuracy of your quote</Notice>
           <div className="mt-3 ml-1">
-            <div className="text-[15px] text-ink-900 mb-2">Applicant</div>
-            {acc.map((a) => (
-              <div key={a.field} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[360px_auto] items-center gap-4 ml-4 py-1.5">
-                <div className="text-[13px] text-ink-800">{a.label}</div>
-                <TextBtn onClick={() => (a.step === 'ssn' ? setSsn(true) : go(a.step, a.field))} className="h-8">Edit</TextBtn>
+            {/* Grouped the way EZLynx lists them: Applicant items, then each workflow step. */}
+            {[...new Set(acc.map((a) => (a.step === 'ssn' ? 'Applicant' : STEPS.find((s) => s.key === a.step)?.label ?? 'Quote')))].map((group) => (
+              <div key={group} className="mb-3">
+                <div className="text-[15px] text-ink-900 mb-2">{group}</div>
+                {acc.filter((a) => (a.step === 'ssn' ? 'Applicant' : STEPS.find((s) => s.key === a.step)?.label ?? 'Quote') === group).map((a) => (
+                  <div key={a.field} className="grid grid-cols-[minmax(0,1fr)_auto] sm:grid-cols-[300px_auto] items-center gap-4 ml-4 py-1.5">
+                    <div className="text-[13px] text-ink-800">{a.label}</div>
+                    <TextBtn onClick={() => (a.step === 'ssn' ? setSsn(true) : go(a.step, a.field))} className="h-8 justify-self-start">Edit</TextBtn>
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -309,7 +314,7 @@ export function ResultsView({ quoteId, results }: { quoteId: string | null; resu
         </div>
       ) : (
         <div className="flex items-center gap-3 mt-7 mb-4 px-2" aria-label="Premium range">
-          <span className="text-[12px] text-ink-800 whitespace-nowrap">({w.rating.state}) Quoted Home Premium</span>
+          <span className="text-[12px] text-ink-800 whitespace-nowrap">({w.rating.state}) Actual Home Premium</span>
           <div className="relative flex-1 h-6">
             <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-1 bg-brand-700 rounded" />
             {rows.length > 1 && <span className="absolute -top-4 left-0 text-[10px] text-ink-500">{money2(lo)}</span>}
