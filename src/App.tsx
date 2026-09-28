@@ -120,7 +120,7 @@ function Onboarding({ onDone }: { onDone: () => void }) {
     <div className="min-h-[var(--vh100)] grid place-items-center bg-[#f8f6f6] p-4">
       <div className="w-full max-w-lg bg-white rounded-md shadow-pop border border-ink-100 p-7">
         <Logo size={44} className="mb-4" />
-        <h1 className="text-xl font-semibold text-ink-900">Welcome to Northstar AMS</h1>
+        <h1 className="text-xl font-semibold text-ink-900">Welcome to EZlynxLava AMS</h1>
         <p className="text-[13px] text-ink-500 mt-1.5">Your Supabase database is connected and the AMS schema is in place, but it has no agency set up yet. How would you like to start?</p>
         <div className="mt-5 space-y-2.5">
           <ErrorBanner message={error} />
