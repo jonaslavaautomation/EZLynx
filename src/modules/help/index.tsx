@@ -46,7 +46,7 @@ const SECTIONS: { key: string; title: string; group: string; body: ReactNode }[]
           ].map(([k, v]) => <tr key={k}><th>{k}</th><td>{v}</td></tr>)}
         </tbody>
       </table>
-      <p>The top bar has global search, <b>Quick Quote</b>, the <b>+</b> menu to create anything, your tasks, and notifications.</p>
+      <p>The top bar has global search, the <b>AI</b> button (Catch me up on the open applicant), the <b>+</b> menu to create anything (including a quote), your tasks, and notifications.</p>
     </>,
   },
   {
