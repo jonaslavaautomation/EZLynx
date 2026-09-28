@@ -6,6 +6,7 @@ import { Button, EmptyState, ErrorBanner, FeedbackProvider } from '@/components/
 import { AppDataProvider } from '@/lib/app-context';
 import { db, initDb, setModeOverride, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
+import { ensureOwner, recordVisit } from '@/lib/owner';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
 import { ApplicantEditor } from '@/modules/accounts/ApplicantEditor';
@@ -29,7 +30,6 @@ import { PoliciesPage, PolicyDetail, PolicyFormModal } from '@/modules/policies'
 import { QuoteDetail, QuotesPage, QuoteWizard } from '@/modules/quotes';
 import { ReportsPage } from '@/modules/reports';
 import { SettingsPage } from '@/modules/settings';
-import { SessionGate } from '@/modules/usersettings/SessionGate';
 import { UserSettingsPage } from '@/modules/usersettings';
 
 // Runs once per page load (StrictMode mounts effects twice; seeding must not run twice).
@@ -41,10 +41,12 @@ function bootApp(): Promise<Boot> {
       const settings = await db.list('agency_settings', { limit: 1 });
       if (settings.length) {
         if (mode === 'local') await topUpLocalSample().catch(() => { /* sample top-up is best effort */ });
+        await ensureOwner().catch(() => { /* the app still opens; Settings → Users can fix the owner */ });
+        recordVisit();
         return { state: 'ready', mode };
       }
       // Browser-storage demo: seed silently so the portal is usable immediately.
-      if (mode === 'local') { await loadSampleData(); return { state: 'ready', mode }; }
+      if (mode === 'local') { await loadSampleData(); await ensureOwner().catch(() => {}); recordVisit(); return { state: 'ready', mode }; }
       return { state: 'onboarding', mode };
     } catch (e) {
       return { state: 'error', message: (e as Error).message };
@@ -165,14 +167,12 @@ export default function App() {
       </div>
     );
   }
-  if (boot.state === 'onboarding') return <FeedbackProvider><Onboarding onDone={() => setBoot({ state: 'ready', mode: boot.mode })} /></FeedbackProvider>;
+  if (boot.state === 'onboarding') return <FeedbackProvider><Onboarding onDone={() => { void ensureOwner().catch(() => {}).then(() => setBoot({ state: 'ready', mode: boot.mode })); }} /></FeedbackProvider>;
 
   return (
     <FeedbackProvider>
       <AppDataProvider>
-        <SessionGate>
-          <Shell />
-        </SessionGate>
+        <Shell />
       </AppDataProvider>
     </FeedbackProvider>
   );

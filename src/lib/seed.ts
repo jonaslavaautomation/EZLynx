@@ -49,7 +49,7 @@ export const DEMO_CARRIERS: Omit<Carrier, 'id' | 'created_at'>[] = [
 ];
 
 export const DEMO_STAFF: Omit<Staff, 'id' | 'created_at'>[] = [
-  { name: 'Morgan Nash', email: 'morgan@northstar-agency.example', role: 'Agency Owner', active: true, color: '#684ec2', service_team: true, external: false, producer_code: null },
+  { name: 'Nash Rosauro', email: 'nash@northstar-agency.example', role: 'Agency Owner', active: true, color: '#684ec2', service_team: true, external: false, producer_code: null },
   { name: 'Priya Desai', email: 'priya@northstar-agency.example', role: 'Producer', active: true, color: '#0f8a7e', service_team: true, external: false, producer_code: null },
   { name: 'Luis Herrera', email: 'luis@northstar-agency.example', role: 'Producer', active: true, color: '#d9622b', service_team: true, external: false, producer_code: null },
   { name: 'Hannah Lee', email: 'hannah@northstar-agency.example', role: 'CSR', active: true, color: '#2f6fbd', service_team: true, external: false, producer_code: null },

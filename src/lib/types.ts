@@ -552,7 +552,7 @@ export type Integration = BaseRow & {
   activated_by: string | null;
 };
 
-/** Per-user settings (User Settings page). Password and TOTP fields drive the training-grade sign-in screen. */
+/** Per-user settings (User Settings page). Password and TOTP fields are practice settings; the portal has no sign-in screen. */
 export type UserSettings = BaseRow & {
   staff_name: string;
   first_name: string | null;
