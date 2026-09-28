@@ -2,7 +2,6 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { getDbMode, type DbMode } from '@/lib/db';
 import { useTable } from '@/lib/hooks';
 import type { AgencySettings, Carrier, Staff } from '@/lib/types';
-import { useSession } from '@/modules/usersettings/session';
 
 /** Agency-wide reference data every screen needs: settings, staff, carriers and the signed-in user. */
 type AppData = {
@@ -24,13 +23,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const settings = useTable('agency_settings', { order: { column: 'created_at' }, limit: 1 });
   const staff = useTable('staff', { order: { column: 'name' } });
   const carriers = useTable('carriers', { order: { column: 'name' } });
-  const session = useSession();
 
   const value = useMemo<AppData>(() => {
     const s = settings.data[0] ?? null;
-    // The signed-in user (training sign-in), else the agency's configured current user, else the first staff member.
-    const me = staff.data.find((m) => m.name === session?.staff_name)
-      ?? staff.data.find((m) => m.name === s?.current_user_name) ?? staff.data[0] ?? null;
+    // The agency's current user (the owner, Nash Rosauro), else the first staff member.
+    const me = staff.data.find((m) => m.name === s?.current_user_name) ?? staff.data[0] ?? null;
     return {
       mode: getDbMode(),
       settings: s,
@@ -42,7 +39,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       staffColor: (name) => staff.data.find((m) => m.name === name)?.color ?? '#8f8484',
       loading: settings.loading || staff.loading || carriers.loading,
     };
-  }, [settings.data, settings.loading, staff.data, staff.loading, carriers.data, carriers.loading, session?.staff_name]);
+  }, [settings.data, settings.loading, staff.data, staff.loading, carriers.data, carriers.loading]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

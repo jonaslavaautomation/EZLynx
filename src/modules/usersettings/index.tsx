@@ -6,7 +6,6 @@ import { AcordTab, EmailSignatureTab } from '@/modules/usersettings/tabs-signatu
 import { ChangePasswordTab, LoginActivityTab, ThirdPartyTab, TwoFactorTab } from '@/modules/usersettings/tabs-security';
 import { useMySettings } from '@/modules/usersettings/data';
 
-export { SignInScreen } from '@/modules/usersettings/SignInScreen';
 export { getSession, signIn, signOut, useSession, wasSignedOut } from '@/modules/usersettings/session';
 export { useUserPreferences } from '@/modules/usersettings/data';
 

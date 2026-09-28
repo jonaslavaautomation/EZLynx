@@ -1,20 +1,19 @@
 import {
   AlertTriangle, Bell, Check, ListFilter, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
-  FolderOpen, HelpCircle, LayoutGrid, Loader2, LogOut, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, Sparkles, UserPlus, X,
+  FolderOpen, HelpCircle, LayoutGrid, Loader2, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, Sparkles, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo, Wordmark } from '@/components/Logo';
 import { SideNav } from '@/components/SideNav';
 import { AutomationTicker } from '@/modules/admin';
 import { SupportChatHost } from '@/modules/support';
-import { Avatar, cx, useFeedback } from '@/components/ui';
+import { Avatar, cx } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { accountName, daysUntil } from '@/lib/format';
 import { useDebounced, useTable } from '@/lib/hooks';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account } from '@/lib/types';
-import { signOut } from '@/modules/usersettings/session';
 import { usernameOf } from '@/modules/usersettings/tabs-profile';
 
 export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickAdd: (kind: QuickAddKind) => void }) {
@@ -41,7 +40,7 @@ function StatusFooter() {
   const { mode, settings } = useAppData();
   return (
     <footer>
-      <span>{settings?.name ?? 'Northstar AMS'} · Agency Management System</span>
+      <span>{settings?.name ?? 'EZlynxLava AMS'} · Agency Management System</span>
       <span className="flex items-center gap-1.5">
         <Database size={11} />
         {mode === 'supabase' ? 'Connected to Supabase' : <>Browser storage (demo mode) · <a href={href('/settings?tab=data')}>Connect Supabase</a></>}
@@ -75,17 +74,9 @@ function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () =
 
 function UserMenu() {
   const { me } = useAppData();
-  const { confirm } = useFeedback();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useOutside(ref, open, () => setOpen(false));
-  const logout = async () => {
-    setOpen(false);
-    if (await confirm({ title: 'Log out?', message: 'You will return to the sign-in screen.', confirmLabel: 'Logout' })) {
-      await signOut();
-      navigate('/');
-    }
-  };
   return (
     <div className="relative" ref={ref}>
       <button className="avatar-link" aria-label="User menu" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)} title={me ? `${me.name} (${me.role})` : 'User'}>
@@ -100,9 +91,6 @@ function UserMenu() {
           <a role="menuitem" href={href('/user-settings')} onClick={() => setOpen(false)} className="flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-800 hover:bg-ink-50">
             <SettingsIcon size={15} className="text-ink-500" /> User settings
           </a>
-          <button role="menuitem" onClick={logout} className="w-full flex items-center gap-2.5 px-4 py-2 text-[13px] text-ink-800 hover:bg-ink-50 text-left">
-            <LogOut size={15} className="text-ink-500" /> Logout
-          </button>
         </div>
       )}
     </div>
@@ -180,7 +168,7 @@ export function useAlerts(): Alert[] {
   }, [activities.data, policies.data, messages.data, docs.data, names, me, settings]);
 }
 
-const READ_KEY = 'northstar-ams:read-alerts';
+const READ_KEY = '-ams:read-alerts';
 function readIds(): string[] {
   try { const v = JSON.parse(localStorage.getItem(READ_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
 }

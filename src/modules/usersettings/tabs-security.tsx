@@ -101,7 +101,7 @@ export function TwoFactorTab() {
     setBusy(true);
     try {
       if (!(await verifyTotp(row.totp_secret, code))) { toast('Enter a current code from your authenticator app to turn two-factor off.', 'error'); return; }
-      if (!(await confirm({ title: 'Turn off two-factor?', message: 'Signing in will only need your password.', confirmLabel: 'Turn off', danger: true }))) return;
+      if (!(await confirm({ title: 'Turn off two-factor?', message: 'The authenticator setup will be removed from your account.', confirmLabel: 'Turn off', danger: true }))) return;
       await save({ totp_secret: null, totp_enabled: false });
       await logEvent(me!.name, 'Two-Factor Disabled', trusted);
       setCode('');
@@ -119,12 +119,12 @@ export function TwoFactorTab() {
   return (
     <div className="max-w-[760px]">
       <H>Two Factor Authentication</H>
-      <InfoNote>Two-factor adds a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password…) to sign-in. This is a training sign-in, not secure authentication.</InfoNote>
+      <InfoNote>Two-factor adds a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy, 1Password…) to sign-in in a live AMS. This portal opens without a sign-in, so it is practice only and never asked for at start-up.</InfoNote>
 
       {enabled ? (
         <div className="rounded border border-ink-200 bg-white p-5">
           <div className="flex items-center gap-2 text-[15px] font-medium text-green-700"><ShieldCheck size={18} /> Two-factor authentication is on</div>
-          <p className="text-[13px] text-ink-600 mt-1">You'll be asked for a code each time you sign in.</p>
+          <p className="text-[13px] text-ink-600 mt-1">In a live AMS you would enter a code each time you sign in.</p>
           <div className="flex flex-wrap items-end gap-3 mt-5">
             {codeInput}
             <Button variant="danger" icon={<ShieldOff size={15} />} loading={busy} disabled={code.length !== 6} onClick={disable}>Turn off</Button>
@@ -198,7 +198,7 @@ export function ChangePasswordTab() {
       await save({ password_hash: hash, password_salt: salt, password_updated_at: new Date().toISOString() });
       await logEvent(me!.name, has ? 'Password Changed' : 'Password Set', !!session?.trusted);
       setCur(''); setPw(''); setAgain('');
-      toast(has ? 'Password changed.' : 'Password set. You will need it next time you sign in.');
+      toast(has ? 'Password changed.' : 'Password set.');
     } catch (e) { toast((e as Error).message, 'error'); } finally { setBusy(false); }
   };
 
@@ -207,7 +207,7 @@ export function ChangePasswordTab() {
     setBusy(true);
     try {
       if (!(await checkCurrent())) return;
-      if (!(await confirm({ title: 'Remove password?', message: 'Anyone using this browser could sign in as you without a password.', confirmLabel: 'Remove', danger: true }))) return;
+      if (!(await confirm({ title: 'Remove password?', message: 'The saved password will be removed from your account.', confirmLabel: 'Remove', danger: true }))) return;
       await save({ password_hash: null, password_salt: null, password_updated_at: new Date().toISOString() });
       await logEvent(me!.name, 'Password Removed', !!session?.trusted);
       setCur('');
@@ -219,8 +219,8 @@ export function ChangePasswordTab() {
     <div className="max-w-[760px]">
       <H>Change Password</H>
       <InfoNote>
-        {has ? <>Your password was last changed {row?.password_updated_at ? fmtDate(row.password_updated_at) : 'at an unknown date'}.</> : <>You don't have a password yet. Setting one makes the sign-in screen ask for it.</>}
-        {' '}Passwords are stored as salted PBKDF2 hashes; this is still a training sign-in, not secure authentication.
+        {has ? <>Your password was last changed {row?.password_updated_at ? fmtDate(row.password_updated_at) : 'at an unknown date'}.</> : <>You don't have a password yet.</>}
+        {' '}Passwords are stored as salted PBKDF2 hashes. The portal opens without a sign-in, so this is practice only and not secure authentication.
       </InfoNote>
       <form className="space-y-6 max-w-[380px]" onSubmit={(e) => { e.preventDefault(); onSave(); }}>
         {has && <OInput label="Current Password" type="password" required="proceed" value={cur} onChange={setCur} />}

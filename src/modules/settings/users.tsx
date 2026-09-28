@@ -5,34 +5,11 @@ import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { useTable } from '@/lib/hooks';
 import type { Staff, StaffRole } from '@/lib/types';
-import { renameSessionUser } from '@/modules/usersettings/session';
-import { renameWhere } from './rename';
+import { renameStaffReferences } from './rename';
 
 const ROLES: StaffRole[] = ['Agency Owner', 'Admin', 'Producer', 'CSR', 'Account Manager'];
 const PALETTE = ['#684ec2', '#0f8a7e', '#d9622b', '#2f6fbd', '#b23a6e', '#dc2626', '#991b1b', '#c0392b', '#3d7d3a', '#b7791f', '#7a1b20', '#1f5f99'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/** When a staff member is renamed, carry the new name to every record that references staff by name. */
-async function renameStaffReferences(oldName: string, newName: string) {
-  await renameWhere('accounts', 'producer', oldName, newName);
-  await renameWhere('accounts', 'csr', oldName, newName);
-  await renameWhere('policies', 'producer', oldName, newName);
-  await renameWhere('activities', 'assigned_to', oldName, newName);
-  await renameWhere('agency_settings', 'current_user_name', oldName, newName);
-  // Name-keyed personal data: sign-in (password / 2FA), history, commission splits, training, reports, apps.
-  await renameWhere('user_settings', 'staff_name', oldName, newName);
-  await renameWhere('login_events', 'staff_name', oldName, newName);
-  await renameWhere('commission_rules', 'staff_name', oldName, newName);
-  await renameWhere('training_progress', 'staff_name', oldName, newName);
-  await renameWhere('training_registrations', 'staff_name', oldName, newName);
-  await renameWhere('saved_reports', 'owner', oldName, newName);
-  await renameWhere('integrations', 'activated_by', oldName, newName);
-  await renameWhere('support_tickets', 'requester', oldName, newName);
-  for (const d of await db.list('departments')) {
-    if (d.members.includes(oldName)) await db.update('departments', d.id, { members: d.members.map((m) => (m === oldName ? newName : m)) });
-  }
-  renameSessionUser(oldName, newName);
-}
 
 export function UsersTab() {
   const { toast, confirm } = useFeedback();
