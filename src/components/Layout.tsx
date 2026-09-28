@@ -41,7 +41,7 @@ function StatusFooter() {
   const { mode, settings } = useAppData();
   return (
     <footer>
-      <span>{settings?.name ?? 'Northstar AMS'} · Agency Management System</span>
+      <span>{settings?.name ?? 'EZlynxLava AMS'} · Agency Management System</span>
       <span className="flex items-center gap-1.5">
         <Database size={11} />
         {mode === 'supabase' ? 'Connected to Supabase' : <>Browser storage (demo mode) · <a href={href('/settings?tab=data')}>Connect Supabase</a></>}
@@ -180,7 +180,7 @@ export function useAlerts(): Alert[] {
   }, [activities.data, policies.data, messages.data, docs.data, names, me, settings]);
 }
 
-const READ_KEY = 'northstar-ams:read-alerts';
+const READ_KEY = '-ams:read-alerts';
 function readIds(): string[] {
   try { const v = JSON.parse(localStorage.getItem(READ_KEY) || '[]'); return Array.isArray(v) ? v : []; } catch { return []; }
 }
