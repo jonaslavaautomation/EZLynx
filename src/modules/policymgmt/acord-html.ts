@@ -35,15 +35,15 @@ export const isPersonalForm = (f: AcordForm) => f.lines.every((l) => PERSONAL_LI
 const STYLE = `
 *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#231f1f;margin:0;background:#f7f3f3;font-size:12.5px}
 .page{max-width:860px;margin:24px auto;background:#fff;padding:36px;border:1px solid #e8e0e0}
-.bar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:3px solid #dc2626;padding-bottom:12px;margin-bottom:14px}
-.agency{font-size:17px;font-weight:700;color:#b91c1c}.muted{color:#7d6f6f;font-size:11.5px}
+.bar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;border-bottom:3px solid #374151;padding-bottom:12px;margin-bottom:14px}
+.agency{font-size:17px;font-weight:700;color:#1f2937}.muted{color:#7d6f6f;font-size:11.5px}
 h1{font-size:18px;margin:0 0 4px}h2{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:#7d6f6f;margin:20px 0 6px;border-bottom:1px solid #efe9e9;padding-bottom:4px}
-.note{background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d;padding:8px 10px;border-radius:4px;font-size:11.5px}
+.note{background:#f3f4f6;border:1px solid #d1d5db;color:#1f2937;padding:8px 10px;border-radius:4px;font-size:11.5px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid #efe9e9;vertical-align:top}
 th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:#7d6f6f;background:#faf8f8}
 .kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 22px}.lbl{font-size:10.5px;text-transform:uppercase;color:#7d6f6f;letter-spacing:.05em}.val{font-weight:600;word-break:break-word}
 .blank{color:#b8aaaa;font-weight:400;font-style:italic}
-.print{position:fixed;top:14px;right:14px;background:#dc2626;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
+.print{position:fixed;top:14px;right:14px;background:#374151;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
 @media(max-width:640px){.page{padding:18px;margin:0}.kv{grid-template-columns:1fr 1fr}}
 @media print{body{background:#fff}.page{border:0;margin:0;max-width:none;padding:0}.print{display:none}}
 `;

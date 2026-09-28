@@ -215,7 +215,7 @@ export function EmailSubscriptionsPage() {
                         <td className="px-3 py-2"><div className="font-semibold text-ink-900">{s.name}</div><div className="text-xs text-ink-400">{s.role} · {s.email}</div></td>
                         {NOTIFICATION_TYPES.map((n) => (
                           <td key={n.key} className="px-2 py-2 text-center">
-                            <input type="checkbox" aria-label={`${n.label} for ${s.name}`} className="w-4 h-4 accent-[#dc2626] cursor-pointer" checked={has(s.name, n.key)} onChange={(e) => setOne(s.name, n.key, e.target.checked)} />
+                            <input type="checkbox" aria-label={`${n.label} for ${s.name}`} className="w-4 h-4 accent-[#4b5563] cursor-pointer" checked={has(s.name, n.key)} onChange={(e) => setOne(s.name, n.key, e.target.checked)} />
                           </td>
                         ))}
                       </tr>

@@ -137,7 +137,7 @@ function AddressModal({ account, address, isFirst, onClose }: { account: Account
         <Field label="ZIP"><Input value={v.zip} onChange={(e) => set('zip')(e.target.value)} /></Field>
         {v.address_type === 'Mailing' && <Field label="Country" className="sm:col-span-3" hint="Mailing addresses only"><Input value={v.country} onChange={(e) => set('country')(e.target.value)} /></Field>}
         <label className="sm:col-span-6 inline-flex items-center gap-2 text-[13px] cursor-pointer">
-          <input type="checkbox" className="w-4 h-4 accent-[#dc2626]" checked={v.is_primary} disabled={address?.is_primary} onChange={(e) => set('is_primary')(e.target.checked)} /> Primary address (used for quoting and reports)
+          <input type="checkbox" className="w-4 h-4 accent-[#4b5563]" checked={v.is_primary} disabled={address?.is_primary} onChange={(e) => set('is_primary')(e.target.checked)} /> Primary address (used for quoting and reports)
         </label>
       </div>
     </Modal>

@@ -408,7 +408,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
                     const on = input.carriers.includes(c.name);
                     return (
                       <label key={c.id} className={cx('flex items-start gap-3 border rounded p-3 cursor-pointer transition-colors', on ? 'border-brand-300 bg-brand-50/60' : 'border-ink-100 hover:border-ink-200')}>
-                        <input type="checkbox" className="w-4 h-4 mt-0.5 accent-[#dc2626]" checked={on}
+                        <input type="checkbox" className="w-4 h-4 mt-0.5 accent-[#4b5563]" checked={on}
                           onChange={(e) => { const v = e.target.checked; setInput((i) => ({ ...i, carriers: v ? [...i.carriers, c.name] : i.carriers.filter((x) => x !== c.name) })); setDirty(true); }} />
                         <span className="min-w-0">
                           <span className="block text-[13px] font-semibold text-ink-900">{c.name}</span>

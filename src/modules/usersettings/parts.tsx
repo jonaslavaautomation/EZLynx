@@ -20,7 +20,7 @@ export function SaveBar({ onSave, onReset, busy, dirty }: { onSave: () => void; 
 export function Check({ label, checked, onChange, disabled }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <label className={cx('flex items-center gap-3 text-[14px] text-ink-900 py-1.5', disabled ? 'opacity-50' : 'cursor-pointer')}>
-      <input type="checkbox" className="w-[18px] h-[18px] accent-[#dc2626]" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" className="w-[18px] h-[18px] accent-[#4b5563]" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       {label}
     </label>
   );
@@ -31,7 +31,7 @@ export function Radios<T extends string>({ name, value, onChange, options }: { n
     <div className="flex flex-wrap items-center gap-x-8 gap-y-2" role="radiogroup">
       {options.map((o) => (
         <label key={o.value} className="inline-flex items-center gap-3 text-[14px] text-ink-900 cursor-pointer">
-          <input type="radio" name={name} className="w-[18px] h-[18px] accent-[#dc2626]" checked={value === o.value} onChange={() => onChange(o.value)} />
+          <input type="radio" name={name} className="w-[18px] h-[18px] accent-[#4b5563]" checked={value === o.value} onChange={() => onChange(o.value)} />
           {o.label}
         </label>
       ))}

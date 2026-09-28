@@ -209,13 +209,13 @@ export function Acord25PdfModal({ file, onClose, onDataSheet }: { file: AcordFil
                 return (
                   <div key={p.id} className={cx('flex flex-wrap items-center gap-3 px-3 py-2 text-[13px]', !inForce(p) && 'opacity-60')}>
                     <label className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer">
-                      <input type="checkbox" className="w-4 h-4 accent-[#b91c1c]" checked={on} onChange={(e) => setPicked((x) => (e.target.checked ? [...x, p.id] : x.filter((i) => i !== p.id)))} />
+                      <input type="checkbox" className="w-4 h-4 accent-[#4b5563]" checked={on} onChange={(e) => setPicked((x) => (e.target.checked ? [...x, p.id] : x.filter((i) => i !== p.id)))} />
                       <span className="truncate"><b>{p.line_of_business}</b> · {p.policy_number} · {p.carrier}</span>
                       <span className="text-[11px] text-ink-400 whitespace-nowrap">{SECTION_LABEL[certSection(p)]} · {fmtDate(p.effective_date)}–{fmtDate(p.expiration_date)}{!inForce(p) ? ` · ${p.status}` : ''}</span>
                     </label>
                     {on && <>
-                      <label className="flex items-center gap-1 text-[11.5px] text-ink-700"><input type="checkbox" className="w-3.5 h-3.5 accent-[#b91c1c]" checked={f.additionalInsured} onChange={(e) => setFlag(p.id, 'additionalInsured', e.target.checked)} /> ADDL INSD</label>
-                      <label className="flex items-center gap-1 text-[11.5px] text-ink-700"><input type="checkbox" className="w-3.5 h-3.5 accent-[#b91c1c]" checked={f.waiverOfSubrogation} onChange={(e) => setFlag(p.id, 'waiverOfSubrogation', e.target.checked)} /> SUBR WVD</label>
+                      <label className="flex items-center gap-1 text-[11.5px] text-ink-700"><input type="checkbox" className="w-3.5 h-3.5 accent-[#4b5563]" checked={f.additionalInsured} onChange={(e) => setFlag(p.id, 'additionalInsured', e.target.checked)} /> ADDL INSD</label>
+                      <label className="flex items-center gap-1 text-[11.5px] text-ink-700"><input type="checkbox" className="w-3.5 h-3.5 accent-[#4b5563]" checked={f.waiverOfSubrogation} onChange={(e) => setFlag(p.id, 'waiverOfSubrogation', e.target.checked)} /> SUBR WVD</label>
                     </>}
                   </div>
                 );

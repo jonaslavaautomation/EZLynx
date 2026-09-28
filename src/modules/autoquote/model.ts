@@ -120,18 +120,18 @@ export const ACCIDENT_TYPES = ['At-fault collision', 'Not-at-fault collision', '
 export const VIOLATION_TYPES = ['Speeding 1-10 over', 'Speeding 11-20 over', 'Speeding 21+ over', 'Running red light / stop sign', 'Failure to yield', 'Improper lane change', 'Texting / handheld device', 'Reckless driving', 'DUI / DWI', 'Driving without insurance', 'Other minor violation'];
 export const COMP_TYPES = ['Glass', 'Theft', 'Vandalism', 'Hail / Weather', 'Animal collision', 'Fire', 'Other'];
 
-export const BI_OPTIONS = ['30/60', '50/100', '100/300', '250/500'];
+export const BI_OPTIONS = ['25/50', '30/60', '50/100', '100/300', '250/500', '500/500'];
 export const UM_OPTIONS = ['No Coverage', ...BI_OPTIONS];
-export const PD_OPTIONS = ['25000', '50000', '100000', '250000'];
-export const MEDPAY_OPTIONS = ['No Coverage', '1000', '5000', '10000'];
-export const UMPD_OPTIONS = ['No Coverage', '25000', '50000', '100000'];
+export const PD_OPTIONS = ['15000', '20000', '25000', '30000', '50000', '100000', '250000', '500000'];
+export const MEDPAY_OPTIONS = ['No Coverage', '500', '1000', '2000', '2500', '5000', '10000'];
+export const UMPD_OPTIONS = ['No Coverage', '15000', '25000', '50000', '100000'];
 export const PIP_OPTIONS = ['No Coverage', '2500', '5000', '10000'];
 export const ADI_OPTIONS = ['No Coverage', '5000', '10000'];
 export const RESIDENCE = ['Home (owned)', 'Condo (owned)', 'Mobile home (owned)', 'Apartment', 'Rental home', 'With parents', 'Other'];
-export const COMP_DED = ['No Coverage', '100', '250', '500', '1000', '2500'];
-export const COLL_DED = ['No Coverage', '250', '500', '1000', '2500'];
-export const TOWING = ['No Coverage', '50', '75', '100'];
-export const RENTAL = ['No Coverage', '30/900', '40/1200', '50/1500'];
+export const COMP_DED = ['No Coverage', '50', '100', '250', '500', '1000', '2000', '2500'];
+export const COLL_DED = ['No Coverage', '100', '250', '500', '1000', '2000', '2500'];
+export const TOWING = ['No Coverage', '25', '50', '75', '100', '200'];
+export const RENTAL = ['No Coverage', '20/600', '30/900', '40/1200', '50/1500', '60/1800'];
 
 // ── Carrier questions ──
 

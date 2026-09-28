@@ -10,6 +10,7 @@ import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
 import { ApplicantEditor } from '@/modules/accounts/ApplicantEditor';
 import { AutoQuoteRoute } from '@/modules/autoquote/AutoQuote';
+import { HomeQuoteRoute } from '@/modules/homequote/HomeQuote';
 import { CommercialApplicant } from '@/modules/accounts/CommercialApplicant';
 import { PersonalApplicant } from '@/modules/accounts/PersonalApplicant';
 import { AccountingPage } from '@/modules/accounting';
@@ -64,6 +65,7 @@ function Routes() {
       if (id === 'new') page = params.get('type') === 'Commercial' ? <CommercialApplicant /> : <PersonalApplicant />;
       else if (id && segments[2] === 'edit') page = <ApplicantEditor accountId={id} />;
       else if (id && segments[2] === 'auto-quote') page = <AutoQuoteRoute accountId={id} quoteId={segments[3] ?? null} />;
+      else if (id && segments[2] === 'home-quote') page = <HomeQuoteRoute accountId={id} quoteId={segments[3] ?? null} />;
       else page = id ? <AccountDetail id={id} /> : <AccountsPage />;
       break;
     case 'policies': page = id ? <PolicyDetail id={id} /> : <PoliciesPage />; break;

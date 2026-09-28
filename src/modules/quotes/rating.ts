@@ -30,8 +30,22 @@ const spread = (s: string, lo: number, hi: number) => lo + ((hash(s) % 10007) / 
 const money = (n: number) => n.toLocaleString('en-US');
 const k = (n: number) => (n >= 1_000_000 ? `${n / 1_000_000}M` : n >= 1000 ? `${Math.round(n / 1000)}K` : String(n));
 
-const STATE_AUTO: Record<string, number> = { TX: 1.12, CO: 1.1, AZ: 1.04, OK: 1.06, FL: 1.38, CA: 1.24, MI: 1.48, NY: 1.32, LA: 1.45, NJ: 1.28, GA: 1.14, NV: 1.18 };
-const STATE_HOME: Record<string, number> = { TX: 1.35, CO: 1.22, OK: 1.42, AZ: 0.86, FL: 1.6, LA: 1.55, KS: 1.3, NE: 1.25, CA: 1.08, NY: 1.02, WA: 0.88, OR: 0.84 };
+// Relative state cost levels (1.0 ≈ national average), shaped on published average-premium rankings.
+const STATE_AUTO: Record<string, number> = {
+  TX: 1.12, CO: 1.18, AZ: 1.04, OK: 1.06, FL: 1.62, CA: 1.3, MI: 1.72, NY: 1.45, LA: 1.7, NJ: 1.35, GA: 1.25, NV: 1.3,
+  AL: 1.02, AK: 0.9, AR: 1.0, CT: 1.15, DE: 1.25, DC: 1.3, HI: 0.72, ID: 0.75, IL: 1.0, IN: 0.85, IA: 0.78, KS: 0.98, KY: 1.25, ME: 0.7,
+  MD: 1.2, MA: 1.05, MN: 1.05, MS: 1.08, MO: 1.1, MT: 0.98, NE: 0.95, NH: 0.78, NM: 0.98, NC: 0.8, ND: 0.82, OH: 0.85, OR: 1.05, PA: 1.05,
+  RI: 1.2, SC: 1.12, SD: 0.9, TN: 0.98, UT: 1.0, VT: 0.72, VA: 0.88, WA: 1.08, WV: 0.98, WI: 0.82, WY: 0.88,
+};
+const STATE_HOME: Record<string, number> = {
+  TX: 1.45, CO: 1.4, OK: 1.7, AZ: 0.85, FL: 2.0, LA: 1.9, KS: 1.5, NE: 1.45, CA: 1.0, NY: 1.0, WA: 0.85, OR: 0.8,
+  AL: 1.3, AK: 0.75, AR: 1.3, CT: 1.0, DE: 0.65, DC: 0.7, GA: 1.05, HI: 0.45, ID: 0.75, IL: 0.95, IN: 0.9, IA: 1.0, KY: 1.05, ME: 0.8,
+  MD: 0.85, MA: 0.95, MI: 1.0, MN: 1.1, MS: 1.35, MO: 1.15, MT: 1.05, NV: 0.72, NH: 0.75, NJ: 0.85, NM: 1.0, NC: 0.95, ND: 1.1, OH: 0.8,
+  PA: 0.8, RI: 1.0, SC: 1.1, SD: 1.15, TN: 1.05, UT: 0.7, VT: 0.7, VA: 0.85, WV: 0.85, WI: 0.8, WY: 0.9,
+};
+/** Overall price level so a typical risk lands near current market averages (auto ~$2,300/yr full coverage, home ~$2,400/yr). */
+const AUTO_LEVEL = 1.75;
+const HOME_LEVEL = 2.2;
 const STATE_COMM: Record<string, number> = { TX: 1.0, CO: 1.04, CA: 1.2, NY: 1.25, FL: 1.12, AZ: 0.96, OK: 0.98, IL: 1.08 };
 const STATE_WC: Record<string, number> = { TX: 0.82, CO: 0.95, CA: 1.45, NY: 1.3, FL: 1.05, AZ: 0.9, OK: 1.02, IL: 1.18 };
 
@@ -216,23 +230,23 @@ const pct = (f: number) => `${Math.round(Math.abs(1 - f) * 100)}%`;
 
 function rateAuto(a: AutoInput, p: Profile): LineResult {
   const discounts: string[] = [], surcharges: string[] = [], notes: string[] = [];
-  const limitF = (l: string) => ({ '25/50': 0.78, '30/60': 0.82, '50/100': 0.88, '100/300': 1, '250/500': 1.22 } as Record<string, number>)[l] ?? 1;
+  const limitF = (l: string) => ({ '25/50': 0.78, '30/60': 0.82, '50/100': 0.88, '100/300': 1, '250/500': 1.22, '500/500': 1.34 } as Record<string, number>)[l] ?? 1;
   const biF = limitF(a.bi);
   const umF = limitF(a.um_limit ?? a.bi);
-  const pdF = ({ 25000: 0.9, 50000: 0.95, 100000: 1, 250000: 1.08 } as Record<number, number>)[a.pd] ?? 1;
-  const medPrem = ({ 0: 0, 1000: 18, 5000: 38, 10000: 60 } as Record<number, number>)[a.medpay] ?? 0;
-  const dedF = (d: number, kind: 'comp' | 'coll') => (d <= 0 ? 0 : kind === 'comp' ? ({ 100: 1.3, 250: 1.15, 500: 1, 1000: 0.8, 2500: 0.62 } as Record<number, number>)[d] ?? 1 : ({ 100: 1.35, 250: 1.2, 500: 1, 1000: 0.78, 2500: 0.6 } as Record<number, number>)[d] ?? 1);
+  const pdF = ({ 15000: 0.86, 20000: 0.88, 25000: 0.9, 30000: 0.91, 50000: 0.95, 100000: 1, 250000: 1.08, 500000: 1.14 } as Record<number, number>)[a.pd] ?? 1;
+  const medPrem = ({ 0: 0, 500: 10, 1000: 18, 2000: 26, 2500: 30, 5000: 38, 10000: 60 } as Record<number, number>)[a.medpay] ?? 0;
+  const dedF = (d: number, kind: 'comp' | 'coll') => (d <= 0 ? 0 : kind === 'comp' ? ({ 50: 1.42, 100: 1.3, 250: 1.15, 500: 1, 1000: 0.8, 2000: 0.68, 2500: 0.62 } as Record<number, number>)[d] ?? 1 : ({ 100: 1.35, 250: 1.2, 500: 1, 1000: 0.78, 2000: 0.66, 2500: 0.6 } as Record<number, number>)[d] ?? 1);
 
   // Driver class factor: average of each operator's age/marital/incident factor.
   const driverFactors = a.drivers.map((d) => {
     const ag = age(d.dob) ?? 35;
-    let f = ag < 20 ? 2.1 : ag < 25 ? 1.55 : ag < 30 ? 1.12 : ag < 65 ? 1 : ag < 75 ? 1.06 : 1.18;
+    let f = ag < 18 ? 3.4 : ag < 20 ? 3.0 : ag < 22 ? 2.1 : ag < 25 ? 1.7 : ag < 30 ? 1.15 : ag < 65 ? 1 : ag < 75 ? 1.06 : 1.18;
     if (ag < 25) {
       f = 1 + (f - 1) * p.youthWeight;
       if (d.good_student) f *= 0.9;
     }
     if (d.marital_status === 'Single' && ag < 30) f *= 1.04;
-    f *= 1 + (0.18 * d.violations + 0.35 * d.accidents) * p.incidentWeight;
+    f *= 1 + (0.24 * d.violations + 0.45 * d.accidents) * p.incidentWeight;
     return { d, ag, f };
   });
   const driverF = driverFactors.length ? driverFactors.reduce((s, x) => s + x.f, 0) / driverFactors.length : 1;
@@ -277,7 +291,7 @@ function rateAuto(a: AutoInput, p: Profile): LineResult {
   else if (prior < 1) disc('Continuous coverage', prior);
   if (a.comp_ded > 0 && a.coll_ded === 0) notes.push('Comprehensive without collision');
 
-  const annual = (bi + pd + um + med + comp + coll + rental + tow) * factor;
+  const annual = (bi + pd + um + med + comp + coll + rental + tow) * factor * AUTO_LEVEL;
   const ded = (d: number) => (d > 0 ? money(d) : undefined);
   return {
     annual, discounts, surcharges, notes,
@@ -324,7 +338,7 @@ function rateHome(h: HomeInput, p: Profile): LineResult {
 
   const ppPct = h.personal_property_pct / 100;
   let property = (h.dwelling / 1000) * 3.6 * ageF * constF * roofAgeF * roofTypeF * dedF * terr * pcF * clF * (0.85 + ppPct * 0.3);
-  const liab = ({ 100000: 0, 300000: 25, 500000: 45 } as Record<number, number>)[h.liability] ?? 25;
+  const liab = ({ 100000: 0, 200000: 12, 300000: 25, 400000: 35, 500000: 45, 1000000: 75 } as Record<number, number>)[h.liability] ?? 25;
   const med = h.medpay >= 5000 ? 12 : 0;
 
   let factor = 1;
@@ -335,12 +349,12 @@ function rateHome(h: HomeInput, p: Profile): LineResult {
   if (h.paid_in_full) disc('Paid in full', 0.95);
   property *= factor;
 
-  const replacement = h.square_feet * 140;
+  const replacement = h.square_feet * 165;
   if (h.dwelling < replacement * 0.8) notes.push(`Coverage A may be below estimated replacement cost (~$${money(Math.round(replacement / 1000) * 1000)})`);
 
   const b = Math.round(h.dwelling * 0.1), c = Math.round(h.dwelling * ppPct), d = Math.round(h.dwelling * 0.2);
   return {
-    annual: property + liab + med + 45, discounts, surcharges, notes,
+    annual: (property + liab + med + 45) * HOME_LEVEL, discounts, surcharges, notes,
     coverages: [
       { cov: { name: 'Dwelling (A)', limit: money(h.dwelling), deductible: money(h.deductible) }, weight: property * 0.72 },
       { cov: { name: 'Other Structures (B)', limit: money(b) }, weight: property * 0.05 },

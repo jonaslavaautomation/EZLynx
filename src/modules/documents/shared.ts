@@ -102,16 +102,16 @@ function addressLines(a: Pick<Account, 'address' | 'city' | 'state' | 'zip'>) {
 const STYLE = `
   *{box-sizing:border-box}body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1d2b3a;margin:0;background:#f7f3f3;font-size:13px}
   .page{max-width:820px;margin:24px auto;background:#fff;padding:40px;border:1px solid #e8e0e0}
-  .bar{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #dc2626;padding-bottom:14px;margin-bottom:20px}
+  .bar{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #374151;padding-bottom:14px;margin-bottom:20px}
   .agency{font-size:18px;font-weight:700;color:#006b6b}.muted{color:#7d6f6f;font-size:12px}
   h1{font-size:20px;margin:0 0 4px}h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:#7d6f6f;margin:22px 0 8px}
   table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid #efe9e9;vertical-align:top}
   th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#7d6f6f;background:#faf8f8}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 28px}.lbl{font-size:11px;text-transform:uppercase;color:#7d6f6f;letter-spacing:.05em}.val{font-weight:600}
-  .card{border:2px solid #dc2626;border-radius:10px;padding:18px;margin:0 0 18px;page-break-inside:avoid}
+  .card{border:2px solid #374151;border-radius:10px;padding:18px;margin:0 0 18px;page-break-inside:avoid}
   .card .head{display:flex;justify-content:space-between;border-bottom:1px solid #f5cfcf;padding-bottom:8px;margin-bottom:10px}
   .foot{margin-top:28px;font-size:11px;color:#7d6f6f;border-top:1px solid #efe9e9;padding-top:10px}
-  .print{position:fixed;top:14px;right:14px;background:#dc2626;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
+  .print{position:fixed;top:14px;right:14px;background:#374151;color:#fff;border:0;border-radius:4px;padding:8px 14px;font-weight:600;cursor:pointer}
   @media print{body{background:#fff}.page{border:0;margin:0;max-width:none;padding:0}.print{display:none}}
 `;
 

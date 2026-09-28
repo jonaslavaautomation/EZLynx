@@ -54,13 +54,13 @@ export function printInvoice(inv: Invoice, account: Account | null, policy: Poli
   const html = `<!doctype html><html><head><title>Invoice ${esc(inv.invoice_number)}</title>
 <style>
 body{font-family:Arial,Helvetica,sans-serif;color:#1c1414;margin:40px;font-size:13px}
-h1{font-size:26px;margin:0;color:#dc2626;letter-spacing:.04em}
+h1{font-size:26px;margin:0;color:#1f2937;letter-spacing:.04em}
 .row{display:flex;justify-content:space-between;gap:24px;margin-bottom:28px}
 .muted{color:#7f2a2f}.lbl{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#8f8484;font-weight:bold;margin-bottom:4px}
 table{width:100%;border-collapse:collapse;margin-top:8px}th,td{padding:10px 8px;border-bottom:1px solid #efeaea;text-align:left}
 th{font-size:11px;text-transform:uppercase;color:#8f8484;background:#f8f6f6}.r{text-align:right}
 .tot td{border:0;padding:4px 8px}.big{font-size:16px;font-weight:bold}
-.stamp{display:inline-block;border:2px solid #dc2626;color:#dc2626;padding:4px 12px;font-weight:bold;letter-spacing:.1em;transform:rotate(-4deg)}
+.stamp{display:inline-block;border:2px solid #374151;color:#374151;padding:4px 12px;font-weight:bold;letter-spacing:.1em;transform:rotate(-4deg)}
 .void{border-color:#c0392b;color:#c0392b}
 @media print{body{margin:16mm}button{display:none}}
 </style></head><body>
@@ -77,7 +77,7 @@ ${policy ? `<div class="lbl" style="margin-top:10px">Policy</div><div>${esc(poli
 <tr><td>Payments received${inv.paid_date ? ` (${esc(fmtDate(inv.paid_date))}${inv.payment_method ? `, ${esc(inv.payment_method)}` : ''})` : ''}</td><td class="r">-${esc(fmtMoney(inv.amount_paid, true))}</td></tr>
 <tr><td class="big">Balance due</td><td class="r big">${esc(fmtMoney(bal, true))}</td></tr></table>
 <p class="muted" style="margin-top:40px">Please make checks payable to ${esc(agency?.name ?? 'the agency')} and include the invoice number with your payment. Thank you for your business.</p>
-<button onclick="window.print()" style="margin-top:12px;padding:8px 14px;background:#dc2626;color:#fff;border:0;border-radius:4px;cursor:pointer">Print</button>
+<button onclick="window.print()" style="margin-top:12px;padding:8px 14px;background:#374151;color:#fff;border:0;border-radius:4px;cursor:pointer">Print</button>
 <script>setTimeout(function(){window.print()},300)</script>
 </body></html>`;
   win.document.open();

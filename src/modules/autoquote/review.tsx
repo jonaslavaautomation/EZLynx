@@ -142,7 +142,7 @@ export function ReviewStep() {
         <TextBtn onClick={() => setTpl(true)}>Save as template</TextBtn>
         <Button variant="primary" disabled={blocked} onClick={() => go('submit')} title={blocked ? 'Fix the items above first' : undefined}>Submit to carriers</Button>
         <TextBtn onClick={() => navigate(`/accounts/${account.id}?tab=quotes`)}>Exit</TextBtn>
-        <TextBtn onClick={() => navigate('/')}>Go to home</TextBtn>
+        <TextBtn onClick={() => navigate(`/accounts/${account.id}/home-quote`)}>Go to home</TextBtn>
       </div>
       {ssn && <SsnModal onClose={() => setSsn(false)} />}
       {tpl && <SaveTemplateModal onClose={() => setTpl(false)} />}

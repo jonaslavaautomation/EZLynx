@@ -6,6 +6,7 @@ import { fmtDate } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { US_STATES } from '@/lib/types';
 import { OField, TextBtn, inputCls } from '@/modules/accounts/applicant-fields';
+import { PRIOR_INSURERS } from '@/modules/quotes/reference';
 import { CarrierMark, Card, Help, Notice, SectionTitle, Switch, WInput, WSelect, clean, useWf } from './fields';
 import {
   AGES_LICENSED, DL_STATUS, GENDERS, INDUSTRIES, MARITAL, MONTHS, NO_PRIOR, OTHER_PRIORS, PRIOR_LIMITS, RATED, RELATIONSHIPS, TERMS, YEARS, YES_NO,
@@ -195,7 +196,7 @@ export function PolicyStep() {
   const p = w.policy;
   const set = (k: keyof Workflow['policy']) => (v: string) => up((x) => ({ ...x, policy: { ...x.policy, [k]: v } }));
   const noPrior = p.prior_carrier === NO_PRIOR;
-  const priorOptions = [...autoCarriers.map((c) => c.name), ...OTHER_PRIORS];
+  const priorOptions = [...new Set([...autoCarriers.map((c) => c.name), ...PRIOR_INSURERS])].sort((a, b) => a.localeCompare(b)).concat(OTHER_PRIORS);
   const two = (a: ReactNode, b: ReactNode) => <div className="grid grid-cols-[minmax(0,1fr)_92px] gap-2">{a}{b}</div>;
   return (
     <div>

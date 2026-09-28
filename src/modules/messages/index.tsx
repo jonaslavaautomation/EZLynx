@@ -146,7 +146,7 @@ function ConversationRow({ c, active, onClick }: { c: Conversation; active: bool
   const name = c.account ? accountName(c.account) : 'Unknown account';
   return (
     <button onClick={onClick} className={cx('w-full text-left flex items-start gap-3 px-3 py-3 border-b border-ink-50 transition-colors', active ? 'bg-brand-50' : 'bg-white hover:bg-ink-50')}>
-      <Avatar name={name} color={active ? '#dc2626' : '#5b6f86'} size={36} />
+      <Avatar name={name} color={active ? '#374151' : '#6b7280'} size={36} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className={cx('truncate text-[13px]', c.unread ? 'font-bold text-ink-900' : 'font-semibold text-ink-800')}>{name}</span>
@@ -261,7 +261,7 @@ function Thread({ accountId, onBack, className }: ThreadProps) {
       {/* Header */}
       <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 border-b border-ink-100">
         {onBack && <button onClick={onBack} className="md:hidden bg-transparent text-ink-500 hover:text-ink-900 -ml-1 p-1" aria-label="Back to conversations"><ArrowLeft size={18} /></button>}
-        <Avatar name={name} color="#dc2626" size={34} />
+        <Avatar name={name} color="#374151" size={34} />
         <div className="min-w-0 flex-1">
           <a href={href(`/accounts/${a.id}`)} className="block text-[14px] font-semibold text-ink-900 hover:text-brand-600 truncate">{name}</a>
           <div className="text-xs text-ink-400 truncate">

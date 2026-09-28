@@ -25,7 +25,7 @@ export function Button({ variant = 'secondary', size = 'md', icon, loading, clas
     secondary: 'bg-white text-brand-600 border border-ink-200 hover:bg-brand-50 hover:border-brand-200',
     ghost: 'bg-transparent text-ink-700 hover:bg-ink-100 border border-transparent',
     danger: 'bg-red-600 text-white hover:bg-red-700 border border-red-600',
-    purple: 'bg-[#991b1b] text-white hover:bg-[#7f1d1d] border border-[#991b1b]',
+    purple: 'bg-[#374151] text-white hover:bg-[#1f2937] border border-[#374151]',
   }[variant];
   const sizes = size === 'sm' ? 'h-7 px-2.5 text-xs gap-1.5' : 'h-9 px-3.5 text-[13px] gap-2';
   return (
@@ -83,7 +83,7 @@ export function Select({ className, options, placeholder, ...rest }: SelectHTMLA
 export function Checkbox({ label, checked, onChange, disabled }: { label: ReactNode; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
   return (
     <label className={cx('inline-flex items-center gap-2 text-[13px] text-ink-800 select-none', disabled ? 'opacity-50' : 'cursor-pointer')}>
-      <input type="checkbox" className="w-4 h-4 accent-[#dc2626]" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <input type="checkbox" className="w-4 h-4 accent-[#4b5563]" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
       {label}
     </label>
   );
