@@ -46,6 +46,8 @@ export type AcordFileRef = {
   field_count: number; edition: string; uploaded_at: string; uploaded_by: string | null;
 };
 export type AcordFilesConfig = { forms: Record<string, AcordFileRef> };
+/** Labels on individual policies (policy id → label ids from Manage Labels). */
+export type PolicyLabelsConfig = { byPolicy: Record<string, string[]> };
 
 export type ConfigMap = {
   activity: ActivityConfig;
@@ -55,6 +57,7 @@ export type ConfigMap = {
   lines: LinesConfig;
   goals: GoalsConfig;
   acord_files: AcordFilesConfig;
+  policy_labels: PolicyLabelsConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -70,6 +73,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   email_subscriptions: { subscriptions: {} },
   goals: { monthly_new_policies: 10, monthly_new_premium: 15000, quote_close_pct: 35, tasks_on_time_pct: 85 },
   acord_files: { forms: {} },
+  policy_labels: { byPolicy: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 
