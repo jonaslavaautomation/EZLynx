@@ -136,6 +136,7 @@ export function RatingStep() {
                 <select aria-label="Select Quote Template" value={tpl} onChange={(e) => setTpl(e.target.value)} className={cx(inputCls, 'appearance-none cursor-pointer', !tpl && 'text-transparent')}>
                   <option value="" />
                   {templates.data.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  {!templates.data.length && <option value="" disabled>No templates saved yet</option>}
                 </select>
               </OField>
             </div>
