@@ -23,6 +23,9 @@ const SLIDES = [
   { kicker: 'OUR GRADUATES', title: <>Certified.<br /><em>Job-ready.</em></>, cta: 'Agency University', to: '/support/university', bg: '#3b4452', img: '/promo/graduates-group.jpg', photo: true },
   { kicker: 'CERTIFICATE OF RECOGNITION', title: <>Your name<br /><em>on the next one.</em></>, cta: 'View courses', to: '/support/university', bg: '#343a46', img: '/promo/graduates-certificates.jpg', photo: true },
   { kicker: 'GRADUATE SPOTLIGHT', title: <>Proud of<br /><em>every graduate.</em></>, cta: 'Agency University', to: '/support/university', bg: '#2f343b', img: '/promo/graduate-award.jpg', photo: true },
+  { kicker: 'LIVE CLASSES', title: <>Train with<br /><em>mentors.</em></>, cta: 'Start training', to: '/support/university', bg: '#3b4452', img: '/promo/classroom-session.jpg', photo: true },
+  { kicker: 'CLIENT SKILLS', title: <>Serve clients<br /><em>like a pro.</em></>, cta: 'View courses', to: '/support/university', bg: '#343a46', img: '/promo/classroom-lecture.jpg', photo: true },
+  { kicker: 'BUILT FOR VAS', title: <>Practice on<br /><em>a real AMS.</em></>, cta: 'Start a quote', to: '/quotes/new', bg: '#2f343b', img: '/promo/trainer-at-work.jpg', photo: true },
 ];
 
 function Promo() {
@@ -33,7 +36,7 @@ function Promo() {
   }, []);
   const s = SLIDES[i];
   return (
-    <div className="promo-wrap xl:col-span-2">
+    <div className="promo-wrap md:row-span-2 xl:col-span-2">
       <button className="carousel-arrow left" onClick={() => setI((i + SLIDES.length - 1) % SLIDES.length)} aria-label="Previous"><ArrowLeft size={18} /></button>
       <div className="promo-card" style={{ background: s.bg }}>
         <div className={cx('promo-image', 'photo' in s && s.photo && 'photo')} style={{ ['--promo-img' as string]: `url('${s.img}')` }} />
