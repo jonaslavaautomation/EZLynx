@@ -52,6 +52,16 @@ export type PolicyLabelsConfig = { byPolicy: Record<string, string[]> };
 export type DocFolder = { id: string; name: string; created_at: string; created_by: string | null; modified_at: string | null };
 export type DocLibraryEntry = { folders: DocFolder[]; placement: Record<string, string>; labels: Record<string, string[]>; meta: Record<string, { created_by?: string | null; modified_at?: string | null }> };
 export type DocLibraryConfig = { byAccount: Record<string, DocLibraryEntry> };
+/** EZLynx policy fields with no database column (Change Policy form, policy editor), per policy. */
+export type ServiceTeamMember = { staff: string; percent: number };
+export type AdditionalInterest = { id: string; type: string; name: string; address: string; loan_number: string };
+export type PolicyExtras = {
+  writing_company?: string; rating_state?: string; department?: string; original_producer_code?: string; producer_code_override?: string; agency_code?: string;
+  service_team?: ServiceTeamMember[]; override_rule?: boolean; body_styles?: Record<string, string>; vehicle_drivers?: Record<string, string>;
+  interests?: AdditionalInterest[]; underwriting?: Record<string, string>; policy_payor?: string;
+  last_change?: { date: string; description: string; premium_change: number; at: string };
+};
+export type PolicyDetailsConfig = { byPolicy: Record<string, PolicyExtras> };
 
 export type ConfigMap = {
   activity: ActivityConfig;
@@ -63,6 +73,7 @@ export type ConfigMap = {
   acord_files: AcordFilesConfig;
   policy_labels: PolicyLabelsConfig;
   doc_library: DocLibraryConfig;
+  policy_details: PolicyDetailsConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -80,6 +91,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   acord_files: { forms: {} },
   policy_labels: { byPolicy: {} },
   doc_library: { byAccount: {} },
+  policy_details: { byPolicy: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 

@@ -9,6 +9,7 @@ import { accountName, fmtDate, fmtPhone } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { href, setParam } from '@/lib/router';
 import type { Account } from '@/lib/types';
+import { ComposeDrawer } from './compose';
 
 /* Screen furniture shared by the Auto and Home quoting workflows: applicant drawer, record tabs, stepper, header. */
 
@@ -145,8 +146,9 @@ const RESEARCH: { key: string; label: string; url: (q: string, a: Account) => st
   { key: 'assessor', label: 'County Assessor', url: (_q, a) => `https://www.google.com/search?q=${encodeURIComponent(`${a.city ?? ''} ${a.state ?? ''} county assessor property search`)}` },
 ];
 
-export function ApplicantDrawer({ account: a }: { account: Account }) {
+export function ApplicantDrawer({ account: a, composeDraft }: { account: Account; composeDraft?: string }) {
   const [open, setOpen] = useState(readLs(DRAWER_KEY) !== '0');
+  const [compose, setCompose] = useState<'SMS' | 'Email' | null>(null);
   const [fav, setFav] = useState(() => (readLs(FAV_KEY) ?? '').split(',').includes(a.id));
   const { settings } = useAppData();
   const { toast } = useFeedback();
@@ -177,8 +179,8 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
   const icons = (
     <>
       <button type="button" aria-label={fav ? 'Remove favorite' : 'Add favorite'} onClick={toggleFav}><Star size={18} className={fav ? 'text-amber-400 fill-amber-400' : 'text-amber-400'} /></button>
-      <a aria-label="Email" href={`mailto:${a.email}`}><Mail size={18} /></a>
-      <a aria-label="Text message" href={href(`/accounts/${a.id}?tab=messages`)}><MessageSquare size={18} /></a>
+      <button type="button" aria-label="Email" title="Send email" onClick={() => setCompose('Email')}><Mail size={18} /></button>
+      <button type="button" aria-label="Text message" title="Send text message" onClick={() => setCompose('SMS')}><MessageSquare size={18} /></button>
       <a aria-label="Documents" href={href(`/accounts/${a.id}?tab=documents`)}><FileText size={18} /></a>
       <a aria-label="Edit applicant" href={href(`/accounts/${a.id}/edit`)}><IdCard size={18} /></a>
       <a aria-label="Quotes" href={href(`/accounts/${a.id}?tab=quotes`)} className="relative"><Briefcase size={18} />{openQuotes > 0 && <span className="absolute -top-2 -right-2 min-w-[15px] h-[15px] rounded-full bg-purple-600 text-white text-[9px] grid place-items-center px-0.5">{openQuotes}</span>}</a>
@@ -191,6 +193,7 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
         <div className="text-[14px] font-semibold text-brand-700 [writing-mode:vertical-rl] rotate-180 mb-6 whitespace-nowrap">{title}</div>
         <div className="flex flex-col items-center gap-4 mt-auto mb-4">{icons}</div>
         <button type="button" aria-label="Expand applicant panel" onClick={toggle} className="text-ink-600 hover:text-ink-900"><ChevronRight size={16} /></button>
+        {compose && <ComposeDrawer account={a} channel={compose} draft={composeDraft} onClose={() => setCompose(null)} />}
       </aside>
     );
   }
@@ -269,6 +272,7 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
         <div className="text-ink-600">Quickly access integrations related to this applicant.</div>
         <a href={href('/marketplace/mine')} className="mt-2 flex items-center justify-center gap-1.5 h-8 rounded border border-ink-300 text-brand-700 font-semibold hover:bg-brand-50"><Plug size={13} /> Integrations</a>
       </div>
+      {compose && <ComposeDrawer account={a} channel={compose} draft={composeDraft} onClose={() => setCompose(null)} />}
       <button type="button" aria-label="Collapse applicant panel" onClick={toggle} className="mt-auto self-end pt-4 text-ink-600 hover:text-ink-900"><ChevronLeft size={16} /></button>
     </aside>
   );

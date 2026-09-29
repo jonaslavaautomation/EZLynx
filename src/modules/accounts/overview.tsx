@@ -1,5 +1,5 @@
 import {
-  CheckSquare, ChevronDown, ChevronUp, ClipboardCopy, FileText, Folder, ListFilter, MailOpen, MoreVertical, Plus, Settings, Sparkles, Square,
+  CheckSquare, ChevronDown, ChevronUp, ClipboardCopy, FileText, Folder, ListFilter, MailOpen, Plus, Settings, Sparkles, Square,
 } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Button, Menu, Modal, cx, useFeedback } from '@/components/ui';
@@ -15,6 +15,8 @@ import { ActivityFormModal } from '@/modules/activities';
 import { campaignMessages, matchRecipients } from '@/modules/comm/shared';
 import { bestRate } from '@/modules/quotes/rating';
 import { workflowPath } from '@/modules/quotes/data';
+import { PolicyCardMenu } from '@/modules/policies/policy-menu';
+import { policyPath } from '@/modules/policies/record';
 
 /* Account Overview: policy / application cards, tasks and campaigns, and the "Catch me up" summary. */
 
@@ -91,7 +93,7 @@ function PolicyLabels({ policy }: { policy: Policy }) {
 
 // ── Policy card ──
 
-function PolicyCard({ policy: p, account, txns }: { policy: Policy; account: Account; txns: PolicyTransaction[] }) {
+function PolicyCard({ policy: p, account, txns, policies }: { policy: Policy; account: Account; txns: PolicyTransaction[]; policies: Policy[] }) {
   const { toast } = useFeedback();
   const [open, setOpen] = useState(false);
   const mine = txns.filter((t) => t.policy_id === p.id).sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -107,17 +109,12 @@ function PolicyCard({ policy: p, account, txns }: { policy: Policy; account: Acc
       <div className="flex items-start gap-3 px-2.5 pt-2.5">
         <StatusPill policy={p} />
         <div className="min-w-0 flex-1">
-          <a href={href(`/policies/${p.id}`)} className="text-[15px] font-semibold text-ink-900 hover:text-brand-600 hover:underline">{lobTitle(p)} | {p.policy_number}</a>
+          <a href={href(policyPath(p))} className="text-[15px] font-semibold text-ink-900 hover:text-brand-600 hover:underline">{lobTitle(p)} | {p.policy_number}</a>
           <div className="text-[12px] text-ink-500">{p.carrier}</div>
         </div>
         <div className="flex items-center gap-1 text-ink-800">
           <button type="button" aria-label="Copy policy number" title="Copy policy number" onClick={copy} className="w-8 h-8 grid place-items-center rounded hover:bg-ink-100"><ClipboardCopy size={18} /></button>
-          <Menu trigger={<button type="button" aria-label="Policy actions" className="w-8 h-8 grid place-items-center rounded hover:bg-ink-100"><MoreVertical size={18} /></button>} items={[
-            { label: 'View policy', onClick: () => navigate(`/policies/${p.id}`) },
-            { label: 'Transactions', onClick: () => navigate(`/policies/${p.id}?tab=history`) },
-            { label: 'Proof of insurance / ID cards', onClick: () => navigate(`/accounts/${account.id}?tab=documents`) },
-            { label: 'Log activity', onClick: () => navigate(`/accounts/${account.id}?tab=activities`) },
-          ]} />
+          <PolicyCardMenu policy={p} account={account} policies={policies} txns={txns} />
           <button type="button" aria-label={open ? 'Collapse policy' : 'Expand policy'} aria-expanded={open} onClick={() => setOpen(!open)} className="w-8 h-8 grid place-items-center rounded hover:bg-ink-100">{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
         </div>
       </div>
@@ -205,7 +202,7 @@ function PoliciesCard({ account, policies, quotes, txns }: { account: Account; p
         ]} />
       </div>
       <div className="p-2 space-y-2">
-        {tab === 'policies' && (shown.length ? shown.map((p) => <PolicyCard key={p.id} policy={p} account={account} txns={txns} />) : (
+        {tab === 'policies' && (shown.length ? shown.map((p) => <PolicyCard key={p.id} policy={p} account={account} txns={txns} policies={policies} />) : (
           <div className="text-center py-16 text-[13px] text-ink-500">{policies.length ? 'No policies match this filter.' : 'No policies yet. Quote and bind, or add an existing policy.'}</div>
         ))}
         {tab === 'applications' && (apps.length ? apps.map((q) => <ApplicationCard key={q.id} quote={q} />) : (

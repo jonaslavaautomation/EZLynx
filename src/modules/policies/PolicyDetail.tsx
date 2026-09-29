@@ -241,7 +241,7 @@ function groupByTerm(txns: PolicyTransaction[]) {
   return groups.reverse().map((g) => ({ ...g, items: g.items.reverse() }));
 }
 
-function HistoryTab({ txns, loading, error }: { txns: PolicyTransaction[]; loading: boolean; error: string | null }) {
+export function HistoryTab({ txns, loading, error }: { txns: PolicyTransaction[]; loading: boolean; error: string | null }) {
   const groups = useMemo(() => groupByTerm(txns), [txns]);
   if (loading && !txns.length) return <LoadingBlock />;
   if (error) return <ErrorBanner message={error} />;
@@ -277,7 +277,7 @@ function HistoryTab({ txns, loading, error }: { txns: PolicyTransaction[]; loadi
   );
 }
 
-function ClaimsTab({ claims, loading, error }: { claims: Claim[]; loading: boolean; error: string | null }) {
+export function ClaimsTab({ claims, loading, error }: { claims: Claim[]; loading: boolean; error: string | null }) {
   const columns: Column<Claim>[] = [
     { key: 'num', header: 'Claim #', sortValue: (c) => c.claim_number, render: (c) => <span className="font-semibold whitespace-nowrap">{c.claim_number || 'Not assigned'}</span> },
     { key: 'dol', header: 'Date of loss', sortValue: (c) => c.date_of_loss, render: (c) => <span className="whitespace-nowrap">{fmtDate(c.date_of_loss)}</span> },
