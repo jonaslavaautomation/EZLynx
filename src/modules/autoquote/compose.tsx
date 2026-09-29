@@ -39,6 +39,7 @@ export function ComposeDrawer({ account, channel, draft, onClose }: { account: A
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (!to && options[0]) setTo(options[0].value); }, [options, to]);
+  useEffect(() => { document.body.classList.add('side-panel-open'); return () => document.body.classList.remove('side-panel-open'); }, []);
   useEffect(() => {
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !busy) onClose(); };
     document.addEventListener('keydown', k);

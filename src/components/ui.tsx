@@ -466,7 +466,7 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     <FeedbackContext.Provider value={value}>
       {children}
       {createPortal(
-        <div className="fixed bottom-10 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
+        <div className="toast-region fixed bottom-10 right-4 z-[200] flex flex-col gap-2 pointer-events-none">
           {toasts.map((t) => (
             <div key={t.id} className={cx('pointer-events-auto min-w-[240px] max-w-sm rounded shadow-pop px-4 py-3 text-[13px] font-medium text-white', t.tone === 'error' ? 'bg-red-600' : t.tone === 'info' ? 'bg-ink-800' : 'bg-brand-600')}>
               {t.message}

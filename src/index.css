@@ -199,3 +199,7 @@ footer a { font-weight: 600; }
 /* Dropdown lists always show readable text, even when the closed field hides its empty value (text-transparent) or sits on a dark surface. */
 select option, select optgroup { color: #1a202c; background-color: #ffffff; }
 select option:disabled { color: #9aa5b1; }
+
+/* Toasts step aside while a right-hand side panel (Reply To Text / Send Email) is open. */
+body.side-panel-open .toast-region { right: 416px; }
+@media (max-width: 639px) { body.side-panel-open .toast-region { right: 16px; bottom: auto; top: 60px; } }
