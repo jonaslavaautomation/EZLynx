@@ -93,7 +93,16 @@ function PolicyLabels({ policy }: { policy: Policy }) {
 
 // ── Policy card ──
 
-function PolicyCard({ policy: p, account, txns, policies }: { policy: Policy; account: Account; txns: PolicyTransaction[]; policies: Policy[] }) {
+/** An open renewal quote for this policy: same line, effective within a month of the policy's expiration. */
+function renewalQuote(p: Policy, quotes: Quote[]) {
+  const exp = new Date(p.expiration_date).getTime();
+  return quotes.find((q) => (q.status === 'Draft' || q.status === 'Rated') && q.line_of_business === p.line_of_business
+    && Math.abs(new Date(q.effective_date).getTime() - exp) <= 31 * 86400000);
+}
+const HOME_LINES = ['Homeowners', 'Condo', 'Renters', 'Dwelling Fire', 'Flood'];
+
+export function PolicyCard({ policy: p, account, txns, policies, quotes = [], columns = 3 }: { policy: Policy; account: Account; txns: PolicyTransaction[]; policies: Policy[]; quotes?: Quote[]; columns?: 2 | 3 }) {
+  const renew = p.status === 'Active' ? renewalQuote(p, quotes) : undefined;
   const { toast } = useFeedback();
   const [open, setOpen] = useState(false);
   const mine = txns.filter((t) => t.policy_id === p.id).sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -118,7 +127,7 @@ function PolicyCard({ policy: p, account, txns, policies }: { policy: Policy; ac
           <button type="button" aria-label={open ? 'Collapse policy' : 'Expand policy'} aria-expanded={open} onClick={() => setOpen(!open)} className="w-8 h-8 grid place-items-center rounded hover:bg-ink-100">{open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>
         </div>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-0.5 px-2.5 py-2 text-[13px]">
+      <div className={cx("grid grid-cols-1 gap-x-4 gap-y-0.5 px-2.5 py-2 text-[13px]", columns === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
         {metric('Premium', fmtMoney(p.premium, true))}
         {metric('Term', `${mdy(p.effective_date)} to ${mdy(p.expiration_date)}`)}
         {metric('Transaction Type', latest)}
@@ -126,8 +135,16 @@ function PolicyCard({ policy: p, account, txns, policies }: { policy: Policy; ac
         {metric('Service Team', team)}
         {metric('LOB Origination Date', mdy(origination))}
       </div>
+      {renew && (
+        <div className="px-2.5 pb-2">
+          <button type="button" onClick={() => navigate(workflowPath(renew) ?? `/quotes/${renew.id}`)} className="inline-flex items-center h-[22px] px-2.5 rounded-full bg-[#8a1c5c] text-white text-[12px] font-medium hover:bg-[#6f1649]" data-testid="renew-pill">
+            Renew Quote effective {mdy(renew.effective_date)}
+          </button>
+        </div>
+      )}
       <div className="bg-[#f5f6f8] border-t border-[#e2e8f0] px-3 py-2.5 rounded-b">
         <PolicyLabels policy={p} />
+        {HOME_LINES.includes(p.line_of_business) && account.address && <div className="mt-2 text-[13px] text-ink-800 uppercase" data-testid="policy-address">{[account.address, account.city, [account.state, account.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ')}</div>}
         {open && (
           <div className="mt-3 text-[13px] space-y-2" data-testid="policy-expanded">
             <div className="text-ink-700">{[account.address, account.city, account.state, account.zip].filter(Boolean).join(', ')}</div>
@@ -202,7 +219,7 @@ function PoliciesCard({ account, policies, quotes, txns }: { account: Account; p
         ]} />
       </div>
       <div className="p-2 space-y-2">
-        {tab === 'policies' && (shown.length ? shown.map((p) => <PolicyCard key={p.id} policy={p} account={account} txns={txns} policies={policies} />) : (
+        {tab === 'policies' && (shown.length ? shown.map((p) => <PolicyCard key={p.id} policy={p} account={account} txns={txns} policies={policies} quotes={quotes} />) : (
           <div className="text-center py-16 text-[13px] text-ink-500">{policies.length ? 'No policies match this filter.' : 'No policies yet. Quote and bind, or add an existing policy.'}</div>
         ))}
         {tab === 'applications' && (apps.length ? apps.map((q) => <ApplicationCard key={q.id} quote={q} />) : (

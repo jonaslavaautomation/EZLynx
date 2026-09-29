@@ -1,5 +1,5 @@
 import {
-  ChevronDown, ChevronRight, File, FileCode, FileImage, FileSpreadsheet, FileText, Filter, Folder, FolderInput, FolderOpen, Pencil, Plus, Search, Trash2, Upload, X,
+  ChevronDown, ChevronRight, ChevronsLeft, ChevronsRight, File, FileCode, FileImage, FileSpreadsheet, FileText, Filter, Folder, FolderInput, FolderOpen, Pencil, Plus, Search, Trash2, Upload, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { Button, ErrorBanner, Field, Input, Menu, Modal, Select, Textarea, cx, useFeedback } from '@/components/ui';
@@ -14,7 +14,7 @@ import { LabelChip } from '@/modules/admin/shared';
 import { useLabels } from '@/modules/admin/integration';
 import { saveAppConfig, useAppConfig, type DocFolder, type DocLibraryEntry } from '@/modules/admin/config';
 import { GenerateModal, useDocumentActions } from './actions';
-import { DOC_CATEGORIES, coverageTable, esc, openDocumentFile, shell } from './shared';
+import { DOC_CATEGORIES, coverageTable, effectiveStatus, esc, hasFile, openDocumentFile, shell } from './shared';
 
 /*
  * EZLynx-style Document Library for one insured: folders, documents, labels, Add ▾ (Form, Upload, Folder,
@@ -83,6 +83,7 @@ export function DocumentLibrary({ account }: { account: Account }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dialog, setDialog] = useState<Dialog>(null);
   const [dropping, setDropping] = useState<File[] | null>(null);
+  const [page, setPage] = useState(0);
 
   const policyById = useMemo(() => new Map<string, Policy>(policies.data.map((p) => [p.id, p])), [policies.data]);
   const labelById = useMemo(() => new Map(labels.data.map((l) => [l.id, l])), [labels.data]);
@@ -115,7 +116,12 @@ export function DocumentLibrary({ account }: { account: Account }) {
   const docIds = rows.filter((r): r is Extract<Row, { kind: 'doc' }> => r.kind === 'doc').map((r) => r.doc.id);
   const allOn = docIds.length > 0 && docIds.every((id) => selected.has(id));
   const toggle = (id: string, on: boolean) => setSelected((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
-  useEffect(() => { setSelected(new Set()); }, [folderId]);
+  useEffect(() => { setSelected(new Set()); setPage(0); }, [folderId]);
+  useEffect(() => { setPage(0); }, [q, fType, fCategory, fPolicy]);
+  const PAGE = 25;
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
+  const shown = rows.slice(page * PAGE, page * PAGE + PAGE);
+  const toggleShare = (id: string, on: boolean) => void update((e) => { e.meta[id] = { ...e.meta[id], share: on }; return e; }).then(() => toast(on ? 'Shared with the insured' : 'No longer shared'));
 
   const touch = (ids: string[]) => update((e) => { for (const id of ids) e.meta[id] = { ...e.meta[id], modified_at: new Date().toISOString() }; return e; });
 
@@ -231,29 +237,30 @@ ${active.map((p) => `<h2>${esc(p.line_of_business)} · ${esc(p.policy_number)}</
       <div className="bg-white border border-ink-200 rounded overflow-x-auto"
         onDragOver={(e: DragEvent) => { if ([...e.dataTransfer.types].includes('Files')) e.preventDefault(); }}
         onDrop={(e: DragEvent) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDropping([...e.dataTransfer.files]); setDialog({ kind: 'upload' }); }}>
-        <table className="w-full min-w-[980px] border-collapse" aria-label="Document Library">
+        <table className="w-full min-w-[900px] border-collapse" aria-label="Document Library">
           <thead>
             <tr>
               <th className={cx(head, 'w-10')}><input type="checkbox" aria-label="Select all documents" className="w-4 h-4 accent-[#007a78]" checked={allOn} onChange={(e) => setSelected(e.target.checked ? new Set(docIds) : new Set())} /></th>
               <th className={cx(head, 'w-14')}>Type</th>
               <th className={head}>Document Name</th>
               <th className={cx(head, 'w-28')}>Document<br />Type</th>
-              <th className={cx(head, 'w-44')}>Labels</th>
-              <th className={cx(head, 'w-32')}>Policy #</th>
-              <th className={cx(head, 'w-40')}>Created By</th>
-              <th className={cx(head, 'w-28')}>Date<br />Created</th>
-              <th className={cx(head, 'w-28')}>Date<br />Modified</th>
+              <th className={cx(head, 'w-32')}>Labels</th>
+              <th className={cx(head, 'w-24')}>Policy #</th>
+              <th className={cx(head, 'w-28')}>Created By</th>
+              <th className={cx(head, 'w-24')}>Date<br />Created</th>
+              <th className={cx(head, 'w-24')}>Date<br />Modified</th>
+              <th className={cx(head, 'w-16')}>Share</th>
               <th className={cx(head, 'w-28')}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {docs.loading && <tr><td colSpan={10} className="px-3 py-8 text-center text-[13px] text-ink-500">Loading documents…</td></tr>}
+            {docs.loading && <tr><td colSpan={11} className="px-3 py-8 text-center text-[13px] text-ink-500">Loading documents…</td></tr>}
             {!docs.loading && rows.length === 0 && (
-              <tr><td colSpan={10} className="px-3 py-10 text-center text-[13px] text-ink-500">
+              <tr><td colSpan={11} className="px-3 py-10 text-center text-[13px] text-ink-500">
                 {folder ? 'This folder is empty. Use Add ▾ → Upload, or drag files here.' : q || fType || fCategory || fPolicy ? 'No documents or folders match.' : 'No documents yet. Use Add ▾ → Upload, or drag files here.'}
               </td></tr>
             )}
-            {rows.map((r) => r.kind === 'folder' ? (
+            {shown.map((r) => r.kind === 'folder' ? (
               <tr key={r.folder.id} className="hover:bg-[#f7f9fb]" data-testid="doc-folder">
                 <td className={cell} />
                 <td className={cell}><Folder size={16} className="text-amber-500 fill-amber-100" /></td>
@@ -264,6 +271,7 @@ ${active.map((p) => `<h2>${esc(p.line_of_business)} · ${esc(p.policy_number)}</
                 <td className={cell}>{r.folder.created_by ?? '—'}</td>
                 <td className={cell}>{mdy(r.folder.created_at)}</td>
                 <td className={cell}>{mdy(r.folder.modified_at ?? r.folder.created_at)}</td>
+                <td className={cell} />
                 <td className={cell}>
                   <Menu trigger={<button type="button" className="inline-flex items-center gap-1 text-brand-700 font-semibold tracking-wide hover:underline">Actions <ChevronDown size={14} /></button>} items={[
                     { label: 'Open', icon: <FolderOpen size={14} />, onClick: () => setFolderId(r.folder.id) },
@@ -299,6 +307,7 @@ ${active.map((p) => `<h2>${esc(p.line_of_business)} · ${esc(p.policy_number)}</
                   <td className={cell}>{createdBy(d)}</td>
                   <td className={cell}>{mdy(d.created_at)}</td>
                   <td className={cell}>{mdy(modifiedAt(d))}</td>
+                  <td className={cell}><input type="checkbox" aria-label={`Share ${d.name} with the insured`} title="Share with the insured" className="w-4 h-4 accent-[#007a78]" checked={!!entry.meta[d.id]?.share} onChange={(e) => toggleShare(d.id, e.target.checked)} /></td>
                   <td className={cell}>
                     <Menu trigger={<button type="button" className="inline-flex items-center gap-1 text-brand-700 font-semibold tracking-wide hover:underline">Actions <ChevronDown size={14} /></button>} items={[
                       { label: 'Move to folder', icon: <FolderInput size={14} />, onClick: () => setDialog({ kind: 'move', ids: [d.id] }) },
@@ -313,7 +322,8 @@ ${active.map((p) => `<h2>${esc(p.line_of_business)} · ${esc(p.policy_number)}</
           </tbody>
         </table>
       </div>
-      <div className="text-[11.5px] text-ink-500 mt-2">{docs.data.length} document{docs.data.length === 1 ? '' : 's'} · {entry.folders.length} folder{entry.folders.length === 1 ? '' : 's'}</div>
+      <Pager page={page} pages={pages} total={rows.length} per={PAGE} onPage={setPage} label={`${docs.data.length} document${docs.data.length === 1 ? '' : 's'} · ${entry.folders.length} folder${entry.folders.length === 1 ? '' : 's'}`} />
+      <ESignatureSection account={account} docs={docs.data} actions={actions} createdBy={createdBy} share={(id) => !!entry.meta[id]?.share_envelope} onShare={(id, on) => void update((e) => { e.meta[id] = { ...e.meta[id], share_envelope: on }; return e; })} />
 
       {dialog?.kind === 'upload' && (
         <UploadDocumentModal account={account} policies={policies.data} folders={entry.folders} folderId={folderId} initial={dropping ?? []}
@@ -631,3 +641,89 @@ ${offers[0]?.coverages?.length ? `<h2>Coverages quoted</h2><table><thead><tr><th
   );
 }
 
+
+// ── Pagination (EZLynx: Items per page · 1 – N of N · |< < > >|) ──
+
+function Pager({ page, pages, total, per, onPage, label }: { page: number; pages: number; total: number; per: number; onPage: (p: number) => void; label?: string }) {
+  const from = total ? page * per + 1 : 0;
+  const to = Math.min(total, (page + 1) * per);
+  const btn = 'w-8 h-8 grid place-items-center rounded text-ink-600 hover:bg-ink-100 disabled:opacity-30 disabled:hover:bg-transparent';
+  return (
+    <div className="flex flex-wrap items-center gap-4 mt-2 text-[12px] text-ink-700" data-testid="pager">
+      {label && <span className="text-ink-500">{label}</span>}
+      <span className="ml-auto">Items per page: {per}</span>
+      <span>{from} – {to} of {total}</span>
+      <span className="flex">
+        <button type="button" aria-label="First page" className={btn} disabled={page === 0} onClick={() => onPage(0)}><ChevronsLeft size={16} /></button>
+        <button type="button" aria-label="Previous page" className={btn} disabled={page === 0} onClick={() => onPage(page - 1)}><ChevronLeftIcon /></button>
+        <button type="button" aria-label="Next page" className={btn} disabled={page >= pages - 1} onClick={() => onPage(page + 1)}><ChevronRight size={16} /></button>
+        <button type="button" aria-label="Last page" className={btn} disabled={page >= pages - 1} onClick={() => onPage(pages - 1)}><ChevronsRight size={16} /></button>
+      </span>
+    </div>
+  );
+}
+const ChevronLeftIcon = () => <ChevronRight size={16} className="rotate-180" />;
+
+// ── eSignature envelopes ──
+
+const ENV_TONE: Record<string, string> = { Completed: 'text-emerald-700', Pending: 'text-amber-700', Declined: 'text-red-600', Expired: 'text-ink-500', Canceled: 'text-ink-500', Failed: 'text-red-600' };
+const stamp = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—');
+/** A stable 6-digit envelope reference from the document id. */
+const reference = (id: string) => String(parseInt(id.replace(/-/g, '').slice(0, 8), 16) % 1000000).padStart(6, '0');
+
+function ESignatureSection({ account, docs, actions, createdBy, share, onShare }: {
+  account: Account; docs: DocumentRow[]; actions: ReturnType<typeof useDocumentActions>; createdBy: (d: DocumentRow) => string;
+  share: (id: string) => boolean; onShare: (id: string, on: boolean) => void;
+}) {
+  const envelopes = docs.filter((d) => d.esign_status).sort((a, b) => (b.esign_sent_at ?? '').localeCompare(a.esign_sent_at ?? ''));
+  const [page, setPage] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [pick, setPick] = useState('');
+  const PER = 10;
+  const pages = Math.max(1, Math.ceil(envelopes.length / PER));
+  const signable = docs.filter((d) => hasFile(d) && !d.esign_status);
+  const th = 'px-3 py-2.5 text-left text-[12px] font-semibold text-ink-700 border-b border-ink-200';
+  const td = 'px-3 py-2.5 text-[13px] text-ink-800 border-b border-ink-100';
+  return (
+    <section className="mt-6" data-testid="esignature">
+      <div className="flex flex-wrap items-center gap-3 mb-2">
+        <h3 className="text-[14px] font-semibold text-ink-900">eSignature</h3>
+        <div className="flex-1" />
+        <Button variant="primary" onClick={() => { setPick(signable[0]?.id ?? ''); setCreating(true); }}>Create eSignature Envelope</Button>
+      </div>
+      <div className="bg-white border border-ink-200 rounded overflow-x-auto">
+        <table className="w-full min-w-[900px] border-collapse" aria-label="eSignature envelopes">
+          <thead><tr><th className={th}>Recipient</th><th className={th}>Envelope Name</th><th className={th}>Reference #</th><th className={th}>Sent</th><th className={th}>Received</th><th className={th}>Status</th><th className={th}>Share</th><th className={th}>Actions</th></tr></thead>
+          <tbody>
+            {!envelopes.length && <tr><td colSpan={8} className="px-3 py-8 text-center text-[13px] text-ink-500">No envelopes yet. Use Create eSignature Envelope to send a document for signature.</td></tr>}
+            {envelopes.slice(page * PER, page * PER + PER).map((d) => {
+              const st = effectiveStatus(d) ?? '';
+              return (
+                <tr key={d.id} data-testid="envelope-row">
+                  <td className={cx(td, 'uppercase')}>{accountName(account)}, {createdBy(d)}</td>
+                  <td className={td}>{d.name.replace(/\.[a-z0-9]+$/i, '')}</td>
+                  <td className={td}>{reference(d.id)}</td>
+                  <td className={td}>{stamp(d.esign_sent_at)}</td>
+                  <td className={td}>{st === 'Completed' ? stamp(d.esign_completed_at) : '—'}</td>
+                  <td className={cx(td, 'font-semibold', ENV_TONE[st])}>{st}</td>
+                  <td className={td}><input type="checkbox" aria-label={`Share envelope ${d.name}`} className="w-4 h-4 accent-[#007a78]" checked={share(d.id)} onChange={(e) => onShare(d.id, e.target.checked)} /></td>
+                  <td className={td}><Menu trigger={<button type="button" className="inline-flex items-center gap-1 text-brand-700 font-semibold tracking-wide hover:underline">Actions <ChevronDown size={14} /></button>} items={actions.items(d)} /></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pager page={page} pages={pages} total={envelopes.length} per={PER} onPage={setPage} />
+      {creating && (
+        <Modal title="Create eSignature Envelope" size="sm" onClose={() => setCreating(false)} footer={<><Button variant="ghost" onClick={() => setCreating(false)}>Cancel</Button><Button variant="primary" disabled={!pick} onClick={() => { const d = docs.find((x) => x.id === pick); setCreating(false); if (d) actions.esign(d); }}>Next</Button></>}>
+          {signable.length ? (
+            <Field label="Document to sign" hint="Only documents with an uploaded file that aren't already out for signature are listed.">
+              <Select value={pick} onChange={(e) => setPick(e.target.value)} options={signable.map((d) => ({ value: d.id, label: d.name }))} />
+            </Field>
+          ) : <p className="text-[13px] text-ink-500">Upload the document first (Add ▾ → Upload), then create the envelope.</p>}
+        </Modal>
+      )}
+    </section>
+  );
+}

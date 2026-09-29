@@ -124,7 +124,8 @@ export function useDocumentActions() {
           : <ESignModal doc={modal.doc} onClose={close} />
   );
 
-  return { items, modals, view, resend, voidRequest, complete, decline };
+  const esign = (doc: DocumentRow) => setModal({ kind: 'esign', doc });
+  return { items, modals, view, resend, voidRequest, complete, decline, esign };
 }
 
 // ── Row modals ──

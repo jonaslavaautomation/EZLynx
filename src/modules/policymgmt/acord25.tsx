@@ -102,12 +102,15 @@ export function LicensedFormsPanel() {
 const inForce = (p: Policy) => p.status === 'Active' && p.effective_date <= today() && p.expiration_date >= today();
 const SECTION_LABEL = { gl: 'General liability', auto: 'Automobile liability', umbrella: 'Umbrella / excess', wc: 'Workers comp', other: 'Other' } as const;
 
-export function Acord25PdfModal({ file, onClose, onDataSheet }: { file: AcordFileRef; onClose: () => void; onDataSheet: () => void }) {
+/** Starting values when opened from a certificate master. */
+export type CertInitial = { accountId: string; policyIds?: string[]; holder?: string; remarks?: string };
+
+export function Acord25PdfModal({ file, onClose, onDataSheet, initial }: { file: AcordFileRef; onClose: () => void; onDataSheet: () => void; initial?: CertInitial }) {
   const { toast } = useFeedback();
   const { settings, carriers, me } = useAppData();
   const mine = useMySettings().row;
   const cert = useCertificateSettings();
-  const [accountId, setAccountId] = useState<string | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(initial?.accountId ?? null);
   const [picked, setPicked] = useState<string[]>([]);
   const [flags, setFlags] = useState<Record<string, CertFlags>>({});
   const [holder, setHolder] = useState('');
@@ -128,16 +131,18 @@ export function Acord25PdfModal({ file, onClose, onDataSheet }: { file: AcordFil
   useEffect(() => {
     if (prefilled.current || !cert.loaded) return;
     prefilled.current = true;
-    setHolder([cert.config.holder_name, cert.config.holder_address].map((s) => s.trim()).filter(Boolean).join('\n'));
-    setRemarks([cert.config.remarks, cert.config.include_ai_wording ? cert.config.ai_wording : ''].map((s) => s.trim()).filter(Boolean).join('\n\n'));
+    setHolder(initial?.holder || [cert.config.holder_name, cert.config.holder_address].map((s) => s.trim()).filter(Boolean).join('\n'));
+    setRemarks(initial?.remarks || [cert.config.remarks, cert.config.include_ai_wording ? cert.config.ai_wording : ''].map((s) => s.trim()).filter(Boolean).join('\n\n'));
     setRep(cert.config.authorized_rep || acordOf(mine).signature_text || me?.name || '');
-  }, [cert.loaded, cert.config, mine, me]);
+  }, [cert.loaded, cert.config, mine, me, initial?.holder, initial?.remarks]);
 
   // Pick one in-force policy per certificate row by default.
   useEffect(() => {
+    // A certificate master picks its own policies.
+    if (initial?.policyIds?.length && accountId === initial.accountId) { setPicked(policies.data.filter((p) => initial.policyIds!.includes(p.id)).map((p) => p.id)); return; }
     const seen = new Set<string>();
     setPicked(policies.data.filter(inForce).filter((p) => { const s = certSection(p); if (seen.has(s)) return false; seen.add(s); return true; }).map((p) => p.id));
-  }, [policies.data]);
+  }, [policies.data, initial, accountId]);
 
   const setFlag = (id: string, k: keyof CertFlags, on: boolean) => setFlags((f) => ({ ...f, [id]: { ...(f[id] ?? { additionalInsured: false, waiverOfSubrogation: false }), [k]: on } }));
 

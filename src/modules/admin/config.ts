@@ -50,7 +50,7 @@ export type AcordFilesConfig = { forms: Record<string, AcordFileRef> };
 export type PolicyLabelsConfig = { byPolicy: Record<string, string[]> };
 /** Document Library per insured: folders, which folder each document is in, document labels and who/when edited. */
 export type DocFolder = { id: string; name: string; created_at: string; created_by: string | null; modified_at: string | null };
-export type DocLibraryEntry = { folders: DocFolder[]; placement: Record<string, string>; labels: Record<string, string[]>; meta: Record<string, { created_by?: string | null; modified_at?: string | null }> };
+export type DocLibraryEntry = { folders: DocFolder[]; placement: Record<string, string>; labels: Record<string, string[]>; meta: Record<string, { created_by?: string | null; modified_at?: string | null; share?: boolean; share_envelope?: boolean }> };
 export type DocLibraryConfig = { byAccount: Record<string, DocLibraryEntry> };
 /** EZLynx policy fields with no database column (Change Policy form, policy editor), per policy. */
 export type ServiceTeamMember = { staff: string; percent: number };
@@ -62,6 +62,13 @@ export type PolicyExtras = {
   last_change?: { date: string; description: string; premium_change: number; at: string };
 };
 export type PolicyDetailsConfig = { byPolicy: Record<string, PolicyExtras> };
+/** Lead Info → Sold Policy Information (manual entries, as in EZLynx), per account. */
+export type SoldPolicy = { carrier: string; sold_date: string; policy_number: string; premium: string; term: string; renewal_date: string };
+export type LeadDetails = { package_policy: boolean; auto: SoldPolicy; home: SoldPolicy; contact_me: boolean };
+export type LeadDetailsConfig = { byAccount: Record<string, LeadDetails> };
+/** Certificate masters: a saved certificate setup (form, policies, holder, remarks) to issue certificates from. */
+export type CertificateMaster = { id: string; name: string; form: string; policy_ids: string[]; holder: string; remarks: string; created_at: string; created_by: string | null };
+export type CertificateMastersConfig = { byAccount: Record<string, CertificateMaster[]> };
 
 export type ConfigMap = {
   activity: ActivityConfig;
@@ -74,6 +81,8 @@ export type ConfigMap = {
   policy_labels: PolicyLabelsConfig;
   doc_library: DocLibraryConfig;
   policy_details: PolicyDetailsConfig;
+  lead_details: LeadDetailsConfig;
+  certificate_masters: CertificateMastersConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -92,6 +101,8 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   policy_labels: { byPolicy: {} },
   doc_library: { byAccount: {} },
   policy_details: { byPolicy: {} },
+  lead_details: { byAccount: {} },
+  certificate_masters: { byAccount: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 

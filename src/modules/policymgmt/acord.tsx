@@ -14,7 +14,7 @@ import { acordUserContext, useMySettings } from '@/modules/usersettings/data';
 import { useCertificateSettings, useFormTemplates } from '@/modules/admin/integration';
 import { fieldLabel } from '@/modules/admin/templates';
 import { ACORD_FORMS, acordDocTitle, buildAcordHtml, type AcordForm } from './acord-html';
-import { Acord25PdfModal, LicensedFormsPanel, useAcordFile } from './acord25';
+import { Acord25PdfModal, LicensedFormsPanel, useAcordFile, type CertInitial } from './acord25';
 
 export function AcordPage() {
   const { toast } = useFeedback();
@@ -92,12 +92,12 @@ export function AcordPage() {
   );
 }
 
-function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) {
+export function FillModal({ form, onClose, initial }: { form: AcordForm; onClose: () => void; initial?: CertInitial }) {
   const { toast } = useFeedback();
   const { settings, carriers, me } = useAppData();
   const mine = useMySettings().row;
-  const [accountId, setAccountId] = useState<string | null>(null);
-  const [policyId, setPolicyId] = useState('');
+  const [accountId, setAccountId] = useState<string | null>(initial?.accountId ?? null);
+  const [policyId, setPolicyId] = useState(initial?.policyIds?.[0] ?? '');
   const [showAll, setShowAll] = useState(false);
   const [holder, setHolder] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -115,9 +115,9 @@ function FillModal({ form, onClose }: { form: AcordForm; onClose: () => void }) 
   useEffect(() => {
     if (!form.certificate || prefilled.current || !cert.loaded) return;
     prefilled.current = true;
-    setHolder((h) => h || certDefaults.holder);
-    setRemarks((r) => r || certDefaults.remarks);
-  }, [form.certificate, cert.loaded, certDefaults]);
+    setHolder((h) => h || initial?.holder || certDefaults.holder);
+    setRemarks((r) => r || initial?.remarks || certDefaults.remarks);
+  }, [form.certificate, cert.loaded, certDefaults, initial?.holder, initial?.remarks]);
   const applyTemplate = (id: string) => {
     setTemplateId(id);
     const t = templates.find((x) => x.id === id);

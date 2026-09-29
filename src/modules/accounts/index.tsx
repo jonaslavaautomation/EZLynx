@@ -1,6 +1,6 @@
 import {
-  Building2, Calculator, Calendar, Car, ChevronDown, CircleUser, Download, FileBadge, FileText, FolderOpen, Home, IdCard, Mail, MapPin, MessageSquare, Pencil, Phone, Plus,
-  Receipt, Send, ShieldAlert, Sparkles, Target, Trash2, Upload, User, Users,
+  Building2, Calculator, Calendar, Car, ChevronDown, CircleUser, ClipboardList, DollarSign, Download, FileBadge, FileText, FolderOpen, Home, IdCard, Mail, MapPin, MessageSquare, Pencil, Phone, Plus,
+  Receipt, Send, ShieldAlert, Sparkles, Trash2, Upload, User, UserSearch, Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -8,21 +8,18 @@ import {
   StatusBadge, useFeedback, type Column,
 } from '@/components/ui';
 import { StaffSelect } from '@/components/pickers';
-import { ActivityList } from '@/modules/activities';
 import { ClaimList } from '@/modules/claims';
 import { DocumentLibrary } from '@/modules/documents/library';
 import { SubmissionsTab } from './submissions';
+import { AccountActivityTab, CertificateMastersTab, LeadInfoTab, PoliciesTab, QuotesTab } from './record-tabs';
 import { InvoiceList } from '@/modules/accounting';
 import { MessageThread } from '@/modules/messages';
-import { PolicyList } from '@/modules/policies';
-import { QuoteList } from '@/modules/quotes';
 import { AccountFormModal } from '@/modules/accounts/AccountFormModal';
 import { DriversPanel, PropertiesPanel, VehiclesPanel } from '@/modules/accounts/HouseholdPanels';
 import { ImportModal } from '@/modules/accounts/ImportModal';
 import { AddressesPanel, ClassificationPanel, ContactsPanel } from '@/modules/accounts/DetailsPanels';
-import { AccountLabels, LabelFilterSelect } from '@/modules/admin/integration';
+import { LabelFilterSelect } from '@/modules/admin/integration';
 import { ApplicantDrawer, RECORD_TABS, RecordTabs, useQuoteThemeDialogs, type RecordTab } from '@/modules/autoquote/shell';
-import { openDocumentFile } from '@/modules/documents/shared';
 import { AccountOverviewBody, CatchMeUpModal } from '@/modules/accounts/overview';
 import { trackRecentAccount } from '@/lib/recent';
 import { useAppData } from '@/lib/app-context';
@@ -161,8 +158,8 @@ export function AccountsPage() {
 
 const TAB_HEAD: Record<RecordTab, { title: string; icon: typeof User }> = {
   overview: { title: 'Account Overview', icon: CircleUser }, policies: { title: 'Policies', icon: FolderOpen }, details: { title: 'Details', icon: IdCard },
-  quotes: { title: 'Quotes', icon: Calculator }, lead: { title: 'Lead Info', icon: Target }, documents: { title: 'Document Library', icon: FileText }, submissions: { title: 'Submissions', icon: Send },
-  certificates: { title: 'Certificates', icon: FileBadge }, activities: { title: 'Activity', icon: Calendar }, billing: { title: 'Invoices', icon: Receipt },
+  quotes: { title: 'Quotes', icon: DollarSign }, lead: { title: 'Lead Info', icon: UserSearch }, documents: { title: 'Document Library', icon: FileText }, submissions: { title: 'Submissions', icon: Send },
+  certificates: { title: 'Certificates', icon: FileBadge }, activities: { title: 'Account Activity', icon: ClipboardList }, billing: { title: 'Invoices', icon: Receipt },
   claims: { title: 'Claims', icon: ShieldAlert }, messages: { title: 'Messages', icon: MessageSquare },
 };
 
@@ -178,6 +175,7 @@ export function AccountDetail({ id }: { id: string }) {
   const activities = useTable('activities', { eq: { account_id: id } });
   const [editing, setEditing] = useState(false);
   const [catchUp, setCatchUp] = useState(false);
+  const [headSlot, setHeadSlot] = useState<HTMLDivElement | null>(null);
   // The header's AI button opens "Catch me up" on the open account.
   const catchParam = params.get('catchup') === '1';
   useEffect(() => { if (catchParam) { setCatchUp(true); setParam('catchup', null); } }, [catchParam]);
@@ -227,6 +225,7 @@ export function AccountDetail({ id }: { id: string }) {
           <head.icon size={30} className="text-ink-500" strokeWidth={1.6} />
           <h1 className="text-[20px] text-ink-900">{head.title}</h1>
           <div className="flex-1" />
+          <div ref={setHeadSlot} className="flex flex-wrap items-center gap-2 empty:hidden" />
           {tab === 'overview' && <>
             <Menu trigger={<Button variant="primary" className="h-9 px-4 tracking-wide">Actions <ChevronDown size={15} /></Button>} items={[
               ...(commercial
@@ -293,28 +292,12 @@ export function AccountDetail({ id }: { id: string }) {
             </div>
           )}
 
-          {tab === 'lead' && (
-            <Panel title="Lead information" actions={<Button size="sm" icon={<Pencil size={13} />} onClick={() => navigate(`/accounts/${a.id}/edit`)}>Edit</Button>}>
-              <DescriptionList columns={3} items={[
-                { label: 'Status', value: <StatusBadge status={a.status} /> },
-                { label: 'Lead source', value: a.lead_source },
-                { label: 'Lead status', value: a.lead_status },
-                { label: 'Lead priority', value: a.lead_priority },
-                { label: 'Probability of sale', value: a.probability_of_sale !== null && a.probability_of_sale !== undefined ? `${a.probability_of_sale}%` : null },
-                { label: 'Assigned producer', value: a.producer },
-                { label: 'CSR', value: a.csr },
-                { label: 'Customer since', value: fmtDate(a.customer_since ?? a.created_at) },
-                { label: 'Created', value: fmtDate(a.created_at) },
-              ]} />
-              <div className="mt-4"><AccountLabels account={a} /></div>
-              {a.notes && <div className="mt-2 text-[13px] text-ink-600 bg-amber-50/60 border border-amber-100 rounded p-3 whitespace-pre-wrap">{a.notes}</div>}
-            </Panel>
-          )}
+          {tab === 'lead' && <LeadInfoTab account={a} />}
 
-          {tab === 'certificates' && <CertificatesTab account={a} />}
-          {tab === 'policies' && <PolicyList accountId={a.id} />}
-          {tab === 'quotes' && <QuoteList accountId={a.id} />}
-          {tab === 'activities' && <ActivityList accountId={a.id} />}
+          {tab === 'certificates' && <div className="-m-4"><CertificateMastersTab account={a} /></div>}
+          {tab === 'policies' && <PoliciesTab account={a} slot={headSlot} />}
+          {tab === 'quotes' && <QuotesTab account={a} slot={headSlot} />}
+          {tab === 'activities' && <AccountActivityTab account={a} />}
           {tab === 'claims' && <ClaimList accountId={a.id} />}
           {tab === 'documents' && <DocumentLibrary account={a} />}
           {tab === 'submissions' && <SubmissionsTab account={a} />}
@@ -329,28 +312,3 @@ export function AccountDetail({ id }: { id: string }) {
   );
 }
 
-/** Certificates issued for this account (ACORD 25 PDFs and proof of insurance). */
-function CertificatesTab({ account }: { account: Account }) {
-  const docs = useTable('documents', { eq: { account_id: account.id }, order: { column: 'created_at', ascending: false } });
-  const { toast } = useFeedback();
-  const certs = docs.data.filter((d) => d.category === 'Proof of Insurance' || /certificate|ACORD 2[57]/i.test(d.name));
-  const open = async (d: (typeof certs)[number]) => {
-    const win = window.open('', '_blank');
-    try { if (!(await openDocumentFile(d, false, win))) toast('This document has no file attached', 'error'); } catch (e) { win?.close(); toast((e as Error).message, 'error'); }
-  };
-  return (
-    <Panel title="Certificates" actions={<Button size="sm" variant="primary" icon={<FileBadge size={13} />} onClick={() => navigate('/policy-mgmt/acord')}>Issue certificate</Button>} bodyClassName="p-0">
-      {certs.length === 0 ? <EmptyState icon={<FileBadge size={22} />} title="No certificates yet" message="Issue an ACORD 25 certificate of liability or proof of insurance from the ACORD Library." /> : (
-        <div className="divide-y divide-ink-100">
-          {certs.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 px-4 py-3 text-[13px]">
-              <FileBadge size={16} className="text-brand-600 shrink-0" />
-              <button type="button" onClick={() => void open(d)} className="min-w-0 flex-1 text-left font-medium text-ink-900 hover:text-brand-600 hover:underline truncate">{d.name}</button>
-              <span className="text-ink-500 whitespace-nowrap">{fmtDate(d.created_at)}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </Panel>
-  );
-}
