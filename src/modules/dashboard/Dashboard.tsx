@@ -18,6 +18,11 @@ const SLIDES = [
   { kicker: 'COMPARATIVE RATER', title: <>Quote smarter.<br /><em>Bind faster.</em></>, cta: 'Start a quote', to: '/quotes/new', bg: '#2f343b', img: 'https://images.pexels.com/photos/7731330/pexels-photo-7731330.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
   { kicker: 'RENEWALS QUEUE', title: <>Never miss<br /><em>a renewal.</em></>, cta: 'Open renewals', to: '/policies?view=renewals', bg: '#3b4452', img: 'https://images.pexels.com/photos/7688336/pexels-photo-7688336.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
   { kicker: 'REPORTS', title: <>Know your<br /><em>book cold.</em></>, cta: 'View reports', to: '/reports', bg: '#343a46', img: 'https://images.pexels.com/photos/6801648/pexels-photo-6801648.jpeg?auto=compress&cs=tinysrgb&h=650&w=940' },
+  // LAVA training photos (public/promo): shown in natural colour, not tinted like the stock images.
+  { kicker: 'LAVA TRAINING', title: <>Learn the AMS<br /><em>hands-on.</em></>, cta: 'Start training', to: '/support/university', bg: '#2f343b', img: '/promo/training-class.jpg', photo: true },
+  { kicker: 'OUR GRADUATES', title: <>Certified.<br /><em>Job-ready.</em></>, cta: 'Agency University', to: '/support/university', bg: '#3b4452', img: '/promo/graduates-group.jpg', photo: true },
+  { kicker: 'CERTIFICATE OF RECOGNITION', title: <>Your name<br /><em>on the next one.</em></>, cta: 'View courses', to: '/support/university', bg: '#343a46', img: '/promo/graduates-certificates.jpg', photo: true },
+  { kicker: 'GRADUATE SPOTLIGHT', title: <>Proud of<br /><em>every graduate.</em></>, cta: 'Agency University', to: '/support/university', bg: '#2f343b', img: '/promo/graduate-award.jpg', photo: true },
 ];
 
 function Promo() {
@@ -31,7 +36,7 @@ function Promo() {
     <div className="promo-wrap xl:col-span-2">
       <button className="carousel-arrow left" onClick={() => setI((i + SLIDES.length - 1) % SLIDES.length)} aria-label="Previous"><ArrowLeft size={18} /></button>
       <div className="promo-card" style={{ background: s.bg }}>
-        <div className="promo-image" style={{ ['--promo-img' as string]: `url('${s.img}')` }} />
+        <div className={cx('promo-image', 'photo' in s && s.photo && 'photo')} style={{ ['--promo-img' as string]: `url('${s.img}')` }} />
         <div className="promo-copy">
           <span className="promo-kicker">{s.kicker}</span>
           <h1>{s.title}</h1>
