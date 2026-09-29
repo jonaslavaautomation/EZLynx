@@ -2,7 +2,7 @@ import { CheckCircle2, Cloud, Database, Download, FileSignature, HardDrive, Mess
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Badge, Button, ErrorBanner, Panel, Spinner, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
-import { db, getDbMode, initDb, isLocalForced, onDbChange, setModeOverride, withoutExistingKeys } from '@/lib/db';
+import { db, initDb, isLocalForced, isLocalTable, onDbChange, setModeOverride, withoutExistingKeys } from '@/lib/db';
 import { today } from '@/lib/format';
 import { loadSampleData } from '@/lib/seed';
 import { supabase } from '@/lib/supabase';
@@ -103,7 +103,7 @@ const PAGE = 1000;
 /** Every row (or just the given columns) of a table. PostgREST caps each select, so page through it in Supabase mode. */
 async function listAll(t: TableName, columns = '*'): Promise<Record<string, unknown>[]> {
   await initDb();
-  if (getDbMode() !== 'supabase') return (await db.list(t)) as unknown as Record<string, unknown>[];
+  if (isLocalTable(t)) return (await db.list(t)) as unknown as Record<string, unknown>[];
   const out: Record<string, unknown>[] = [];
   for (;;) {
     const { data, error } = await supabase.from(t).select(columns).order('id').range(out.length, out.length + PAGE - 1);
@@ -117,7 +117,7 @@ async function listAll(t: TableName, columns = '*'): Promise<Record<string, unkn
 
 async function countRows(t: TableName) {
   await initDb();
-  if (getDbMode() !== 'supabase') return (await db.list(t)).length;
+  if (isLocalTable(t)) return (await db.list(t)).length;
   const { count, error } = await supabase.from(t).select('id', { count: 'exact', head: true });
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -277,7 +277,7 @@ export function DataTab() {
               <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 grid place-items-center shrink-0"><Cloud size={18} /></div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-ink-900">Connected to Supabase <Badge tone="green"><CheckCircle2 size={11} /> Live</Badge></div>
-                <p className="text-[13px] text-ink-500 mt-1">All data is stored in your Supabase project and shared by everyone using this app. Documents are kept in the <code className="text-xs bg-ink-50 px-1 rounded">documents</code> storage bucket.</p>
+                <p className="text-[13px] text-ink-500 mt-1">Insureds, policies, quotes and everything else are stored in your Supabase project and shared by everyone using this app. <b>Documents are the exception:</b> they are saved only in the browser that uploaded them and never sent to Supabase, so other computers don&rsquo;t see them and clearing this browser&rsquo;s site data deletes them.</p>
                 <Button className="mt-3" size="sm" icon={<HardDrive size={14} />} onClick={() => switchMode('local')}>Use browser storage instead</Button>
               </div>
             </div>
@@ -286,7 +286,7 @@ export function DataTab() {
               <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 grid place-items-center shrink-0"><HardDrive size={18} /></div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-[13px] font-semibold text-ink-900">Browser storage (demo mode) <Badge tone="amber">Local only</Badge></div>
-                <p className="text-[13px] text-ink-500 mt-1">Data is saved in this browser’s local storage — it isn’t shared with other users or devices, and files must be under 1.5 MB.</p>
+                <p className="text-[13px] text-ink-500 mt-1">Data is saved in this browser’s local storage — it isn’t shared with other users or devices. Document files can be up to 100 MB each.</p>
                 <div className="mt-3 rounded border border-ink-100 bg-ink-50/60 p-3 text-[13px] text-ink-700">
                   <div className="font-semibold mb-1">To connect Supabase</div>
                   <ol className="list-decimal pl-5 space-y-1">

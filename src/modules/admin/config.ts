@@ -48,6 +48,10 @@ export type AcordFileRef = {
 export type AcordFilesConfig = { forms: Record<string, AcordFileRef> };
 /** Labels on individual policies (policy id → label ids from Manage Labels). */
 export type PolicyLabelsConfig = { byPolicy: Record<string, string[]> };
+/** Document Library per insured: folders, which folder each document is in, document labels and who/when edited. */
+export type DocFolder = { id: string; name: string; created_at: string; created_by: string | null; modified_at: string | null };
+export type DocLibraryEntry = { folders: DocFolder[]; placement: Record<string, string>; labels: Record<string, string[]>; meta: Record<string, { created_by?: string | null; modified_at?: string | null }> };
+export type DocLibraryConfig = { byAccount: Record<string, DocLibraryEntry> };
 
 export type ConfigMap = {
   activity: ActivityConfig;
@@ -58,6 +62,7 @@ export type ConfigMap = {
   goals: GoalsConfig;
   acord_files: AcordFilesConfig;
   policy_labels: PolicyLabelsConfig;
+  doc_library: DocLibraryConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -74,6 +79,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   goals: { monthly_new_policies: 10, monthly_new_premium: 15000, quote_close_pct: 35, tasks_on_time_pct: 85 },
   acord_files: { forms: {} },
   policy_labels: { byPolicy: {} },
+  doc_library: { byAccount: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AccountPicker, PolicySelect } from '@/components/pickers';
 import { Button, Checkbox, ErrorBanner, Field, Input, Modal, Select, Textarea, useFeedback } from '@/components/ui';
 import { useAppData } from '@/lib/app-context';
-import { db, getDbMode } from '@/lib/db';
+import { db } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
 import { accountName, fmtBytes, fmtDate, today } from '@/lib/format';
 import { useRow, useTable } from '@/lib/hooks';
@@ -253,8 +253,7 @@ export function UploadModal({ files: initial, accountId: fixedAccount, policyId:
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState('');
-  const local = getDbMode() === 'local';
-  const LIMIT = 1.5 * 1024 * 1024;
+  const LIMIT = 100 * 1024 * 1024;
 
   const addMore = (list: FileList | null) => { if (list?.length) setFiles((f) => [...f, ...Array.from(list)]); };
 
@@ -270,7 +269,7 @@ export function UploadModal({ files: initial, accountId: fixedAccount, policyId:
   const submit = async () => {
     if (!accountId) { setError('Choose the client these documents belong to'); return; }
     if (!files.length) { setError('Add at least one file'); return; }
-    if (local && files.some((f) => f.size > LIMIT)) { setError('In browser-storage mode each file must be under 1.5 MB. Remove the larger files or connect Supabase.'); return; }
+    if (files.some((f) => f.size > LIMIT)) { setError('Each file must be 100 MB or smaller. Remove the larger files.'); return; }
     setBusy(true);
     setError(null);
     const failed: string[] = [];
@@ -327,7 +326,7 @@ export function UploadModal({ files: initial, accountId: fixedAccount, policyId:
             {files.map((f, i) => (
               <li key={`${f.name}-${i}`} className="flex items-center gap-2 px-3 py-2 text-[13px]">
                 <span className="truncate flex-1 text-ink-800">{f.name}</span>
-                <span className={local && f.size > LIMIT ? 'text-red-600 text-xs' : 'text-ink-400 text-xs'}>{fmtBytes(f.size)}{local && f.size > LIMIT ? ' · too large' : ''}</span>
+                <span className={f.size > LIMIT ? 'text-red-600 text-xs' : 'text-ink-400 text-xs'}>{fmtBytes(f.size)}{f.size > LIMIT ? ' · too large' : ''}</span>
                 <button className="bg-transparent text-ink-400 hover:text-red-600" disabled={busy} onClick={() => setFiles(files.filter((_, j) => j !== i))} aria-label={`Remove ${f.name}`}><X size={14} /></button>
               </li>
             ))}
@@ -337,7 +336,7 @@ export function UploadModal({ files: initial, accountId: fixedAccount, policyId:
             + Add more files
             <input type="file" multiple className="hidden" disabled={busy} onChange={(e) => { addMore(e.target.files); e.target.value = ''; }} />
           </label>
-          {local && <p className="text-[11px] text-ink-400 mt-1">Browser-storage mode: files up to 1.5 MB each.</p>}
+          <p className="text-[11px] text-ink-400 mt-1">Documents are saved in this browser only (up to 100 MB each).</p>
         </div>
       </div>
     </Modal>

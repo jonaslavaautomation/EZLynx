@@ -47,7 +47,7 @@ export function LicensedFormsPanel() {
     try {
       const info = await inspectAcordPdf(await f.arrayBuffer(), '25');
       if (!info.recognized) throw new AcordPdfError('This PDF’s fields don’t match the ACORD 25 fillable form (e.g. NamedInsured_FullName_A). Upload the standard fillable ACORD 25.');
-      const meta = await db.uploadFile(new File([f], f.name, { type: 'application/pdf' }));
+      const meta = await db.uploadFile(new File([f], f.name, { type: 'application/pdf' }), { shared: true });
       const ref: AcordFileRef = {
         name: f.name, storage_path: meta.storage_path, data_url: meta.data_url, size_bytes: f.size, field_count: info.fields.length,
         edition: info.edition, uploaded_at: new Date().toISOString(), uploaded_by: me?.name ?? null,

@@ -174,7 +174,7 @@ export const KB_ARTICLES: KbArticle[] = [
         'Track envelopes (Pending, Completed, Declined, Expired, Canceled) and **Resend** or void as needed.',
       ] },
       { note: 'No signature provider is connected in this training system; signing is simulated on the document.' },
-      { p: 'Reusable messages live in [eSignature Templates](/comm/esign-templates). In browser-storage mode, files must be under 1.5 MB.' },
+      { p: 'Reusable messages live in [eSignature Templates](/comm/esign-templates). Documents are saved only in the browser that uploaded them (up to 100 MB each).' },
     ],
     links: [{ label: 'Documents', to: '/documents' }, { label: 'eSignature Templates', to: '/comm/esign-templates' }],
   },

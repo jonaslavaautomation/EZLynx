@@ -1,6 +1,6 @@
 import {
   Building2, Calculator, Calendar, Car, ChevronDown, CircleUser, Download, FileBadge, FileText, FolderOpen, Home, IdCard, Mail, MapPin, MessageSquare, Pencil, Phone, Plus,
-  Receipt, ShieldAlert, Sparkles, Target, Trash2, Upload, User, Users,
+  Receipt, Send, ShieldAlert, Sparkles, Target, Trash2, Upload, User, Users,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -10,7 +10,8 @@ import {
 import { StaffSelect } from '@/components/pickers';
 import { ActivityList } from '@/modules/activities';
 import { ClaimList } from '@/modules/claims';
-import { DocumentList } from '@/modules/documents';
+import { DocumentLibrary } from '@/modules/documents/library';
+import { SubmissionsTab } from './submissions';
 import { InvoiceList } from '@/modules/accounting';
 import { MessageThread } from '@/modules/messages';
 import { PolicyList } from '@/modules/policies';
@@ -160,7 +161,7 @@ export function AccountsPage() {
 
 const TAB_HEAD: Record<RecordTab, { title: string; icon: typeof User }> = {
   overview: { title: 'Account Overview', icon: CircleUser }, policies: { title: 'Policies', icon: FolderOpen }, details: { title: 'Details', icon: IdCard },
-  quotes: { title: 'Quotes', icon: Calculator }, lead: { title: 'Lead Info', icon: Target }, documents: { title: 'Documents', icon: FileText },
+  quotes: { title: 'Quotes', icon: Calculator }, lead: { title: 'Lead Info', icon: Target }, documents: { title: 'Document Library', icon: FileText }, submissions: { title: 'Submissions', icon: Send },
   certificates: { title: 'Certificates', icon: FileBadge }, activities: { title: 'Activity', icon: Calendar }, billing: { title: 'Invoices', icon: Receipt },
   claims: { title: 'Claims', icon: ShieldAlert }, messages: { title: 'Messages', icon: MessageSquare },
 };
@@ -315,7 +316,8 @@ export function AccountDetail({ id }: { id: string }) {
           {tab === 'quotes' && <QuoteList accountId={a.id} />}
           {tab === 'activities' && <ActivityList accountId={a.id} />}
           {tab === 'claims' && <ClaimList accountId={a.id} />}
-          {tab === 'documents' && <DocumentList accountId={a.id} />}
+          {tab === 'documents' && <DocumentLibrary account={a} />}
+          {tab === 'submissions' && <SubmissionsTab account={a} />}
           {tab === 'messages' && <Panel bodyClassName="p-0"><MessageThread accountId={a.id} /></Panel>}
           {tab === 'billing' && <InvoiceList accountId={a.id} />}
         </div>

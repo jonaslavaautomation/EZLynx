@@ -1,4 +1,5 @@
 import { supabase, supabaseConfigured } from '@/lib/supabase';
+import { IDB_PREFIX, clearFiles, deleteFiles, getFile, putFile } from '@/lib/filestore';
 import type { DocumentRow, TableMap, TableName } from '@/lib/types';
 
 /**
@@ -30,6 +31,7 @@ export type ListQuery<K extends TableName> = {
 const LOCAL_PREFIX = 'northstar-ams:v1:';
 const MODE_OVERRIDE_KEY = 'northstar-ams:mode';
 const LOCAL_FILE_LIMIT = 1.5 * 1024 * 1024;
+const BROWSER_FILE_LIMIT = 100 * 1024 * 1024;
 const PAGE = 1000; // PostgREST's default max rows per response
 const IN_CHUNK = 100; // keeps `in.(…)` request URLs well under server limits
 
@@ -233,6 +235,14 @@ function withDefaults(table: TableName, row: Record<string, unknown>) {
 }
 
 let mode: DbMode = 'local';
+/**
+ * Tables kept in this browser even when Supabase is connected. Documents (and their files) are stored locally
+ * only, by agency choice: they never reach the shared database or Supabase Storage.
+ */
+const LOCAL_ONLY = new Set<TableName>(['documents']);
+const isLocal = (table: TableName) => mode === 'local' || LOCAL_ONLY.has(table);
+/** True when this table is read and written in this browser (demo mode, or a browser-only table like documents). */
+export const isLocalTable = (table: TableName) => isLocal(table);
 let ready: Promise<DbMode> | null = null;
 const listeners = new Set<(table: TableName) => void>();
 
@@ -460,7 +470,7 @@ async function supabaseList<K extends TableName>(table: K, q: ListQuery<K> | und
 export const db = {
   async list<K extends TableName>(table: K, q?: ListQuery<K>): Promise<Row<K>[]> {
     await initDb();
-    if (mode === 'local') return applyQuery(readLocal(table), q);
+    if (isLocal(table)) return applyQuery(readLocal(table), q);
     if (q?.in && q.in.values.length > IN_CHUNK) {
       const values = [...new Set(q.in.values)];
       const parts: Row<K>[] = [];
@@ -475,7 +485,7 @@ export const db = {
 
   async get<K extends TableName>(table: K, id: string): Promise<Row<K> | null> {
     await initDb();
-    if (mode === 'local') return readLocal(table).find((r) => r.id === id) ?? null;
+    if (isLocal(table)) return readLocal(table).find((r) => r.id === id) ?? null;
     if (!UUID_RE.test(id)) return null; // e.g. a mistyped URL; Postgres would reject it as invalid uuid syntax
     const { data, error } = await supabase.from(table).select('*').eq('id', id).maybeSingle();
     fail(error);
@@ -491,7 +501,7 @@ export const db = {
     await initDb();
     const rows = values.map((v) => stamp(table, v));
     if (!rows.length) return [];
-    if (mode === 'local') {
+    if (isLocal(table)) {
       const full = rows.map((r) => withDefaults(table, r as Record<string, unknown>) as Row<K>);
       writeLocal(table, [...readLocal(table), ...full]);
       if (!opts.silent) emit(table);
@@ -509,7 +519,7 @@ export const db = {
     const clean = sanitize(table, patch as Record<string, unknown>);
     delete clean.id;
     delete clean.created_at;
-    if (mode === 'local') {
+    if (isLocal(table)) {
       const rows = readLocal(table);
       const idx = rows.findIndex((r) => r.id === id);
       if (idx < 0) throw new Error('Record not found');
@@ -533,12 +543,24 @@ export const db = {
 
   async remove<K extends TableName>(table: K, id: string): Promise<void> {
     await initDb();
-    if (mode === 'local') {
+    if (isLocal(table)) {
       writeLocal(table, readLocal(table).filter((r) => r.id !== id));
       cascadeLocal(table, [id]);
     } else {
       const { error } = await supabase.from(table).delete().eq('id', id);
       fail(error);
+      // Supabase can't cascade into browser-only tables (documents of a deleted account / policy).
+      for (const rule of CASCADES[table] ?? []) {
+        if (!LOCAL_ONLY.has(rule.table)) continue;
+        if (rule.action === 'delete') localDeleteWhere(rule.table, rule.column, [id]);
+        else {
+          const rows = readLocal(rule.table);
+          if (rows.some((r) => (r as Record<string, unknown>)[rule.column] === id)) {
+            writeLocal(rule.table, rows.map((r) => ((r as Record<string, unknown>)[rule.column] === id ? { ...r, [rule.column]: null } : r)) as typeof rows);
+            emit(rule.table);
+          }
+        }
+      }
       // FK cascades happen server-side (and chain: account → policies → statement lines); tell every dependent screen to refresh.
       const seen = new Set<TableName>();
       const walk = (t: TableName) => (CASCADES[t] ?? []).forEach((rule) => { if (!seen.has(rule.table)) { seen.add(rule.table); emit(rule.table); walk(rule.table); } });
@@ -555,7 +577,7 @@ export const db = {
     await initDb();
     const words = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length || !columns.length) return [];
-    if (mode === 'local') {
+    if (isLocal(table)) {
       return readLocal(table)
         .filter((r) => words.every((w) => columns.some((c) => String((r as Record<string, unknown>)[c as string] ?? '').toLowerCase().includes(w))))
         .slice(0, limit);
@@ -567,10 +589,18 @@ export const db = {
     return (data ?? []) as Row<K>[];
   },
 
-  /** Stores a file and returns the fields to save on a `documents` row. */
-  async uploadFile(file: File): Promise<Pick<DocumentRow, 'storage_path' | 'data_url' | 'mime_type' | 'size_bytes'>> {
+  /**
+   * Stores a file and returns the fields to save on a `documents` row. Document files stay in this browser
+   * (IndexedDB, up to 100 MB each). `shared: true` is for agency-wide files every computer needs (licensed
+   * ACORD templates): those go to Supabase Storage when connected.
+   */
+  async uploadFile(file: File, opts: { shared?: boolean } = {}): Promise<Pick<DocumentRow, 'storage_path' | 'data_url' | 'mime_type' | 'size_bytes'>> {
     await initDb();
     const meta = { mime_type: file.type || 'application/octet-stream', size_bytes: file.size };
+    if (!opts.shared) {
+      if (file.size > BROWSER_FILE_LIMIT) throw new Error('Files must be 100 MB or smaller.');
+      return { ...meta, data_url: await putFile(file), storage_path: null };
+    }
     if (mode === 'local') {
       if (file.size > LOCAL_FILE_LIMIT) throw new Error('In browser-storage mode files must be under 1.5 MB. Connect Supabase to upload larger files.');
       const data_url = await new Promise<string>((resolve, reject) => {
@@ -589,6 +619,13 @@ export const db = {
 
   /** A URL that opens/downloads the document's file, or null when it has none. */
   async fileUrl(doc: Pick<DocumentRow, 'storage_path' | 'data_url'>): Promise<string | null> {
+    if (doc.data_url?.startsWith(IDB_PREFIX)) {
+      const blob = await getFile(doc.data_url);
+      if (!blob) throw new Error('This document\'s file is not stored in this browser. Documents are saved only on the computer that uploaded them.');
+      const url = URL.createObjectURL(blob);
+      setTimeout(() => URL.revokeObjectURL(url), 10 * 60 * 1000);
+      return url;
+    }
     if (doc.data_url) return doc.data_url;
     if (!doc.storage_path) return null;
     await initDb();
@@ -599,12 +636,13 @@ export const db = {
   },
 
   /** Removes a document's stored file (no-op in local mode, where the file lives on the row). Throws on storage errors. */
-  async removeFile(doc: Pick<DocumentRow, 'storage_path'>) {
+  async removeFile(doc: Pick<DocumentRow, 'storage_path'> & { data_url?: string | null }) {
     await db.removeFiles([doc]);
   },
 
   /** Removes several stored files in one request. Throws on storage errors. */
-  async removeFiles(docs: Pick<DocumentRow, 'storage_path'>[]) {
+  async removeFiles(docs: (Pick<DocumentRow, 'storage_path'> & { data_url?: string | null })[]) {
+    await deleteFiles(docs.map((d) => d.data_url ?? '').filter(Boolean)).catch(() => {});
     await initDb();
     const paths = [...new Set(docs.map((d) => d.storage_path).filter((p): p is string => !!p))];
     if (mode !== 'supabase' || !paths.length) return;
@@ -617,6 +655,7 @@ export const db = {
     try {
       Object.keys(localStorage).filter((k) => k.startsWith(LOCAL_PREFIX)).forEach((k) => localStorage.removeItem(k));
     } catch { /* storage unavailable */ }
+    clearFiles();
   },
 
   /** Emit change events for all tables, e.g. after a bulk seed. */

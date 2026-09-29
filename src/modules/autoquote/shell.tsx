@@ -115,7 +115,7 @@ export function QuoteStepper({ steps, view, status, visited, onGo }: {
 
 /** The applicant record's tabs (also shown above the quoting workflows, where Quotes is active). */
 export const RECORD_TABS = [
-  { key: 'overview', label: 'Overview' }, { key: 'policies', label: 'Policies' }, { key: 'details', label: 'Details' }, { key: 'quotes', label: 'Quotes' },
+  { key: 'overview', label: 'Overview' }, { key: 'policies', label: 'Policies' }, { key: 'details', label: 'Details' }, { key: 'submissions', label: 'Submissions' }, { key: 'quotes', label: 'Quotes' },
   { key: 'lead', label: 'Lead Info' }, { key: 'documents', label: 'Documents' }, { key: 'certificates', label: 'Certificates' }, { key: 'activities', label: 'Activity' },
   { key: 'billing', label: 'Invoices' }, { key: 'claims', label: 'Claims' }, { key: 'messages', label: 'Messages' },
 ] as const;
@@ -153,10 +153,13 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
   const quotes = useTable('quotes', { eq: { account_id: a.id } });
   const contacts = useTable('account_contacts', { eq: { account_id: a.id } });
   const drivers = useTable('drivers', { eq: { account_id: a.id } });
+  const commercial = a.account_type === 'Commercial';
+  // Linked applicants: personal accounts for the people listed as this business's contacts.
+  const people = useTable('accounts', commercial ? { eq: { account_type: 'Personal' } } : null);
   // Co-applicant: the secondary contact, else a spouse on the driver list.
   const coContact = contacts.data.find((c) => c.is_secondary);
   const coDriver = drivers.data.find((d) => d.relationship === 'Spouse');
-  const co = a.account_type === 'Commercial' ? null : coContact
+  const co = commercial ? null : coContact
     ? { name: `${coContact.first_name} ${coContact.last_name}`.trim(), first: coContact.first_name, last: coContact.last_name, relationship: coContact.relationship ?? 'Co-Applicant', email: coContact.email, phone: coContact.mobile_phone ?? coContact.phone }
     : coDriver ? { name: `${coDriver.first_name} ${coDriver.last_name}`, first: coDriver.first_name, last: coDriver.last_name, relationship: 'Spouse', email: null, phone: null } : null;
   const title = co ? (co.last === a.last_name ? `${a.first_name} & ${co.first} ${a.last_name}` : `${a.first_name} ${a.last_name} & ${co.name}`) : accountName(a);
@@ -209,12 +212,49 @@ export function ApplicantDrawer({ account: a }: { account: Account }) {
           <ResearchLinks account={a} address={addr} className="mt-2 flex flex-col gap-2" />
         )}
       </div>
-      <div className="mt-4">
-        <div className="text-[13px] font-semibold text-ink-900">Applicant</div>
-        <div>{a.first_name} {a.last_name}</div>
-        <a href={`mailto:${a.email}`} className="text-brand-700 hover:underline break-all">{a.email}</a>
-        {(a.mobile_phone || a.phone) && <div><span className="font-semibold">{a.mobile_phone ? 'Mobile' : 'Phone'}:</span> <a href={`tel:${a.mobile_phone || a.phone}`} className="text-brand-700 hover:underline">{fmtPhone(a.mobile_phone || a.phone)}</a></div>}
-      </div>
+      {commercial ? (() => {
+        const primary = contacts.data.find((c) => c.is_primary);
+        const secondary = contacts.data.find((c) => c.is_secondary);
+        const p = primary ? { name: `${primary.first_name} ${primary.last_name}`.trim(), email: primary.email, mobile: primary.mobile_phone ?? primary.phone } : { name: `${a.first_name} ${a.last_name}`.trim(), email: a.email, mobile: a.mobile_phone ?? a.phone };
+        const names = new Set([p.name, ...contacts.data.map((c) => `${c.first_name} ${c.last_name}`.trim())].map((n) => n.toLowerCase()).filter(Boolean));
+        const linked = people.data.filter((x) => x.id !== a.id && names.has(`${x.first_name} ${x.last_name}`.trim().toLowerCase()));
+        return (
+          <>
+            <div className="mt-4" data-testid="business-info">
+              <div className="text-[13px] font-semibold text-ink-900">Business Info</div>
+              <div><span className="font-semibold">Legal Entity:</span> {a.legal_entity_type ?? '—'}</div>
+              <div><span className="font-semibold">Business:</span> {a.naics_description ?? a.nature_of_business ?? '—'}</div>
+            </div>
+            <div className="mt-4" data-testid="primary-contact">
+              <div className="text-[13px] font-semibold text-ink-900">Primary Contact</div>
+              <div>{p.name || '—'}</div>
+              {p.email ? <a href={`mailto:${p.email}`} className="text-brand-700 hover:underline break-all">{p.email}</a> : <div className="text-ink-600">No email available</div>}
+              {p.mobile && <div><span className="font-semibold">Mobile:</span> <a href={`tel:${p.mobile}`} className="text-brand-700 hover:underline">{fmtPhone(p.mobile)}</a></div>}
+            </div>
+            <div className="mt-4" data-testid="secondary-contact">
+              <div className="text-[13px] font-semibold text-ink-900">Secondary Contact</div>
+              {secondary ? (
+                <>
+                  <div>{`${secondary.first_name} ${secondary.last_name}`.trim()}</div>
+                  {secondary.email ? <a href={`mailto:${secondary.email}`} className="text-brand-700 hover:underline break-all">{secondary.email}</a> : <div className="text-ink-600">No email available</div>}
+                  {(secondary.mobile_phone || secondary.phone) && <div><span className="font-semibold">Mobile:</span> {fmtPhone(secondary.mobile_phone || secondary.phone)}</div>}
+                </>
+              ) : <div className="text-ink-600">None on file</div>}
+            </div>
+            <div className="mt-4" data-testid="linked-applicants">
+              <div className="text-[13px] font-semibold text-ink-900">Linked Applicants</div>
+              {linked.length ? linked.map((x) => <a key={x.id} href={href(`/accounts/${x.id}`)} className="block text-brand-700 hover:underline">{x.first_name} {x.last_name}</a>) : <div className="text-ink-600">None</div>}
+            </div>
+          </>
+        );
+      })() : (
+        <div className="mt-4">
+          <div className="text-[13px] font-semibold text-ink-900">Applicant</div>
+          <div>{a.first_name} {a.last_name}</div>
+          <a href={`mailto:${a.email}`} className="text-brand-700 hover:underline break-all">{a.email}</a>
+          {(a.mobile_phone || a.phone) && <div><span className="font-semibold">{a.mobile_phone ? 'Mobile' : 'Phone'}:</span> <a href={`tel:${a.mobile_phone || a.phone}`} className="text-brand-700 hover:underline">{fmtPhone(a.mobile_phone || a.phone)}</a></div>}
+        </div>
+      )}
       {co && (
         <div className="mt-4" data-testid="co-applicant">
           <div className="text-[13px] font-semibold text-ink-900">Co-Applicant</div>

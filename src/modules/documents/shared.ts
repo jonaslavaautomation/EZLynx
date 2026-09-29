@@ -92,9 +92,9 @@ export const GEN_TEMPLATES: { value: GenTemplate; label: string; category: strin
   { value: 'summary', label: 'Policy Summary', category: 'Declarations' },
 ];
 
-const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
-function addressLines(a: Pick<Account, 'address' | 'city' | 'state' | 'zip'>) {
+export function addressLines(a: Pick<Account, 'address' | 'city' | 'state' | 'zip'>) {
   const cityLine = [a.city, [a.state, a.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');
   return [a.address, cityLine].filter(Boolean).map(esc).join('<br>');
 }
@@ -115,7 +115,7 @@ const STYLE = `
   @media print{body{background:#fff}.page{border:0;margin:0;max-width:none;padding:0}.print{display:none}}
 `;
 
-function shell(title: string, settings: AgencySettings | null, content: string) {
+export function shell(title: string, settings: AgencySettings | null, content: string) {
   const agencyAddr = settings ? addressLines(settings) : '';
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title><style>${STYLE}</style></head><body>
 <button class="print" onclick="window.print()">Print</button>
@@ -141,7 +141,7 @@ function policyGrid(p: Policy, a: Account, carrier: Carrier | undefined) {
   return `<div class="grid">${cells.map(([l, v]) => `<div><div class="lbl">${l}</div><div class="val">${v}</div></div>`).join('')}</div>`;
 }
 
-function coverageTable(p: Policy, withPremium: boolean) {
+export function coverageTable(p: Policy, withPremium: boolean) {
   if (!p.coverages?.length) return '<p class="muted">Coverage details are on file with the insurance company.</p>';
   return `<table><thead><tr><th>Coverage</th><th>Limit</th><th>Deductible</th>${withPremium ? '<th style="text-align:right">Premium</th>' : ''}</tr></thead><tbody>
 ${p.coverages.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.limit)}</td><td>${esc(c.deductible || '—')}</td>${withPremium ? `<td style="text-align:right">${c.premium ? esc(fmtMoney(c.premium)) : '—'}</td>` : ''}</tr>`).join('')}
