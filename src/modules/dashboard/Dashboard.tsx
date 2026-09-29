@@ -36,7 +36,7 @@ function Promo() {
   }, []);
   const s = SLIDES[i];
   return (
-    <div className="promo-wrap md:row-span-2 xl:col-span-2">
+    <div className="promo-wrap xl:col-span-2">
       <button className="carousel-arrow left" onClick={() => setI((i + SLIDES.length - 1) % SLIDES.length)} aria-label="Previous"><ArrowLeft size={18} /></button>
       <div className="promo-card" style={{ background: s.bg }}>
         <div className={cx('promo-image', 'photo' in s && s.photo && 'photo')} style={{ ['--promo-img' as string]: `url('${s.img}')` }} />
