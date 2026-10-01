@@ -12,6 +12,7 @@ import { enqueueAutomation } from '@/modules/admin/automation-engine';
 import { useLabels, useLeadSourceOptions } from '@/modules/admin/integration';
 import { LEAD_SOURCES } from '@/modules/accounts/AccountFormModal';
 import { AssignUserModal, OField, OInput, OSelect, TextBtn, inputCls, type Level } from '@/modules/accounts/applicant-fields';
+import { AddressAssistMap } from './address-assist';
 import {
   ADDRESS_TYPES_PL, APPLICANT_TYPES, CONTACT_METHODS, CONTACT_TIMES, DL_STATUSES, EDUCATION, EMAIL_TYPES, GENDERS, INDUSTRIES, LANGUAGES, MARITAL,
   NO_YEARS_OCCUPATIONS, PHONE_TYPES, PREFIXES, SUFFIXES,
@@ -406,7 +407,6 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
               <div className="space-y-4">
                 {addrs.map((a) => {
                   const summaryLine = [a.street, a.city, a.state, a.zip].filter(Boolean).join(', ');
-                  const mapQ = a.street && a.city && a.state ? `${a.street}, ${a.city}, ${a.state} ${a.zip}` : '';
                   return (
                     <div key={a.key} className="border border-ink-200 rounded">
                       <button type="button" onClick={() => setAddr(a.key, { open: !a.open })} className="w-full flex items-center gap-2 px-6 py-4 bg-transparent text-left">
@@ -416,7 +416,7 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
                         {a.open ? <ChevronUp size={18} className="text-ink-600" /> : <ChevronDown size={18} className="text-ink-600" />}
                       </button>
                       {a.open && (
-                        <div className="grid grid-cols-1 lg:grid-cols-[250px_1fr_1fr] xl:grid-cols-[250px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.9fr)] gap-x-4 gap-y-5 px-6 pb-6">
+                        <div data-addr-block={a.key} className="grid grid-cols-1 lg:grid-cols-[250px_1fr_1fr] xl:grid-cols-[250px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.9fr)] gap-x-4 gap-y-5 px-6 pb-6">
                           <div className="space-y-5">
                             <OSelect label="Address Type" value={a.address_type} onChange={(v) => setAddr(a.key, { address_type: v })} options={ADDRESS_TYPES_PL} />
                           </div>
@@ -434,9 +434,8 @@ export function PersonalApplicant({ accountId }: { accountId?: string }) {
                             <OInput label="Postal Code Suffix" value={a.zip_suffix} onChange={(v) => setAddr(a.key, { zip_suffix: digits(v).slice(0, 4) })} inputMode="numeric" level={err(`a.${a.key}.zip_suffix`)?.level} message={err(`a.${a.key}.zip_suffix`)?.message} />
                             <OSelect label="Months At Address" value={a.months} onChange={(v) => setAddr(a.key, { months: v })} options={Array.from({ length: 12 }, (_, k) => String(k))} />
                           </div>
-                          <div className="lg:col-span-3 xl:col-span-1 xl:row-span-1 min-h-[260px] rounded overflow-hidden border border-ink-100 bg-ink-50">
-                            <iframe title={mapQ ? `Map of ${mapQ}` : 'Map of the United States'} className="w-full h-full min-h-[260px] border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-                              src={`https://maps.google.com/maps?q=${encodeURIComponent(mapQ || 'United States')}&z=${mapQ ? 15 : 4}&output=embed`} />
+                          <div className="lg:col-span-3 xl:col-span-1 xl:row-span-1 min-h-[260px]">
+                            <AddressAssistMap blockId={a.key} addr={{ street: a.street, city: a.city, state: a.state, zip: a.zip, county: a.county }} onPatch={(p) => setAddr(a.key, p)} />
                           </div>
                           <div className="lg:col-span-3 xl:col-span-4 flex flex-wrap gap-3">
                             {a.is_primary && <TextBtn onClick={() => moveToPrevious(a)}>Move to previous address</TextBtn>}

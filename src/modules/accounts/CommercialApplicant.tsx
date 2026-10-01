@@ -12,6 +12,7 @@ import { LEAD_SOURCES } from '@/modules/accounts/AccountFormModal';
 import { AssignUserModal, OField, OInput, OSelect, TextBtn, inputCls, type Level } from '@/modules/accounts/applicant-fields';
 import { natureOfBusiness, searchNaics, type NaicsClass } from '@/modules/accounts/naics';
 import { APPLICANT_TYPES, LANGUAGES } from '@/modules/accounts/personal-options';
+import { AddressAssistMap } from './address-assist';
 
 /*
  * Commercial Applicant — business details page for creating (or editing) a commercial customer.
@@ -59,17 +60,6 @@ function Section({ title, status, open, onToggle, summary, children, inset }: { 
       </button>
       {open && <div className="px-4 sm:px-6 pb-6">{children}</div>}
     </section>
-  );
-}
-
-function MapPanel({ query }: { query: string }) {
-  // Interactive Google map (zoom / pan); shows the whole United States until an address is entered.
-  const q = query || 'United States';
-  return (
-    <div className="min-h-[300px] h-full rounded overflow-hidden border border-ink-100 bg-ink-50">
-      <iframe title={query ? `Map of ${query}` : 'Map of the United States'} className="w-full h-full min-h-[300px] border-0" loading="lazy" referrerPolicy="no-referrer-when-downgrade"
-        src={`https://maps.google.com/maps?q=${encodeURIComponent(q)}&z=${query ? 15 : 4}&output=embed`} />
-    </div>
   );
 }
 
@@ -330,10 +320,9 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
           <div className="mt-9 space-y-4">
             {addrs.map((a) => {
               const summary = [a.street, a.city, a.state, a.zip].filter(Boolean).join(', ');
-              const mapQ = a.street && a.city && a.state ? `${a.street}, ${a.city}, ${a.state} ${a.zip}` : a.city && a.state ? `${a.city}, ${a.state}` : '';
               return (
                 <Section key={a.key} inset title={a.is_primary ? 'Primary Address' : `${a.address_type} Address`} status={addrStatus(a)} open={a.open} onToggle={() => setAddr(a.key, { open: !a.open })} summary={summary}>
-                  <div className="grid grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.9fr)] gap-x-4 gap-y-5">
+                  <div data-addr-block={a.key} className="grid grid-cols-1 lg:grid-cols-[210px_minmax(0,1fr)_minmax(0,1fr)] xl:grid-cols-[210px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.9fr)] gap-x-4 gap-y-5">
                     <div><OSelect label="Address Type" value={a.address_type} onChange={(v) => setAddr(a.key, { address_type: v })} options={ADDRESS_TYPES_CL} /></div>
                     <div className="space-y-5 min-w-0">
                       <OInput label="Address" required="proceed" value={a.street} onChange={(v) => setAddr(a.key, { street: v })} level={err(`a.${a.key}.street`)?.level} message={err(`a.${a.key}.street`)?.message} />
@@ -349,7 +338,7 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
                       <OInput label="Postal Code Suffix" value={a.zip_suffix} onChange={(v) => setAddr(a.key, { zip_suffix: digits(v).slice(0, 4) })} inputMode="numeric" level={err(`a.${a.key}.zip_suffix`)?.level} message={err(`a.${a.key}.zip_suffix`)?.message} />
                       <OSelect label="Months At Address" value={a.months} onChange={(v) => setAddr(a.key, { months: v })} options={Array.from({ length: 12 }, (_, k) => String(k))} />
                     </div>
-                    <div className="lg:col-span-3 xl:col-span-1"><MapPanel query={mapQ} /></div>
+                    <div className="lg:col-span-3 xl:col-span-1"><AddressAssistMap blockId={a.key} height={300} addr={{ street: a.street, city: a.city, state: a.state, zip: a.zip, county: a.county }} onPatch={(p) => setAddr(a.key, p)} /></div>
                     {(addrs.length > 1 || !a.is_primary) && (
                       <div className="lg:col-span-3 xl:col-span-4 flex flex-wrap gap-3">
                         {!a.is_primary && <TextBtn onClick={() => setAddrs((l) => l.map((x) => ({ ...x, is_primary: x.key === a.key })))}>Make primary address</TextBtn>}
