@@ -2,6 +2,7 @@ import { accountName, age, fmtDate, fmtMoney, fmtPhone } from '@/lib/format';
 import type { Account, AgencySettings, Carrier, Driver, LineOfBusiness, Policy, Property, Vehicle } from '@/lib/types';
 import { COMMERCIAL_LINES, PERSONAL_LINES } from '@/lib/types';
 import { esc } from './shared';
+import { printScript } from '@/modules/documents/shared';
 
 export type AcordSection = 'auto' | 'property' | 'liability' | 'wc' | 'business';
 
@@ -179,12 +180,12 @@ export function buildAcordHtml(ctx: AcordContext) {
   }
 
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>${sig?.text && !img ? '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@500&display=swap">' : ''}<style>${STYLE}</style></head><body>
-<button class="print" onclick="window.print()">Print</button>
+<button class="print" data-print>Print</button>
 <div class="page">
   <div class="bar">
     <div><div class="agency">${esc(s?.name || 'Insurance Agency')}</div><div class="muted">${esc(s ? cityLine(s) : '')}${s?.phone ? ` · ${esc(fmtPhone(s.phone))}` : ''}</div></div>
     <div style="text-align:right"><h1>${esc(title)}</h1><div class="muted">${esc(form.purpose)}<br>Prepared ${esc(fmtDate(new Date().toISOString()))}</div></div>
   </div>
   ${parts.join('\n')}
-</div></body></html>`;
+</div>${printScript()}</body></html>`;
 }

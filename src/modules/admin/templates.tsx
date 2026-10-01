@@ -2,6 +2,7 @@ import { FileSpreadsheet, FileStack, FileText, Pencil, Plus, Star, Trash2, X } f
 import { useState } from 'react';
 import { AccountPicker } from '@/components/pickers';
 import { Badge, Button, Checkbox, DataTable, EmptyState, ErrorBanner, Field, IconButton, Input, Menu, Modal, Panel, Pills, Select, Textarea, useFeedback, type Column } from '@/components/ui';
+import { printScript } from '@/modules/documents/shared';
 import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { logActivity } from '@/lib/domain';
@@ -270,7 +271,7 @@ export function buildSoiHtml(o: { account: Account; policies: Policy[]; template
     ${incCov ? ((p.coverages ?? []).length ? `<table><tr><th>Coverage</th><th>Limit</th><th>Deductible</th></tr>${p.coverages.map((c) => `<tr><td>${esc(c.name)}</td><td>${esc(c.limit)}</td><td>${esc(c.deductible || '—')}</td></tr>`).join('')}</table>` : '<p class="muted">Coverage schedule not on file — see your declarations page.</p>') : ''}
   </div>`).join('') : '<p class="muted">No active policies are on file for this account.</p>';
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Summary of Insurance — ${esc(accountName(a))}</title><style>${SOI_CSS}</style></head><body>
-<button class="print" onclick="window.print()">Print</button><div class="page">
+<button class="print" data-print>Print</button><div class="page">
 <div class="bar"><div><div class="agency">${esc(s?.name || 'Insurance Agency')}</div><div class="muted">${esc([s?.address, s ? city(s) : ''].filter(Boolean).join(' · '))}${s?.phone ? ` · ${esc(fmtPhone(s.phone))}` : ''}</div></div>
 <div style="text-align:right"><h1>Summary of Insurance</h1><div class="muted">Prepared ${esc(fmtDate(today()))}${o.agent ? ` by ${esc(o.agent)}` : ''}</div></div></div>
 <div><b>${esc(accountName(a))}</b><div class="muted">${esc([a.address, city(a)].filter(Boolean).join(', '))}</div></div>
@@ -279,7 +280,7 @@ ${t?.intro ? `<p>${m(t.intro)}</p>` : ''}
 ${incPrem && policies.length ? `<div class="total">Total annualized premium: ${esc(fmtMoney(total, true))}</div>` : ''}
 ${t?.closing ? `<p>${m(t.closing)}</p>` : ''}
 <div class="disc">${t?.disclaimer ? m(t.disclaimer) : 'This summary is provided for convenience only and does not amend, extend or alter the coverage afforded by your policies.'}</div>
-</div></body></html>`;
+</div>${printScript()}</body></html>`;
 }
 
 function GenerateSoiModal({ templates, onClose }: { templates: ProposalTemplate[]; onClose: () => void }) {

@@ -1,5 +1,6 @@
 import { daysUntil, fmtDate, fmtMoney, accountName } from '@/lib/format';
 import type { Account, AgencySettings, Invoice, InvoiceStatus, Policy } from '@/lib/types';
+import { printScript } from '@/modules/documents/shared';
 
 export const PAYMENT_METHODS = ['Check', 'ACH', 'Credit Card', 'Cash'] as const;
 
@@ -63,7 +64,7 @@ th{font-size:11px;text-transform:uppercase;color:#8f8484;background:#f8f6f6}.r{t
 .stamp{display:inline-block;border:2px solid #374151;color:#374151;padding:4px 12px;font-weight:bold;letter-spacing:.1em;transform:rotate(-4deg)}
 .void{border-color:#c0392b;color:#c0392b}
 @media print{body{margin:16mm}button{display:none}}
-</style></head><body>
+</style></head><body data-autoprint>
 <div class="row"><div>${agencyLines.filter(Boolean).map((l, i) => (i === 0 ? `<div class="big">${esc(l)}</div>` : `<div class="muted">${esc(l)}</div>`)).join('')}</div>
 <div style="text-align:right"><h1>INVOICE</h1><div class="muted">No. ${esc(inv.invoice_number)}</div><div class="muted">Issued ${esc(fmtDate(inv.created_at))}</div>
 ${inv.status === 'Paid' ? '<div class="stamp" style="margin-top:10px">PAID</div>' : inv.status === 'Void' ? '<div class="stamp void" style="margin-top:10px">VOID</div>' : ''}</div></div>
@@ -77,8 +78,8 @@ ${policy ? `<div class="lbl" style="margin-top:10px">Policy</div><div>${esc(poli
 <tr><td>Payments received${inv.paid_date ? ` (${esc(fmtDate(inv.paid_date))}${inv.payment_method ? `, ${esc(inv.payment_method)}` : ''})` : ''}</td><td class="r">-${esc(fmtMoney(inv.amount_paid, true))}</td></tr>
 <tr><td class="big">Balance due</td><td class="r big">${esc(fmtMoney(bal, true))}</td></tr></table>
 <p class="muted" style="margin-top:40px">Please make checks payable to ${esc(agency?.name ?? 'the agency')} and include the invoice number with your payment. Thank you for your business.</p>
-<button onclick="window.print()" style="margin-top:12px;padding:8px 14px;background:#374151;color:#fff;border:0;border-radius:4px;cursor:pointer">Print</button>
-<script>setTimeout(function(){window.print()},300)</script>
+<button data-print style="margin-top:12px;padding:8px 14px;background:#374151;color:#fff;border:0;border-radius:4px;cursor:pointer">Print</button>
+${printScript()}
 </body></html>`;
   win.document.open();
   win.document.write(html);
