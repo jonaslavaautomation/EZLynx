@@ -1,8 +1,19 @@
-// Brief "Loading…" cover over the page area when a section is opened from the left navigation,
-// so moving between sections feels like the real web app loading a page.
+// Brief "Loading…" cover over the page area when a data-heavy section is opened from the left navigation,
+// so it feels like the real web app fetching that page. Shown only the first time each section is opened
+// in a session; quick pages (forms, settings, help) and repeat visits open instantly.
 export const PAGE_LOADING_EVENT = 'lava:page-loading';
 
-export function showPageLoading() {
+// Sections that load a lot of data. Matched on the path without its ?query, so e.g. all report
+// categories share one first-time load.
+const HEAVY = ['/reports', '/policies', '/accounts', '/quotes', '/claims', '/accounting', '/marketplace',
+  '/policy-mgmt/downloads', '/policy-mgmt/transactions', '/policy-mgmt/claim-transactions', '/policy-mgmt/statements'];
+
+const loaded = new Set<string>();
+
+export function showPageLoading(to: string) {
+  const path = to.split('?')[0];
+  if (!HEAVY.includes(path) || loaded.has(path)) return;
+  loaded.add(path);
   window.dispatchEvent(new Event(PAGE_LOADING_EVENT));
 }
 

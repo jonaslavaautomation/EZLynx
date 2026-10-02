@@ -302,7 +302,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
 
   const go = (to: string) => {
     setOpen(null);
-    showPageLoading();
+    showPageLoading(to);
     onNavigate();
     navigate(to);
   };
