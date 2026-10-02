@@ -4,7 +4,6 @@ import { cx } from '@/components/ui';
 import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
-import { appZoom } from '@/lib/zoom';
 import { useUserPreferences } from '@/modules/usersettings/data';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account, AccountContact, Driver, LineOfBusiness, Quote } from '@/lib/types';
@@ -267,7 +266,6 @@ function useApplicantSections(enabled: boolean): Section[] {
 export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNavigate: () => void }) {
   const { path } = useRoute();
   const [open, setOpen] = useState<MenuKey | null>(null);
-  const [tip, setTip] = useState<{ label: string; top: number } | null>(null);
   const [seenUpdates, setSeenUpdates] = useState(readSeen);
   const closeTimer = useRef<number>();
   const openTimer = useRef<number>();
@@ -277,7 +275,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
   const applicantSections = useApplicantSections(open === 'applicants');
 
   const clearTimers = () => { window.clearTimeout(closeTimer.current); window.clearTimeout(openTimer.current); };
-  const scheduleClose = () => { clearTimers(); closeTimer.current = window.setTimeout(() => { setOpen(null); setTip(null); }, 250); };
+  const scheduleClose = () => { clearTimers(); closeTimer.current = window.setTimeout(() => { setOpen(null); }, 250); };
   const show = (key: MenuKey, by: 'hover' | 'click' = 'hover') => {
     openedBy.current = by;
     setOpen(key);
@@ -287,7 +285,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
     }
   };
 
-  useEffect(() => { setOpen(null); setTip(null); }, [path]);
+  useEffect(() => { setOpen(null); }, [path]);
   useEffect(() => () => clearTimers(), []);
   useEffect(() => {
     if (!open) return;
@@ -303,7 +301,6 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
 
   const go = (to: string) => {
     setOpen(null);
-    setTip(null);
     onNavigate();
     navigate(to);
   };
@@ -320,17 +317,13 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
               aria-label={label}
               aria-haspopup="menu"
               aria-expanded={open === key}
-              onMouseEnter={(e) => {
-                const r = e.currentTarget.getBoundingClientRect();
-                setTip({ label, top: (r.top + r.height / 2) / appZoom() });
+              onMouseEnter={() => {
                 clearTimers();
                 // Switch instantly between menus; small delay before the first one so passing the mouse over doesn't flash it.
                 if (open) show(key);
                 else openTimer.current = window.setTimeout(() => show(key), 120);
               }}
-              onMouseLeave={() => { window.clearTimeout(openTimer.current); setTip(null); }}
-              onFocus={(e) => { const r = e.currentTarget.getBoundingClientRect(); setTip({ label, top: (r.top + r.height / 2) / appZoom() }); }}
-              onBlur={() => setTip(null)}
+              onMouseLeave={() => window.clearTimeout(openTimer.current)}
               onClick={() => {
                 clearTimers();
                 if (open === key && openedBy.current === 'click') setOpen(null);
@@ -351,7 +344,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
               <h3 className={cx(s.action && 'nav-flyout-head')}>
                 {s.title}
                 {s.action === 'chat' && (
-                  <button type="button" className="nav-chat" onClick={() => { setOpen(null); setTip(null); onNavigate(); window.dispatchEvent(new Event(OPEN_CHAT_EVENT)); }}>
+                  <button type="button" className="nav-chat" onClick={() => { setOpen(null); onNavigate(); window.dispatchEvent(new Event(OPEN_CHAT_EVENT)); }}>
                     <HelpCircle size={13} /> Chat
                   </button>
                 )}
@@ -362,7 +355,6 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
                   key={l.to + l.label}
                   role="menuitem"
                   href={href(l.to)}
-                  title={l.label}
                   onClick={(e) => { e.preventDefault(); go(l.to); }}
                 >
                   {l.label}
@@ -373,7 +365,6 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
         </div>
       )}
 
-      {tip && <div className="nav-tooltip" style={{ top: tip.top }}>{tip.label}</div>}
     </div>
   );
 }

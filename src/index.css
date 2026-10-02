@@ -92,7 +92,6 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #374151; text-d
 .nav-chat { display: inline-flex; align-items: center; gap: 4px; background: transparent; color: #fff; border: 1px solid #fff; border-radius: 3px; padding: 2px 8px; font-size: 12px; font-weight: 600; }
 .nav-chat:hover, .nav-chat:focus-visible { background: #fff; color: #1e252c; outline: none; }
 .nav-flyout-empty { margin: 0; padding: 2px 18px; font-size: 12px; color: #90a4ae; font-style: italic; }
-.nav-tooltip { position: fixed; left: calc(var(--sidebar-w) + 4px); transform: translateY(-50%); z-index: 45; background: #fff; color: #1b1e22; font-size: 12px; padding: 3px 8px; border: 1px solid #cfd8dc; border-radius: 2px; box-shadow: 0 2px 6px #0003; pointer-events: none; white-space: nowrap; }
 .sidebar-scrim { display: none; }
 
 /* ── Notifications panel (docked right) ── */
@@ -160,7 +159,6 @@ footer a { font-weight: 600; }
   .sidebar.mobile-open { transform: none; }
   .nav-flyout { left: 50px; bottom: 0; z-index: 69; width: min(236px, calc(100vw - 50px)); }
   .nav-flyout:not(.mobile-open) { left: 0; }
-  .nav-tooltip { display: none; }
   .sidebar-scrim { display: block; position: fixed; inset: 50px 0 0; background: #1b1e2266; z-index: 65; }
   .main-content { padding: 64px 12px 32px; }
   .search-dropdown { position: fixed; top: 50px; left: 0; right: 0; }
