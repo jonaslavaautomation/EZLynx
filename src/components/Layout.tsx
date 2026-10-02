@@ -12,6 +12,7 @@ import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { accountName, daysUntil } from '@/lib/format';
 import { useDebounced, useTable } from '@/lib/hooks';
+import { PAGE_LOADING_EVENT, loadingDelay } from '@/lib/page-loading';
 import { href, navigate, useRoute } from '@/lib/router';
 import type { Account } from '@/lib/types';
 import { usernameOf } from '@/modules/usersettings/tabs-profile';
@@ -29,9 +30,30 @@ export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickA
       <SideNav mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">{children}</main>
+      <PageLoader />
       <SupportChatHost />
       <AutomationTicker />
       <StatusFooter />
+    </div>
+  );
+}
+
+/** Covers the page area for a moment after a section is picked from the left navigation. */
+function PageLoader() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let t: number | undefined;
+    const show = () => { window.clearTimeout(t); setOn(true); t = window.setTimeout(() => setOn(false), loadingDelay()); };
+    window.addEventListener(PAGE_LOADING_EVENT, show);
+    return () => { window.removeEventListener(PAGE_LOADING_EVENT, show); window.clearTimeout(t); };
+  }, []);
+  if (!on) return null;
+  return (
+    <div className="page-loader" role="status" aria-live="polite" data-testid="page-loader">
+      <div className="page-loader-box">
+        <Loader2 size={30} className="spin" />
+        <span>Loading…</span>
+      </div>
     </div>
   );
 }

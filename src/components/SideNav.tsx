@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cx } from '@/components/ui';
 import { accountName } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
+import { showPageLoading } from '@/lib/page-loading';
 import { getRecentAccountIds, onRecentChange } from '@/lib/recent';
 import { useUserPreferences } from '@/modules/usersettings/data';
 import { href, navigate, useRoute } from '@/lib/router';
@@ -301,6 +302,7 @@ export function SideNav({ mobileOpen, onNavigate }: { mobileOpen: boolean; onNav
 
   const go = (to: string) => {
     setOpen(null);
+    showPageLoading();
     onNavigate();
     navigate(to);
   };
