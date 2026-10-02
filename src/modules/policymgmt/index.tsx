@@ -9,6 +9,7 @@ import { StatementDetail } from './statement-detail';
 import { StatementsPage } from './statements';
 import { TeamPage } from './team';
 import { TransactionsPage } from './transactions';
+import { DownloadsPage } from './downloads';
 
 export { ClaimTransactionsPanel } from './claimtx';
 
@@ -22,6 +23,7 @@ export function PolicyMgmtRoutes({ segments }: { segments: string[] }) {
 
   switch (page) {
     case undefined:
+    case 'downloads': return <DownloadsPage />;
     case 'transactions': return <TransactionsPage />;
     case 'rewrites': return <RewritesPage />;
     case 'claim-transactions': return <ClaimTransactionsPage />;

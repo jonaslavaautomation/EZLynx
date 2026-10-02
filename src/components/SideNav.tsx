@@ -59,6 +59,7 @@ const STATIC: Partial<Record<MenuKey, Section[]>> = {
   // Service Team (the producers/CSRs who are paid or tracked) according to Service Team Rules.
   policy: [
     { title: 'Policy Mgmt', links: [
+      { label: 'Policy Downloads', to: '/policy-mgmt/downloads' },
       { label: 'Policy Transactions', to: '/policy-mgmt/transactions' },
       { label: 'Policy Rewrites', to: '/policy-mgmt/rewrites' },
       { label: 'Claim Transactions', to: '/policy-mgmt/claim-transactions' },

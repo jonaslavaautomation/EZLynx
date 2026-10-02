@@ -5,6 +5,7 @@ import { fmtMoney, fmtRelative, parseDate, today, toISODate } from '@/lib/format
 import { useTable } from '@/lib/hooks';
 import { href } from '@/lib/router';
 import { saveAppConfig, useAppConfig, type GoalsConfig } from '@/modules/admin/config';
+import { rematch } from '@/lib/downloads';
 
 /* Dashboard tiles: Performance Goals, Underwriting Requests, Policy Downloads, Claims Downloads. */
 
@@ -182,25 +183,22 @@ export function UnderwritingRequests() {
 // ── Policy Downloads (last 7 days) ──
 
 export function PolicyDownloads() {
-  const policies = useTable('policies', {});
-  const tx = useTable('policy_transactions', {});
+  const { value, loading } = useAppConfig('carrier_downloads');
   const [refreshedAt, setRefreshedAt] = useState(() => new Date().toISOString());
-  const downloaded = new Map(policies.data.filter((p) => p.source === 'Download').map((p) => [p.id, p]));
-  const week = tx.data.filter((t) => downloaded.has(t.policy_id) && within(t.created_at, 7));
-  const count = (type: string, pred?: (d: string | null) => boolean) => week.filter((t) => t.type === type && (!pred || pred(t.description))).length;
-  const nonRenewals = week.filter((t) => t.type === 'Cancellation' && /non-?renew/i.test(t.description ?? '')).length;
-  const unmatchedAll = [...downloaded.values()].filter((p) => !p.account_id).length;
-  const matched = new Set(week.map((t) => t.policy_id)).size;
+  const all = value.items.filter((t) => t.kind === 'policy');
+  const week = all.filter((t) => within(t.received_at, 7));
+  const n = (type: string) => week.filter((t) => t.type === type).length;
+  const link = (q: string) => `/policy-mgmt/downloads?${q}`;
   return (
-    <Card title="Policy Downloads" action={<Refresh onClick={() => { policies.reload(); tx.reload(); setRefreshedAt(new Date().toISOString()); }} />}>
+    <Card title="Policy Downloads" action={<Refresh onClick={() => { void rematch('all', null).finally(() => setRefreshedAt(new Date().toISOString())); }} />}>
       <p className="card-note">(Last 7 Days) - updated {fmtRelative(refreshedAt)}</p>
-      <StatRow label="All Unmatched" value={dash(unmatchedAll)} to="/policy-mgmt/transactions" />
-      <StatRow label="Cancellations" value={dash(count('Cancellation') - nonRenewals)} to="/policy-mgmt/transactions" />
-      <StatRow label="Renewals" value={dash(count('Renewal'))} to="/policy-mgmt/transactions" />
-      <StatRow label="New Policies" value={dash(count('New Business'))} to="/policy-mgmt/transactions" />
-      <StatRow label="Non Renewals" value={dash(nonRenewals)} to="/policy-mgmt/transactions" />
-      <StatRow label="Matched" value={dash(matched)} to="/policy-mgmt/transactions" />
-      <StatRow label="Unmatched" value={dash(0)} to="/policy-mgmt/transactions" />
+      <StatRow label="All Unmatched" value={loading ? '…' : dash(all.filter((t) => t.status === 'Unmatched').length)} to={link('view=unmatched&range=all')} />
+      <StatRow label="Cancellations" value={dash(n('Cancellation'))} to={link('view=all&type=Cancellation&range=7')} />
+      <StatRow label="Renewals" value={dash(n('Renewal'))} to={link('view=all&type=Renewal&range=7')} />
+      <StatRow label="New Policies" value={dash(n('New Business'))} to={link('view=all&type=New%20Business&range=7')} />
+      <StatRow label="Non Renewals" value={dash(n('Non-Renewal'))} to={link('view=all&type=Non-Renewal&range=7')} />
+      <StatRow label="Matched" value={dash(week.filter((t) => t.status === 'Matched').length)} to={link('view=matched&range=7')} />
+      <StatRow label="Unmatched" value={dash(week.filter((t) => t.status === 'Unmatched').length)} to={link('view=unmatched&range=7')} />
     </Card>
   );
 }
@@ -208,21 +206,22 @@ export function PolicyDownloads() {
 // ── Claims Downloads (last 7 days) ──
 
 export function ClaimsDownloads() {
-  const claims = useTable('claims', {});
-  const acts = useTable('activities', { eq: { type: 'Note' } });
+  const { value, loading } = useAppConfig('carrier_downloads');
   const [refreshedAt, setRefreshedAt] = useState(() => new Date().toISOString());
-  const week = claims.data.filter((c) => within(c.created_at, 7));
-  const reopened = acts.data.filter((a) => within(a.created_at, 7) && /claim/i.test(a.subject) && /reopen/i.test(a.subject)).length;
+  const all = value.items.filter((t) => t.kind === 'claim');
+  const week = all.filter((t) => within(t.received_at, 7));
+  const st = (...xs: string[]) => week.filter((t) => xs.includes(t.claim?.status ?? '')).length;
+  const link = (q: string) => `/policy-mgmt/downloads?kind=claim&${q}`;
   return (
-    <Card title="Claims Downloads" action={<Refresh onClick={() => { claims.reload(); acts.reload(); setRefreshedAt(new Date().toISOString()); }} />}>
+    <Card title="Claims Downloads" action={<Refresh onClick={() => { void rematch('all', null).finally(() => setRefreshedAt(new Date().toISOString())); }} />}>
       <p className="card-note">(Last 7 Days) - updated {fmtRelative(refreshedAt)}</p>
-      <StatRow label="All Unmatched" value={dash(claims.data.filter((c) => !c.policy_id).length)} to="/claims" />
-      <StatRow label="Open" value={dash(week.filter((c) => c.status === 'Open' || c.status === 'Under Review').length)} to="/claims" />
-      <StatRow label="Closed" value={dash(week.filter((c) => c.status === 'Closed' || c.status === 'Denied').length)} to="/claims" />
-      <StatRow label="Reopened" value={dash(reopened)} to="/claims" />
-      <StatRow label="Paid" value={dash(week.filter((c) => c.status === 'Paid').length)} to="/claims" />
-      <StatRow label="Matched" value={dash(week.filter((c) => c.policy_id).length)} to="/claims" />
-      <StatRow label="Unmatched" value={dash(week.filter((c) => !c.policy_id).length)} to="/claims" />
+      <StatRow label="All Unmatched" value={loading ? '…' : dash(all.filter((t) => t.status === 'Unmatched').length)} to={link('view=unmatched&range=all')} />
+      <StatRow label="Open" value={dash(st('Open', 'Under Review'))} to={link('view=all&range=7')} />
+      <StatRow label="Closed" value={dash(st('Closed', 'Denied'))} to={link('view=all&range=7')} />
+      <StatRow label="Reopened" value={dash(st('Reopened'))} to={link('view=all&range=7')} />
+      <StatRow label="Paid" value={dash(st('Paid'))} to={link('view=all&range=7')} />
+      <StatRow label="Matched" value={dash(week.filter((t) => t.status === 'Matched').length)} to={link('view=matched&range=7')} />
+      <StatRow label="Unmatched" value={dash(week.filter((t) => t.status === 'Unmatched').length)} to={link('view=unmatched&range=7')} />
     </Card>
   );
 }

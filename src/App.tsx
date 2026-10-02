@@ -7,7 +7,8 @@ import { AppDataProvider } from '@/lib/app-context';
 import { db, initDb, setModeOverride, type DbMode } from '@/lib/db';
 import { navigate, useRoute } from '@/lib/router';
 import { ensureFeaturedInsureds } from '@/lib/featured';
-import { ensureOwner, recordVisit } from '@/lib/owner';
+import { runDailyDownload } from '@/lib/downloads';
+import { OWNER_NAME, ensureOwner, recordVisit } from '@/lib/owner';
 import { loadSampleData, startEmpty, topUpLocalSample } from '@/lib/seed';
 import { AccountDetail, AccountsPage } from '@/modules/accounts';
 import { ApplicantEditor } from '@/modules/accounts/ApplicantEditor';
@@ -34,6 +35,12 @@ import { ReportsPage } from '@/modules/reports';
 import { SettingsPage } from '@/modules/settings';
 import { UserSettingsPage } from '@/modules/usersettings';
 
+/** Today's carrier download (once per day); the app opens after it finishes or after 2.5 s, whichever is first. */
+function dailyDownload() {
+  const run = runDailyDownload(OWNER_NAME).catch(() => 0);
+  return Promise.race([run, new Promise((r) => setTimeout(r, 2500))]);
+}
+
 // Runs once per page load (StrictMode mounts effects twice; seeding must not run twice).
 let bootOnce: Promise<Boot> | null = null;
 function bootApp(): Promise<Boot> {
@@ -45,11 +52,12 @@ function bootApp(): Promise<Boot> {
         if (mode === 'local') await topUpLocalSample().catch(() => { /* sample top-up is best effort */ });
         await ensureOwner().catch(() => { /* the app still opens; Settings → Users can fix the owner */ });
         await ensureFeaturedInsureds().catch(() => { /* practice insureds are best effort */ });
+        await dailyDownload();
         recordVisit();
         return { state: 'ready', mode };
       }
       // Browser-storage demo: seed silently so the portal is usable immediately.
-      if (mode === 'local') { await loadSampleData(); await ensureOwner().catch(() => {}); await ensureFeaturedInsureds().catch(() => {}); recordVisit(); return { state: 'ready', mode }; }
+      if (mode === 'local') { await loadSampleData(); await ensureOwner().catch(() => {}); await ensureFeaturedInsureds().catch(() => {}); await dailyDownload(); recordVisit(); return { state: 'ready', mode }; }
       return { state: 'onboarding', mode };
     } catch (e) {
       return { state: 'error', message: (e as Error).message };
