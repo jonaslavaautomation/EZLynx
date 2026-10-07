@@ -1,5 +1,5 @@
 import { db } from '@/lib/db';
-import type { Carrier, LineOfBusiness, TableMap } from '@/lib/types';
+import type { Carrier, LineOfBusiness, Property, TableMap } from '@/lib/types';
 import { getAssociation } from '@/modules/accounts/association';
 import { sectionOf, type AccountRisk, type QuoteInput } from './inputs';
 
@@ -80,4 +80,46 @@ export async function saveRiskToAccount(accountId: string, line: LineOfBusiness,
     return { input: { ...input, home: { ...h, property_id: row.id } }, written: 1 };
   }
   return { input, written };
+}
+
+const norm = (x: string | null | undefined) => (x ?? '').trim().toLowerCase();
+
+/**
+ * Autosave for the auto quoting workflow: writes every named driver and every vehicle with year, make and model to
+ * the insured's Drivers / Vehicles, so they are kept on the record even if the quote is never submitted.
+ * Rows without an id are matched to the insured's existing rows (driver name; vehicle VIN, or year + make + model)
+ * before inserting, so reopening a quote never duplicates them. Returns workflow key → row id.
+ */
+export async function syncAutoRisk(accountId: string, auto: NonNullable<QuoteInput['auto']>, isComplete: { vehicle: (key: string) => boolean }) {
+  const drivers = auto.drivers.filter((d) => d.first_name.trim() && d.last_name.trim());
+  const vehicles = auto.vehicles.filter((v) => isComplete.vehicle(v.key) && v.make.trim() && v.model.trim());
+  if (!drivers.length && !vehicles.length) return new Map<string, string>();
+  const [rowsD, rowsV] = await Promise.all([
+    drivers.some((d) => !d.id) ? db.list('drivers', { eq: { account_id: accountId } }) : Promise.resolve([]),
+    vehicles.some((v) => !v.id) ? db.list('vehicles', { eq: { account_id: accountId } }) : Promise.resolve([]),
+  ]);
+  const withIds = {
+    ...auto,
+    drivers: drivers.map((d) => ({ ...d, id: d.id ?? rowsD.find((r) => norm(r.first_name) === norm(d.first_name) && norm(r.last_name) === norm(d.last_name))?.id ?? null })),
+    vehicles: vehicles.map((v) => ({
+      ...v,
+      id: v.id ?? rowsV.find((r) => (v.vin && norm(r.vin) === norm(v.vin)) || (Number(r.year) === v.year && norm(r.make) === norm(v.make) && norm(r.model) === norm(v.model)))?.id ?? null,
+    })),
+  };
+  const saved = await saveRiskToAccount(accountId, 'Personal Auto', { v: 1, carriers: [], auto: withIds });
+  return new Map([...(saved.input.auto?.drivers ?? []), ...(saved.input.auto?.vehicles ?? [])].filter((r) => r.id).map((r) => [r.key, r.id as string]));
+}
+
+/**
+ * Autosave for the home quoting workflow: writes the dwelling to the insured's Properties once it has an address.
+ * Updates `propertyId` when given, otherwise the insured's property at the same address, otherwise inserts one.
+ */
+export async function syncHomeRisk(accountId: string, propertyId: string | null, values: Partial<Property> & { address: string }) {
+  let id = propertyId;
+  if (!id) {
+    const rows = await db.list('properties', { eq: { account_id: accountId } });
+    id = rows.find((r) => norm(r.address) === norm(values.address))?.id ?? null;
+  }
+  const row = await upsert('properties', id, accountId, values);
+  return row.id;
 }

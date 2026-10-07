@@ -11,10 +11,10 @@ import type { Account, Property, Quote } from '@/lib/types';
 import { useCarrierQuoting } from '@/modules/admin/integration';
 import { IssuesCtx } from '@/modules/autoquote/fields';
 import { ApplicantDrawer, QuoteStepper, RecordTabs, WorkflowHeader, useHidePrefilled, useQuoteThemeDialogs, useStepNav, type StepDef } from '@/modules/autoquote/shell';
-import { saveRiskToAccount } from '@/modules/quotes/data';
+import { saveRiskToAccount, syncHomeRisk } from '@/modules/quotes/data';
 import { useUserPreferences } from '@/modules/usersettings/data';
 import { HomeCtxValue, type HomeCtx } from './ctx';
-import { STEPS, applyPrefill, isView, newHomeWorkflow, toHomeInput, validate, type HomeWorkflow, type Rated, type StepKey, type View } from './model';
+import { STEPS, applyPrefill, isView, newHomeWorkflow, propertyValues, toHomeInput, validate, type HomeWorkflow, type Rated, type StepKey, type View } from './model';
 import { rateHomeWorkflow } from './rate';
 import { ResultsView, SubmitView, ValidStep } from './review';
 import { CarrierStep, CoverageStep, DwellingStep, EndorsementsStep, PolicyStep, RatingStep } from './steps';
@@ -136,6 +136,20 @@ function Workspace({ account, property, initial }: { account: Account; property:
     return creating.current;
   }, [quoteId, payload, account.id]);
 
+  // The dwelling is saved to the insured's Properties as it is entered (not only when the quote is submitted).
+  const propertyId = useRef<string | null>(property?.id ?? null);
+  useEffect(() => { if (property?.id && !propertyId.current) propertyId.current = property.id; }, [property?.id]);
+  const riskChain = useRef<Promise<unknown>>(Promise.resolve());
+  const syncRisk = useCallback((x: HomeWorkflow) => {
+    const run = riskChain.current.catch(() => {}).then(async () => {
+      const values = propertyValues(x, account);
+      if (!values) return;
+      propertyId.current = await syncHomeRisk(account.id, propertyId.current, values);
+    });
+    riskChain.current = run;
+    return run;
+  }, [account]);
+
   const save = useCallback(async (x: HomeWorkflow) => {
     dirty.current = false;
     setSaving('saving');
@@ -145,9 +159,10 @@ function Workspace({ account, property, initial }: { account: Account; property:
       const stale = status === 'Rated' && ratedSig.current !== ratingSig(x);
       await db.update('quotes', id, { effective_date: x.policy.effective || today(), input: payload(x).input, ...(stale ? { status: 'Draft' as const, results: [] } : {}) });
       if (stale) { setStatus('Draft'); setResults([]); ratedSig.current = null; }
+      await syncRisk(x);
       setSaving('saved');
     } catch (e) { setSaving('error'); toast(`Autosave failed: ${(e as Error).message}`, 'error'); }
-  }, [ensureQuote, payload, status, toast]);
+  }, [ensureQuote, payload, status, toast, syncRisk]);
 
   useEffect(() => {
     if (!dirty.current) return;
@@ -165,7 +180,11 @@ function Workspace({ account, property, initial }: { account: Account; property:
     for (const c of use) { onProgress(c.name, 'rating'); await new Promise((r) => setTimeout(r, 450 + Math.round(Math.random() * 450))); onProgress(c.name, 'done'); }
     const rated = rateHomeWorkflow(w, use, account, homeNames);
     const next: HomeWorkflow = { ...w, submitted_at: new Date().toISOString() };
-    if (saveBack) await saveRiskToAccount(account.id, 'Homeowners', { v: 1, carriers, home: toHomeInput(next, account, property?.id ?? null) });
+    if (saveBack) {
+      await riskChain.current.catch(() => {});
+      const saved = await saveRiskToAccount(account.id, 'Homeowners', { v: 1, carriers, home: toHomeInput(next, account, propertyId.current ?? property?.id ?? null) });
+      propertyId.current = saved.input.home?.property_id ?? propertyId.current;
+    }
     const id = await ensureQuote(next);
     await db.update('quotes', id, { ...payload(next, { status: 'Rated' }), status: 'Rated', results: rated });
     dirty.current = false;

@@ -377,6 +377,20 @@ function engineDeductible(ded: string, dwelling: number) {
   return [500, 1000, 2500, 5000].reduce((best, x) => (Math.abs(x - dollars) < Math.abs(best - dollars) ? x : best), 1000);
 }
 
+/** The insured's property record for this dwelling; null until it has an address. Blank answers stay empty. */
+export function propertyValues(w: HomeWorkflow, account: Account | null) {
+  const d = w.dwelling;
+  const loc = d.alt_address ?? { address: s(account?.address), city: s(account?.city), state: w.rating.state, zip: s(account?.zip) };
+  if (!loc.address.trim()) return null;
+  const whole = (x: string) => (x.trim() !== '' && Number.isFinite(n(x, NaN)) ? Math.round(n(x)) : null);
+  return {
+    address: loc.address.trim(), city: loc.city.trim() || null, state: w.rating.state || loc.state || null, zip: loc.zip.trim() || null,
+    year_built: whole(d.year_built), square_feet: whole(d.sqft), construction: d.walls ? engineConstruction(d.walls) : null, roof_type: d.roof_type ? engineRoof(d.roof_type) : null,
+    roof_year: whole(d.roof_year), protection_class: d.station_miles || d.hydrant_feet ? protectionClass(d.station_miles, d.hydrant_feet) : null,
+    dwelling_value: whole(w.coverage.dwelling),
+  };
+}
+
 export function toHomeInput(w: HomeWorkflow, account: Account | null, propertyId: string | null): HomeInput {
   const d = w.dwelling;
   const loc = d.alt_address ?? { address: s(account?.address), city: s(account?.city), state: w.rating.state, zip: s(account?.zip) };

@@ -9,7 +9,7 @@ import { useRow } from '@/lib/hooks';
 import { navigate, useRoute } from '@/lib/router';
 import type { Account, CarrierRate, Quote } from '@/lib/types';
 import { useCarrierQuoting } from '@/modules/admin/integration';
-import { saveRiskToAccount } from '@/modules/quotes/data';
+import { syncAutoRisk } from '@/modules/quotes/data';
 import { useUserPreferences } from '@/modules/usersettings/data';
 import { IssuesCtx, WorkflowCtx, type Ctx } from './fields';
 import { STEPS, isView, newWorkflow, toAutoInput, validate, type StepKey, type View, type Workflow } from './model';
@@ -132,6 +132,27 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
     return creating.current;
   }, [quoteId, payload, account.id]);
 
+  // Drivers and vehicles are saved to the insured as they are entered (not only when the quote is submitted).
+  // Serialized so two autosaves never insert the same driver twice; new row ids are written back into the quote.
+  const riskChain = useRef<Promise<unknown>>(Promise.resolve());
+  const syncRisk = useCallback((x: Workflow) => {
+    const run = riskChain.current.catch(() => {}).then(async () => {
+      const auto = toAutoInput({ ...x, drivers: x.drivers.map((d) => ({ ...d, rated: 'Rated' as const })) }, account.zip ?? '');
+      const year = new Map(x.vehicles.map((v) => [v.key, v.year]));
+      const ids = await syncAutoRisk(account.id, auto, { vehicle: (k) => /^\d{4}$/.test((year.get(k) ?? '').trim()) });
+      const missing = (r: { key: string; id: string | null }) => !r.id && ids.has(r.key);
+      if (!x.drivers.some(missing) && !x.vehicles.some(missing)) return;
+      dirty.current = true; // store the new ids on the quote with the next autosave
+      setW((cur) => ({
+        ...cur,
+        drivers: cur.drivers.map((d) => (d.id ? d : { ...d, id: ids.get(d.key) ?? null })),
+        vehicles: cur.vehicles.map((v) => (v.id ? v : { ...v, id: ids.get(v.key) ?? null })),
+      }));
+    });
+    riskChain.current = run;
+    return run;
+  }, [account.id, account.zip]);
+
   const save = useCallback(async (x: Workflow) => {
     dirty.current = false;
     setSaving('saving');
@@ -141,9 +162,10 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
       const stale = status === 'Rated';
       await db.update('quotes', id, { effective_date: x.policy.effective || today(), input: payload(x).input, ...(stale ? { status: 'Draft' as const, results: [] } : {}) });
       if (stale) { setStatus('Draft'); setResults([]); }
+      await syncRisk(x);
       setSaving('saved');
     } catch (e) { setSaving('error'); toast(`Autosave failed: ${(e as Error).message}`, 'error'); }
-  }, [ensureQuote, payload, status, toast]);
+  }, [ensureQuote, payload, status, toast, syncRisk]);
 
   useEffect(() => {
     if (!dirty.current) return;
@@ -166,8 +188,8 @@ function Workspace({ account, initial }: { account: Account; initial: Quote | nu
     const { results: rated, alt } = rateWorkflow(w, use, account.zip ?? '', autoNames);
     let next: Workflow = { ...w, submitted_at: new Date().toISOString(), alt_results: alt, rating: { ...w.rating, carriers: w.rating.carriers } };
     if (saveBack) {
-      const saved = await saveRiskToAccount(account.id, 'Personal Auto', { v: 1, carriers, auto: toAutoInput(next, account.zip ?? '') });
-      const ids = new Map([...(saved.input.auto?.drivers ?? []), ...(saved.input.auto?.vehicles ?? [])].map((r) => [r.key, r.id]));
+      await riskChain.current.catch(() => {}); // let a running autosave finish writing drivers/vehicles first
+      const ids = await syncAutoRisk(account.id, toAutoInput(next, account.zip ?? ''), { vehicle: () => true });
       next = { ...next, drivers: next.drivers.map((d) => ({ ...d, id: ids.get(d.key) ?? d.id })), vehicles: next.vehicles.map((v) => ({ ...v, id: ids.get(v.key) ?? v.id })) };
     }
     const primary = next.drivers.find((d) => d.primary);
