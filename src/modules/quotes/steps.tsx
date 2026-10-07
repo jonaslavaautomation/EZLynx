@@ -3,8 +3,10 @@ import type { ReactNode } from 'react';
 import { Button, Checkbox, IconButton } from '@/components/ui';
 import { age, fmtMoney } from '@/lib/format';
 import { US_STATES, type LineOfBusiness } from '@/lib/types';
+import { AMENITIES, ASSOCIATION_TYPES, UNIT_COVERAGE } from '@/modules/accounts/association';
 import { NumField, SectionTitle, SelectField, TextField } from './components';
 import {
+  ASSOC_CONSTRUCTION, ASSOC_PROP_DEDUCTIBLES, COMMERCIAL_UMBRELLA_LIMITS, CRIME_LIMITS, DO_LIMITS, WIND_HAIL,
   BI_LIMITS, BUSINESS_CLASSES, CA_CSL, CA_RADIUS, CA_TYPES, COMM_DEDUCTIBLES, CONSTRUCTION, EL_LIMITS, GENDERS, GL_LIMITS, HOME_DEDUCTIBLES, HOME_LIABILITY,
   HOME_MEDPAY, MARITAL, MEDPAY_LIMITS, OWNERSHIP, PD_LIMITS, PHYS_DEDUCTIBLES, PRIOR_INSURANCE, RELATIONSHIPS, RENTERS_PP, ROOF_TYPES, UMBRELLA_LIMITS, USAGES, WC_CLASSES,
   blankDriver, blankVehicle, estimateVehicleValue, moneyOpt, newKey, sectionOf,
@@ -32,6 +34,7 @@ export function RiskStep(props: StepProps) {
     case 'commercial': return <CommercialRisk {...props} />;
     case 'wc': return <WCRisk {...props} />;
     case 'cauto': return <CARisk {...props} />;
+    case 'assoc': return <AssocRisk {...props} />;
   }
 }
 
@@ -331,6 +334,80 @@ function CARisk({ input, set, errors }: StepProps) {
   );
 }
 
+/** Community association program: the association facts every line needs, plus the details the master policy rates on. */
+function AssocRisk({ line, input, set, errors }: StepProps) {
+  const a = input.assoc!;
+  const e = (f: string) => errors[`assoc.${f}`];
+  const pkg = line === 'Commercial Package';
+  const fidelity = a.annual_assessments > 0 ? Math.ceil((a.annual_assessments / 4 + a.reserve_balance) / 25000) * 25000 : null;
+  return (
+    <div className="space-y-4">
+      <SectionTitle>Association</SectionTitle>
+      <div className={grid}>
+        <TextField className="col-span-2" label="Association name" required value={a.association_name} onChange={(v) => set('assoc', { association_name: v })} error={e('association_name')} />
+        <SelectField className="col-span-2" label="Association type" value={a.association_type} onChange={(v) => set('assoc', { association_type: v })} options={ASSOCIATION_TYPES} />
+        <SelectField label="State" required value={a.state} onChange={(v) => set('assoc', { state: v })} options={stateOpts} placeholder="—" error={e('state')} />
+        <TextField label="ZIP" required value={a.zip} maxLength={5} onChange={(v) => set('assoc', { zip: v.replace(/\D/g, '') })} error={e('zip')} />
+        <NumField label="Total units" required min={1} value={a.units} onChange={(n) => set('assoc', { units: n })} error={e('units')} />
+        <NumField label="Years established" min={0} value={a.years_established} onChange={(n) => set('assoc', { years_established: n })} error={e('years_established')} />
+        <NumField label="Losses / claims in last 5 yrs" min={0} value={a.claims_5yr} onChange={(n) => set('assoc', { claims_5yr: n })} error={e('claims_5yr')} />
+      </div>
+      {pkg && (
+        <>
+          <SectionTitle>Buildings & property</SectionTitle>
+          <div className={grid}>
+            <NumField label="Buildings" min={0} value={a.buildings} onChange={(n) => set('assoc', { buildings: n })} error={e('buildings')} />
+            <NumField label="Max stories" min={1} value={a.max_stories} onChange={(n) => set('assoc', { max_stories: n })} error={e('max_stories')} />
+            <NumField label="Year built" required value={a.year_built} onChange={(n) => set('assoc', { year_built: n })} error={e('year_built')} />
+            <NumField label="Roof year" required value={a.roof_year} onChange={(n) => set('assoc', { roof_year: n })} error={e('roof_year')} hint={Number.isFinite(a.roof_year) ? `${new Date().getFullYear() - a.roof_year} yrs old` : undefined} />
+            <SelectField className="col-span-2" label="Construction (ISO)" value={a.construction} onChange={(v) => set('assoc', { construction: v })} options={ASSOC_CONSTRUCTION} />
+            <NumField label="Protection class" required min={1} max={10} value={a.protection_class} onChange={(n) => set('assoc', { protection_class: n })} error={e('protection_class')} hint="1 (best) – 10" />
+            <SelectField label="Unit coverage" value={a.unit_coverage} onChange={(v) => set('assoc', { unit_coverage: v })} options={UNIT_COVERAGE} />
+            <NumField label="Building value — common elements ($)" step={50000} value={a.building_value} onChange={(n) => set('assoc', { building_value: n })} error={e('building_value')} hint="0 for a single-family HOA with no buildings" />
+            <NumField label="Outdoor property ($)" step={10000} value={a.outdoor_value} onChange={(n) => set('assoc', { outdoor_value: n })} error={e('outdoor_value')} hint="Fences, signs, lighting, walls" />
+            <NumField label="Business personal property ($)" step={5000} value={a.bpp_value} onChange={(n) => set('assoc', { bpp_value: n })} error={e('bpp_value')} />
+          </div>
+          <Checkbox label="Buildings are sprinklered" checked={a.sprinklered} onChange={(v) => set('assoc', { sprinklered: v })} />
+          <SectionTitle>Amenities</SectionTitle>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            {AMENITIES.map((x) => (
+              <Checkbox key={x} label={x} checked={a.amenities.includes(x)} onChange={(v) => set('assoc', { amenities: v ? [...a.amenities, x] : a.amenities.filter((y) => y !== x), ...(x === 'Swimming pool' ? { pools: v ? Math.max(1, a.pools) : 0 } : {}) })} />
+            ))}
+          </div>
+          {a.amenities.includes('Swimming pool') && (
+            <div className={grid}><NumField label="Pools / spas" min={0} value={a.pools} onChange={(n) => set('assoc', { pools: n })} error={e('pools')} /></div>
+          )}
+        </>
+      )}
+      {line === 'Directors & Officers' && (
+        <>
+          <SectionTitle>Governance</SectionTitle>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Checkbox label="Developer controls the board" checked={a.developer_controlled} onChange={(v) => set('assoc', { developer_controlled: v })} />
+            <Checkbox label="16% or more of owners delinquent" checked={a.high_delinquency} onChange={(v) => set('assoc', { high_delinquency: v })} />
+            <Checkbox label="Self-managed (no management company)" checked={a.self_managed} onChange={(v) => set('assoc', { self_managed: v })} />
+          </div>
+        </>
+      )}
+      {line === 'Crime' && (
+        <>
+          <SectionTitle>Financials & controls</SectionTitle>
+          <div className={grid}>
+            <NumField label="Annual assessments ($)" required step={10000} value={a.annual_assessments} onChange={(n) => set('assoc', { annual_assessments: n })} error={e('annual_assessments')} />
+            <NumField label="Reserve fund balance ($)" required step={10000} value={a.reserve_balance} onChange={(n) => set('assoc', { reserve_balance: n })} error={e('reserve_balance')} />
+          </div>
+          <div className="flex flex-wrap gap-x-6 gap-y-2">
+            <Checkbox label="Annual CPA audit or review" checked={a.cpa_audit} onChange={(v) => set('assoc', { cpa_audit: v })} />
+            <Checkbox label="Two signatures on checks" checked={a.dual_signatures} onChange={(v) => set('assoc', { dual_signatures: v })} />
+            <Checkbox label="Self-managed (no management company)" checked={a.self_managed} onChange={(v) => set('assoc', { self_managed: v })} />
+          </div>
+          {fidelity !== null && <div className="text-xs text-ink-500">Minimum fidelity limit (3 months of assessments + reserves): <span className="font-semibold text-ink-800">{fmtMoney(fidelity)}</span></div>}
+        </>
+      )}
+    </div>
+  );
+}
+
 // ────────────────────────── Coverages ──────────────────────────
 
 export function CoverageStep(props: StepProps) {
@@ -447,6 +524,37 @@ export function CoverageStep(props: StepProps) {
         <div className={grid}>
           <div><div className="text-[11px] font-semibold uppercase tracking-wide text-ink-500 mb-1">Part One</div><div className="text-[13px] text-ink-800 h-9 flex items-center">Statutory — {w.state || 'state'}</div></div>
           <SelectField label="Employer's liability" value={w.el_limits} onChange={(v) => set('wc', { el_limits: v })} options={EL_LIMITS} hint="Each accident / disease policy / disease each employee" />
+        </div>
+      );
+    }
+    case 'assoc': {
+      const a = input.assoc!;
+      if (line === 'Directors & Officers') return <div className={grid}><SelectField label="D&O limit" value={a.do_limit} onChange={(v) => set('assoc', { do_limit: v })} options={DO_LIMITS.map((n) => moneyOpt(n))} hint="Defense costs outside the limit" /></div>;
+      if (line === 'Crime') {
+        const min = a.annual_assessments > 0 ? Math.ceil((a.annual_assessments / 4 + a.reserve_balance) / 25000) * 25000 : 0;
+        return (
+          <div className={grid}>
+            <SelectField label="Employee theft limit" value={a.crime_limit} onChange={(v) => set('assoc', { crime_limit: v })} options={CRIME_LIMITS.map((n) => moneyOpt(n))} hint={min ? `Minimum ${fmtMoney(min)}${a.crime_limit < min ? ' — below minimum' : ''}` : undefined} />
+          </div>
+        );
+      }
+      if (line === 'Commercial Umbrella') {
+        return (
+          <div className={grid}>
+            <SelectField label="Umbrella limit" value={a.umbrella_limit} onChange={(v) => set('assoc', { umbrella_limit: v })} options={COMMERCIAL_UMBRELLA_LIMITS.map((n) => ({ value: n, label: `${n},000,000` }))} />
+            <SelectField label="Underlying GL (occ / agg)" value={a.gl_limit} onChange={(v) => set('assoc', { gl_limit: v })} options={GL_LIMITS} hint="Carriers expect at least 1M/2M" />
+          </div>
+        );
+      }
+      return (
+        <div className="space-y-5">
+          <div className={grid}>
+            <SelectField label="Property deductible (all other perils)" value={a.prop_deductible} onChange={(v) => set('assoc', { prop_deductible: v })} options={ASSOC_PROP_DEDUCTIBLES.map((n) => moneyOpt(n))} />
+            <SelectField label="Wind / hail deductible" value={a.wind_hail} onChange={(v) => set('assoc', { wind_hail: v })} options={WIND_HAIL} />
+            <SelectField label="GL limits (occ / agg)" value={a.gl_limit} onChange={(v) => set('assoc', { gl_limit: v })} options={GL_LIMITS} />
+            <div className="flex items-end pb-2"><Checkbox label="Hired & non-owned auto" checked={a.hnoa} onChange={(v) => set('assoc', { hnoa: v })} /></div>
+          </div>
+          <div className="text-xs text-ink-500">Total insured value {fmtMoney((a.building_value || 0) + (a.outdoor_value || 0) + (a.bpp_value || 0))} · Unit coverage: {a.unit_coverage}</div>
         </div>
       );
     }

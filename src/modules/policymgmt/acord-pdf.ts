@@ -115,7 +115,7 @@ function splitLimits(v: string | null | undefined): string[] {
 
 const find = (covs: Coverage[] | null | undefined, re: RegExp) => (covs ?? []).find((c) => re.test(c.name));
 
-export const GL_LINES = ['General Liability', 'BOP'];
+export const GL_LINES = ['General Liability', 'BOP', 'Commercial Package'];
 export const AUTO_LINES = ['Commercial Auto', 'Personal Auto'];
 export const UMBRELLA_LINES = ['Umbrella', 'Commercial Umbrella', 'Excess Liability'];
 export const WC_LINES = ['Workers Comp'];

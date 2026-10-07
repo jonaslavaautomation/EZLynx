@@ -1,7 +1,7 @@
 import { db, uuid } from '@/lib/db';
 import { addTransaction, createPolicy, logActivity } from '@/lib/domain';
 import { addDays, addMonths, today } from '@/lib/format';
-import type { Account, Carrier, Claim, Coverage, LineOfBusiness, Policy } from '@/lib/types';
+import { COMMERCIAL_LINES, type Account, type Carrier, type Claim, type Coverage, type LineOfBusiness, type Policy } from '@/lib/types';
 
 /*
  * Carrier downloads, modeled on EZLynx's Ivans download process:
@@ -28,8 +28,7 @@ export type DownloadTxn = {
 
 const KEY = 'carrier_downloads';
 const KEEP_DAYS = 45;
-const COMMERCIAL: LineOfBusiness[] = ['Commercial Auto', 'General Liability', 'BOP', 'Workers Comp', 'Commercial Property'];
-export const isCommercialLine = (l: string) => COMMERCIAL.includes(l as LineOfBusiness);
+export const isCommercialLine = (l: string) => COMMERCIAL_LINES.includes(l as LineOfBusiness);
 
 // ── Storage (app config row, shared by every user of the agency) ──
 

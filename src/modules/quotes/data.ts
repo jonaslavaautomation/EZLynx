@@ -1,17 +1,19 @@
 import { db } from '@/lib/db';
 import type { Carrier, LineOfBusiness, TableMap } from '@/lib/types';
+import { getAssociation } from '@/modules/accounts/association';
 import { sectionOf, type AccountRisk, type QuoteInput } from './inputs';
 
 /** Loads an account plus the drivers/vehicles/properties used to prefill rating inputs. */
 export async function loadAccountRisk(accountId: string | null): Promise<AccountRisk> {
   if (!accountId) return { account: null, drivers: [], vehicles: [], properties: [] };
-  const [account, drivers, vehicles, properties] = await Promise.all([
+  const [account, drivers, vehicles, properties, association] = await Promise.all([
     db.get('accounts', accountId),
     db.list('drivers', { eq: { account_id: accountId }, order: { column: 'created_at' } }),
     db.list('vehicles', { eq: { account_id: accountId }, order: { column: 'created_at' } }),
     db.list('properties', { eq: { account_id: accountId }, order: { column: 'created_at' } }),
+    getAssociation(accountId).catch(() => null),
   ]);
-  return { account, drivers, vehicles, properties };
+  return { account, drivers, vehicles, properties, association };
 }
 
 /** Quotes built in a quoting workflow reopen there (auto or home); null for quick-rater quotes. */

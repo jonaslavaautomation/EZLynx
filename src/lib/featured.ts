@@ -1,11 +1,14 @@
 import { db, uuid } from '@/lib/db';
 import { addMonths, today } from '@/lib/format';
 import { OWNER_NAME } from '@/lib/owner';
+import { DEMO_CARRIERS } from '@/lib/seed';
 import type { Account, Coverage, Driver, LineOfBusiness, Policy, PolicyTransaction, Property, Vehicle } from '@/lib/types';
+import { BLANK_ASSOCIATION, saveAssociation, type AssociationProfile } from '@/modules/accounts/association';
+import { saveAppConfig } from '@/modules/admin/config';
 
 /*
- * Named practice insureds every agency database gets once: two personal households with Auto + Home policies and
- * five commercial insureds. All people, businesses and numbers are fictional. They are matched by email, so they
+ * Named practice insureds every agency database gets once: two personal households with Auto + Home policies,
+ * five commercial insureds and two community associations (an HOA and a condominium association). All people, businesses and numbers are fictional. They are matched by email, so they
  * are created only when missing and never duplicated; editing or deleting them later is left alone.
  */
 
@@ -29,6 +32,8 @@ type Featured = {
   vehicles?: Omit<Vehicle, 'id' | 'created_at' | 'account_id'>[];
   property?: Omit<Property, 'id' | 'created_at' | 'account_id'>;
   policies: PolicySpec[];
+  /** Community association underwriting profile (HOA / condo associations only). */
+  association?: Partial<AssociationProfile>;
 };
 
 const AUTO_COV: Coverage[] = [
@@ -43,6 +48,15 @@ const home = (dwelling: number): Coverage[] => [
 const GL: Coverage[] = [{ name: 'Each Occurrence', limit: '1,000,000' }, { name: 'General Aggregate', limit: '2,000,000' }, { name: 'Products/Completed Ops', limit: '2,000,000' }];
 const CA: Coverage[] = [{ name: 'Combined Single Limit', limit: '1,000,000' }, { name: 'Hired & Non-Owned', limit: 'Included' }];
 const WC: Coverage[] = [{ name: 'Part One', limit: 'Statutory' }, { name: 'Employers Liability', limit: '500/500/500' }];
+const assocPackage = (building: number, outdoor: number, bpp: number, ded: string, windHail: string): Coverage[] => [
+  ...(building ? [{ name: 'Building — Common Elements', limit: building.toLocaleString('en-US'), deductible: ded }] : []),
+  { name: 'Outdoor Property', limit: outdoor.toLocaleString('en-US'), deductible: ded }, { name: 'Business Personal Property', limit: bpp.toLocaleString('en-US'), deductible: ded },
+  { name: 'Wind / Hail deductible', limit: windHail }, { name: 'Liability — Each Occurrence', limit: '1,000,000' }, { name: 'Liability — General Aggregate', limit: '2,000,000' },
+  { name: 'Hired & Non-Owned Auto', limit: '1,000,000' },
+];
+const DO = (limit: string): Coverage[] => [{ name: 'Directors & Officers Liability', limit, deductible: '1,000' }, { name: 'Defense Costs', limit: 'Outside the limit' }, { name: 'Property Manager as Additional Insured', limit: 'Included' }];
+const CRIME = (limit: string): Coverage[] => [{ name: 'Employee Theft (incl. board & manager)', limit, deductible: '1,000' }, { name: 'Forgery or Alteration', limit: '25,000' }, { name: 'Computer Fraud', limit: '25,000' }, { name: 'Funds Transfer Fraud', limit: '25,000' }];
+const CUMB = (limit: string): Coverage[] => [{ name: 'Each Occurrence', limit }, { name: 'Aggregate', limit }, { name: 'Self-Insured Retention', limit: '10,000' }];
 const BOP: Coverage[] = [{ name: 'Building', limit: '500,000', deductible: '2,500' }, { name: 'Business Personal Property', limit: '150,000' }, { name: 'Liability', limit: '1,000,000/2,000,000' }];
 
 export const FEATURED: Featured[] = [
@@ -148,10 +162,103 @@ export const FEATURED: Featured[] = [
       { line: 'Commercial Auto', carrier: 'Copperline Commercial', premium: 5230, term: 12, startedMonthsAgo: 1, coverages: CA, number: 'CA-8840328' },
     ],
   },
+  // ── Community associations ──
+  {
+    account: {
+      account_type: 'Commercial', business_name: 'Willow Creek Homeowners Association', first_name: 'Linda', last_name: 'Okafor', email: 'board@willowcreekhoa.lava-demo.example',
+      phone: '(512) 555-0191', address: '3300 Willow Creek Pkwy', city: 'Round Rock', state: 'TX', zip: '78665', policy_type: 'Commercial', legal_entity_type: 'Association',
+      naics_code: '813990', sic_code: '8641', naics_description: "Homeowners' and Condominium Owners' Associations", nature_of_business: 'Condominiums',
+      operations_description: 'Single-family HOA of 312 homes. Maintains a clubhouse, two pools, a fitness room, playground, tennis courts and a 6-acre stocked pond.',
+      date_business_started: '2004-06-01', website: 'https://example.com/willowcreekhoa', customer_since: '2022-04-01', tax_id: '74-3318260',
+    },
+    association: {
+      association_type: 'Single-Family HOA', year_established: '2004', total_units: '312', owner_units: '281', rented_units: '29', vacant_units: '2', developer_units: '0',
+      developer_controls_board: 'No', under_construction: 'No', short_term_rentals: 'No',
+      residential_buildings: '0', other_buildings: '2', max_stories: '1', elevators: '0', year_built: '2005', construction: 'Joisted Masonry', roof_type: 'Architectural Shingle',
+      roof_year: '2019', protection_class: '3', sprinklers: 'None', unit_coverage: 'Bare Walls', building_value: '1,850,000', outdoor_value: '380,000', bpp_value: '45,000',
+      management: 'Professional management company', management_company: 'Brushy Creek Community Management', property_manager: 'Dana Whitlock', manager_designation: 'PCAM', manager_has_crime: 'Yes',
+      board_members: '5', employees: '0',
+      amenities: ['Swimming pool', 'Clubhouse', 'Fitness center', 'Playground', 'Sport courts', 'Lake / pond'], pools: '2', pool_fenced: 'Yes', lifeguard: 'No', lake_acres: '6', road_miles: '',
+      annual_assessments: '468,000', reserve_balance: '620,000', monthly_dues: '125', delinquency: '0–15% of owners',
+      positive_fund_balance: 'Yes', cpa_audit: 'Yes', dual_signatures: 'Yes', independent_reconciliation: 'Yes', special_assessment: 'No', losses_3yr: 'No', do_claims_5yr: 'No',
+    },
+    policies: [
+      { line: 'Commercial Package', carrier: 'Cornerstone Community Assurance', premium: 14850, term: 12, startedMonthsAgo: 5, coverages: assocPackage(1850000, 380000, 45000, '10,000', '2% per building'), number: 'PK-6604218' },
+      { line: 'Directors & Officers', carrier: 'Cornerstone Community Assurance', premium: 1980, term: 12, startedMonthsAgo: 5, coverages: DO('1,000,000'), number: 'DO-6604219' },
+      { line: 'Crime', carrier: 'Cornerstone Community Assurance', premium: 1140, term: 12, startedMonthsAgo: 5, coverages: CRIME('750,000'), number: 'CR-6604220' },
+      { line: 'Commercial Umbrella', carrier: 'Cornerstone Community Assurance', premium: 3420, term: 12, startedMonthsAgo: 5, coverages: CUMB('5,000,000'), number: 'CU-6604221' },
+    ],
+  },
+  {
+    account: {
+      account_type: 'Commercial', business_name: 'Cherry Creek Terrace Condominium Association', first_name: 'Marcus', last_name: 'Feldman', email: 'manager@cherrycreekterrace.lava-demo.example',
+      phone: '(303) 555-0172', address: '2450 E 3rd Ave', city: 'Denver', state: 'CO', zip: '80206', policy_type: 'Commercial', legal_entity_type: 'Association',
+      naics_code: '813990', sic_code: '8641', naics_description: "Homeowners' and Condominium Owners' Associations", nature_of_business: 'Condominiums',
+      operations_description: 'Condominium association of 84 units in three 5-story sprinklered buildings with an underground parking garage, rooftop pool and fitness room.',
+      date_business_started: '1998-09-15', website: 'https://example.com/cherrycreekterrace', customer_since: '2021-10-01', tax_id: '84-1527739',
+    },
+    association: {
+      association_type: 'Condominium Association', year_established: '1998', total_units: '84', owner_units: '66', rented_units: '17', vacant_units: '1', developer_units: '0',
+      developer_controls_board: 'No', under_construction: 'No', short_term_rentals: 'No',
+      residential_buildings: '3', other_buildings: '0', max_stories: '5', elevators: '3', year_built: '1998', construction: 'Masonry Non-Combustible', roof_type: 'Flat (Membrane)',
+      roof_year: '2017', protection_class: '2', sprinklers: 'Full (all buildings)', unit_coverage: 'Single Entity (original specifications)',
+      building_value: '28,500,000', outdoor_value: '210,000', bpp_value: '35,000',
+      management: 'Professional management company', management_company: 'Front Range Association Management', property_manager: 'Marcus Feldman', manager_designation: 'CMCA', manager_has_crime: 'Yes',
+      board_members: '5', employees: '2',
+      amenities: ['Swimming pool', 'Fitness center', 'Gated entry', 'Parking garage'], pools: '1', pool_fenced: 'Yes', lifeguard: 'No', lake_acres: '', road_miles: '',
+      annual_assessments: '488,880', reserve_balance: '910,000', monthly_dues: '485', delinquency: '0–15% of owners',
+      positive_fund_balance: 'Yes', cpa_audit: 'Yes', dual_signatures: 'Yes', independent_reconciliation: 'Yes', special_assessment: 'No',
+      losses_3yr: 'Yes', do_claims_5yr: 'No', loss_details: '2024: water damage from a failed riser in Building B, $38,400 paid. All supply risers were inspected and two were replaced.',
+    },
+    policies: [
+      { line: 'Commercial Package', carrier: 'Cornerstone Community Assurance', premium: 46200, term: 12, startedMonthsAgo: 9, coverages: assocPackage(28500000, 210000, 35000, '25,000', '2% per building'), number: 'PK-7718340' },
+      { line: 'Directors & Officers', carrier: 'Cornerstone Community Assurance', premium: 1640, term: 12, startedMonthsAgo: 9, coverages: DO('1,000,000'), number: 'DO-7718341' },
+      { line: 'Crime', carrier: 'Cornerstone Community Assurance', premium: 1880, term: 12, startedMonthsAgo: 9, coverages: CRIME('1,500,000'), number: 'CR-7718342' },
+      { line: 'Commercial Umbrella', carrier: 'Cornerstone Community Assurance', premium: 4100, term: 12, startedMonthsAgo: 9, coverages: CUMB('5,000,000'), number: 'CU-7718343' },
+      { line: 'Workers Comp', carrier: 'Frontier Workers Group', premium: 2150, term: 12, startedMonthsAgo: 9, coverages: WC, number: 'WC-7718344' },
+    ],
+  },
 ];
+
+/**
+ * Databases created before the community association program existed: add its carrier, and the association lines
+ * Copperline Commercial writes, so association quotes and the practice associations have markets.
+ */
+export async function ensureAssociationCarriers() {
+  // Runs once per agency database, so a carrier the agency later removes stays removed.
+  const [cfg] = await db.list('app_config', { eq: { key: 'association_details' } });
+  const stored = (cfg?.value ?? {}) as { byAccount?: Record<string, AssociationProfile>; program_installed?: boolean };
+  if (stored.program_installed) return 0;
+  const carriers = await db.list('carriers');
+  let changed = 0;
+  for (const name of ['Cornerstone Community Assurance', 'Copperline Commercial']) {
+    const spec = DEMO_CARRIERS.find((c) => c.name === name)!;
+    const row = carriers.find((c) => c.name === name);
+    if (!row) {
+      if (name === 'Cornerstone Community Assurance') { await db.insert('carriers', spec); changed++; }
+      continue;
+    }
+    const missing = spec.lines.filter((l) => !row.lines.includes(l) && ['Commercial Package', 'Directors & Officers', 'Crime', 'Commercial Umbrella'].includes(l));
+    if (missing.length) { await db.update('carriers', row.id, { lines: [...row.lines, ...missing] }); changed++; }
+  }
+  // Carrier Quoting Setup: once any carrier is set up, only Ready carriers rate, so set up the program lines too.
+  const setups = await db.list('carrier_rating_setup');
+  if (setups.length) {
+    const corner = DEMO_CARRIERS.find((c) => c.name === 'Cornerstone Community Assurance')!;
+    if (!setups.some((r) => r.carrier === corner.name)) {
+      await db.insert('carrier_rating_setup', { carrier: corner.name, username: 'northstar.cornerst', agency_code: 'NS4520', login_set: true, enabled_lines: [...corner.lines], active: true });
+    }
+    const copper = setups.find((r) => r.carrier === 'Copperline Commercial');
+    const add = ['Commercial Package', 'Commercial Umbrella'].filter((l) => copper && !copper.enabled_lines.includes(l));
+    if (copper && add.length) await db.update('carrier_rating_setup', copper.id, { enabled_lines: [...copper.enabled_lines, ...add] });
+  }
+  await saveAppConfig('association_details', { byAccount: stored.byAccount ?? {}, program_installed: true });
+  return changed;
+}
 
 /** Creates any featured insured that isn't in this agency's database yet (matched by email). */
 export async function ensureFeaturedInsureds() {
+  await ensureAssociationCarriers().catch(() => 0);
   const emails = FEATURED.map((f) => f.account.email);
   const [existing, carriers, staff] = await Promise.all([
     db.list('accounts', { in: { column: 'email', values: emails } }),
@@ -165,10 +272,12 @@ export async function ensureFeaturedInsureds() {
   const t = today();
   const now = new Date().toISOString();
 
+  const associations: [string, Partial<AssociationProfile>][] = [];
   const accounts: Account[] = [], drivers: Driver[] = [], vehicles: Vehicle[] = [], properties: Property[] = [], policies: Policy[] = [], txns: PolicyTransaction[] = [];
   for (const f of missing) {
     const a: Account = { ...BLANK, csr, ...f.account, id: uuid(), created_at: now };
     accounts.push(a);
+    if (f.association) associations.push([a.id, f.association]);
     for (const d of f.drivers ?? []) drivers.push({ ...d, id: uuid(), created_at: now, account_id: a.id });
     for (const v of f.vehicles ?? []) vehicles.push({ ...v, id: uuid(), created_at: now, account_id: a.id });
     if (f.property) properties.push({ ...f.property, id: uuid(), created_at: now, account_id: a.id });
@@ -192,5 +301,6 @@ export async function ensureFeaturedInsureds() {
   await db.insertMany('policies', policies, { silent: true });
   await db.insertMany('policy_transactions', txns, { silent: true });
   db.touchAll(['accounts', 'drivers', 'vehicles', 'properties', 'policies', 'policy_transactions']);
+  for (const [id, profile] of associations) await saveAssociation(id, { ...BLANK_ASSOCIATION, ...profile });
   return missing.length;
 }

@@ -17,7 +17,8 @@ import { MessageThread } from '@/modules/messages';
 import { AccountFormModal } from '@/modules/accounts/AccountFormModal';
 import { DriversPanel, PropertiesPanel, VehiclesPanel } from '@/modules/accounts/HouseholdPanels';
 import { ImportModal } from '@/modules/accounts/ImportModal';
-import { AddressesPanel, ClassificationPanel, ContactsPanel } from '@/modules/accounts/DetailsPanels';
+import { isAssociation } from '@/modules/accounts/association';
+import { AddressesPanel, AssociationPanel, ClassificationPanel, ContactsPanel } from '@/modules/accounts/DetailsPanels';
 import { LabelFilterSelect } from '@/modules/admin/integration';
 import { ApplicantDrawer, RECORD_TABS, RecordTabs, useQuoteThemeDialogs, type RecordTab } from '@/modules/autoquote/shell';
 import { AccountOverviewBody, CatchMeUpModal } from '@/modules/accounts/overview';
@@ -213,7 +214,7 @@ export function AccountDetail({ id }: { id: string }) {
   };
 
   const activeLines = policies.data.filter((p) => p.status === 'Active').map((p) => p.line_of_business);
-  const primaryLine = commercial ? 'General Liability' : activeLines.includes('Personal Auto') ? 'Homeowners' : 'Personal Auto';
+  const primaryLine = commercial ? (isAssociation(a) ? 'Commercial Package' : 'General Liability') : activeLines.includes('Personal Auto') ? 'Homeowners' : 'Personal Auto';
   const head = TAB_HEAD[tab];
 
   return (
@@ -273,6 +274,7 @@ export function AccountDetail({ id }: { id: string }) {
                   {a.notes && <div className="mt-4 text-[13px] text-ink-600 bg-amber-50/60 border border-amber-100 rounded p-3 whitespace-pre-wrap">{a.notes}</div>}
                 </Panel>
                 {commercial && <ClassificationPanel account={a} />}
+                {commercial && <AssociationPanel account={a} />}
                 {commercial ? <PropertiesPanel account={a} /> : <><DriversPanel account={a} /><VehiclesPanel account={a} /><PropertiesPanel account={a} /></>}
               </div>
               <div className="space-y-4">

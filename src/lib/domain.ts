@@ -7,6 +7,7 @@ import type { Activity, Coverage, Invoice, LineOfBusiness, Policy, TransactionTy
 const LOB_PREFIX: Partial<Record<LineOfBusiness, string>> = {
   'Personal Auto': 'PA', Homeowners: 'HO', Renters: 'RT', Condo: 'CD', 'Dwelling Fire': 'DF', Umbrella: 'UM', Motorcycle: 'MC',
   Boat: 'BT', Flood: 'FL', Life: 'LF', 'Commercial Auto': 'CA', 'General Liability': 'GL', BOP: 'BP', 'Workers Comp': 'WC', 'Commercial Property': 'CP',
+  'Commercial Package': 'PK', 'Commercial Umbrella': 'CU', 'Directors & Officers': 'DO', Crime: 'CR',
 };
 
 export function generatePolicyNumber(line: LineOfBusiness) {

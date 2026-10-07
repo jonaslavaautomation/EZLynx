@@ -13,6 +13,7 @@ import { navigate } from '@/lib/router';
 import type { Account, Activity, ActivityType, Policy, Quote } from '@/lib/types';
 import { ActivityFormModal } from '@/modules/activities/parts';
 import { useLeadSourceOptions } from '@/modules/admin/integration';
+import { isAssociation } from '@/modules/accounts/association';
 import { saveAppConfig, useAppConfig, type CertificateMaster, type LeadDetails, type SoldPolicy } from '@/modules/admin/config';
 import { PolicyFormModal } from '@/modules/policies/PolicyFormModal';
 import { PolicyList } from '@/modules/policies';
@@ -130,7 +131,7 @@ export function QuotesTab({ account, slot }: { account: Account; slot: HTMLEleme
     <div>
       <HeadActions slot={slot}>
         <Menu trigger={<button type="button" className={outline}>Add quote</button>} items={commercial
-          ? [{ label: 'Commercial quote', onClick: () => navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent('General Liability')}`) }]
+          ? [{ label: 'Commercial quote', onClick: () => navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent(isAssociation(account) ? 'Commercial Package' : 'General Liability')}`) }]
           : [
             { label: 'Auto', onClick: () => navigate(`/accounts/${account.id}/auto-quote`) },
             { label: 'Home', onClick: () => navigate(`/accounts/${account.id}/home-quote`) },

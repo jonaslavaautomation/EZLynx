@@ -17,18 +17,18 @@ export type AcordForm = {
   certificate?: boolean;
 };
 
-const PROPERTY_LINES: LineOfBusiness[] = ['Homeowners', 'Condo', 'Dwelling Fire', 'Renters', 'Flood', 'Commercial Property', 'BOP'];
+const PROPERTY_LINES: LineOfBusiness[] = ['Homeowners', 'Condo', 'Dwelling Fire', 'Renters', 'Flood', 'Commercial Property', 'BOP', 'Commercial Package'];
 
 export const ACORD_FORMS: AcordForm[] = [
-  { code: '25', title: 'Certificate of Liability Insurance', purpose: 'Evidence of liability coverage for a certificate holder (landlord, client, lender).', lines: ['General Liability', 'BOP', 'Commercial Auto', 'Workers Comp', 'Umbrella'], category: 'Proof of Insurance', sections: ['liability', 'business'], certificate: true },
+  { code: '25', title: 'Certificate of Liability Insurance', purpose: 'Evidence of liability coverage for a certificate holder (landlord, client, lender).', lines: ['General Liability', 'BOP', 'Commercial Package', 'Commercial Auto', 'Workers Comp', 'Umbrella', 'Commercial Umbrella'], category: 'Proof of Insurance', sections: ['liability', 'business'], certificate: true },
   { code: '27', title: 'Evidence of Property Insurance', purpose: 'Evidence of property coverage for a mortgagee or loss payee.', lines: PROPERTY_LINES, category: 'Proof of Insurance', sections: ['property'], certificate: true },
   { code: '80', title: 'Homeowner Application', purpose: 'Personal residence application: dwelling, occupancy and loss history.', lines: ['Homeowners', 'Condo', 'Renters', 'Dwelling Fire'], category: 'Application', sections: ['property'] },
   { code: '90', title: 'Personal Auto Application', purpose: 'Drivers, vehicles, coverage selections and prior insurance.', lines: ['Personal Auto', 'Motorcycle'], category: 'Application', sections: ['auto'] },
   { code: '125', title: 'Commercial Insurance Application', purpose: 'Applicant information and lines requested; accompanies the line sections.', lines: COMMERCIAL_LINES, category: 'Application', sections: ['business'] },
-  { code: '126', title: 'General Liability Section', purpose: 'Commercial general liability limits, hazards and classifications.', lines: ['General Liability', 'BOP'], category: 'Application', sections: ['business', 'liability'] },
+  { code: '126', title: 'General Liability Section', purpose: 'Commercial general liability limits, hazards and classifications.', lines: ['General Liability', 'BOP', 'Commercial Package'], category: 'Application', sections: ['business', 'liability'] },
   { code: '127', title: 'Business Auto Section', purpose: 'Commercial drivers and vehicles schedule.', lines: ['Commercial Auto'], category: 'Application', sections: ['business', 'auto'] },
   { code: '130', title: 'Workers Compensation Application', purpose: 'Employer information, states and payroll classifications.', lines: ['Workers Comp'], category: 'Application', sections: ['business', 'wc'] },
-  { code: '140', title: 'Property Section', purpose: 'Commercial property locations, construction and values.', lines: ['Commercial Property', 'BOP'], category: 'Application', sections: ['business', 'property'] },
+  { code: '140', title: 'Property Section', purpose: 'Commercial property locations, construction and values.', lines: ['Commercial Property', 'BOP', 'Commercial Package'], category: 'Application', sections: ['business', 'property'] },
 ];
 
 export const isPersonalForm = (f: AcordForm) => f.lines.every((l) => PERSONAL_LINES.includes(l));

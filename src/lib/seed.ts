@@ -42,9 +42,10 @@ export const DEMO_CARRIERS: Omit<Carrier, 'id' | 'created_at'>[] = [
   { name: 'Keystone Casualty', naic: '31988', lines: ['Personal Auto', 'Homeowners', 'Dwelling Fire', 'Umbrella'], commission_rate: 13, phone: '(800) 555-0110', website: 'https://example.com/keystone', appointed: true, downloads_enabled: true },
   { name: 'Prairie Shield', naic: '40116', lines: ['Homeowners', 'Condo', 'Dwelling Fire', 'Flood'], commission_rate: 15, phone: '(800) 555-0177', website: 'https://example.com/prairie', appointed: true, downloads_enabled: false },
   { name: 'Evergreen National', naic: '12733', lines: ['Personal Auto', 'Homeowners', 'Life', 'Umbrella'], commission_rate: 11, phone: '(800) 555-0135', website: 'https://example.com/evergreen', appointed: true, downloads_enabled: true },
-  { name: 'Copperline Commercial', naic: '28890', lines: ['Commercial Auto', 'General Liability', 'BOP', 'Commercial Property'], commission_rate: 14, phone: '(800) 555-0163', website: 'https://example.com/copperline', appointed: true, downloads_enabled: true },
+  { name: 'Copperline Commercial', naic: '28890', lines: ['Commercial Auto', 'General Liability', 'BOP', 'Commercial Property', 'Commercial Package', 'Commercial Umbrella'], commission_rate: 14, phone: '(800) 555-0163', website: 'https://example.com/copperline', appointed: true, downloads_enabled: true },
   { name: 'Frontier Workers Group', naic: '35561', lines: ['Workers Comp', 'General Liability'], commission_rate: 9, phone: '(800) 555-0128', website: 'https://example.com/frontier', appointed: true, downloads_enabled: false },
   { name: 'Bluewater Specialty', naic: '19044', lines: ['Boat', 'Flood', 'Commercial Property'], commission_rate: 12.5, phone: '(800) 555-0184', website: 'https://example.com/bluewater', appointed: true, downloads_enabled: false },
+  { name: 'Cornerstone Community Assurance', naic: '27318', lines: ['Commercial Package', 'Directors & Officers', 'Crime', 'Commercial Umbrella'], commission_rate: 12, phone: '(800) 555-0196', website: 'https://example.com/cornerstone', appointed: true, downloads_enabled: true },
   { name: 'Northgate Assurance', naic: '44270', lines: ['Personal Auto', 'Homeowners', 'BOP'], commission_rate: 12, phone: '(800) 555-0151', website: 'https://example.com/northgate', appointed: false, downloads_enabled: false },
 ];
 
@@ -71,12 +72,17 @@ const COVERAGES: Partial<Record<LineOfBusiness, Coverage[]>> = {
   BOP: [{ name: 'Building', limit: '500,000', deductible: '2,500' }, { name: 'Business Personal Property', limit: '150,000' }, { name: 'Liability', limit: '1,000,000/2,000,000' }],
   'Commercial Auto': [{ name: 'Combined Single Limit', limit: '1,000,000' }, { name: 'Hired & Non-Owned', limit: 'Included' }],
   'Workers Comp': [{ name: 'Part One', limit: 'Statutory' }, { name: 'Employers Liability', limit: '500/500/500' }],
+  'Commercial Package': [{ name: 'Building — Common Elements', limit: '8,000,000', deductible: '10,000' }, { name: 'Liability', limit: '1,000,000/2,000,000' }],
+  'Commercial Umbrella': [{ name: 'Each Occurrence', limit: '5,000,000' }, { name: 'Aggregate', limit: '5,000,000' }],
+  'Directors & Officers': [{ name: 'Directors & Officers Liability', limit: '1,000,000', deductible: '1,000' }],
+  Crime: [{ name: 'Employee Theft', limit: '500,000', deductible: '1,000' }],
 };
 
 const BASE_PREMIUM: Partial<Record<LineOfBusiness, [number, number]>> = {
   'Personal Auto': [900, 2600], Homeowners: [1100, 3400], Renters: [140, 320], Condo: [380, 900], 'Dwelling Fire': [700, 1600], Umbrella: [220, 480],
   Motorcycle: [260, 900], Boat: [300, 1100], Flood: [450, 1800], Life: [360, 1500], 'Commercial Auto': [3200, 9800], 'General Liability': [1200, 5200],
   BOP: [1800, 6400], 'Workers Comp': [2400, 14000], 'Commercial Property': [2600, 9000],
+  'Commercial Package': [9000, 42000], 'Commercial Umbrella': [1800, 7500], 'Directors & Officers': [900, 3200], Crime: [450, 1800],
 };
 
 export type SeedData = {

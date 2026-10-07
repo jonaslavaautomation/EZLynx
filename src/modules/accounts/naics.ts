@@ -114,6 +114,7 @@ export const NAICS_CLASSES: NaicsClass[] = [
   { naics: '531130', title: 'Lessors of Miniwarehouses and Self-Storage Units', sic: '4225', keywords: 'self storage' },
   { naics: '531210', title: 'Offices of Real Estate Agents and Brokers', sic: '6531', keywords: 'realtor real estate agent' },
   { naics: '531311', title: 'Residential Property Managers', sic: '6531', keywords: 'property management' },
+  { naics: '813990', title: "Homeowners' and Condominium Owners' Associations", sic: '8641', keywords: 'hoa homeowners association condo condominium owners association coa townhome property owners poa community association co-op cooperative master association' },
   // Manufacturing & wholesale
   { naics: '312120', title: 'Breweries', sic: '2082', keywords: 'brewery craft beer' },
   { naics: '312130', title: 'Wineries', sic: '2084', keywords: 'winery vineyard' },
@@ -129,6 +130,7 @@ export const NAICS_CLASSES: NaicsClass[] = [
 /** ACORD 125 "Nature of Business" category for a NAICS code. */
 export function natureOfBusiness(naics: string): string {
   if (naics === '531110' || naics === '531311') return 'Apartments';
+  if (naics === '813990') return 'Condominiums';
   const s2 = naics.slice(0, 2), s3 = naics.slice(0, 3);
   if (s2 === '23') return 'Contractor';
   if (s3 === '722') return 'Restaurant';

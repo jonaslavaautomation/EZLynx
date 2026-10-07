@@ -96,6 +96,32 @@ export const DEFAULT_COVERAGES: Partial<Record<LineOfBusiness, Coverage[]>> = {
     { name: 'Business Personal Property', limit: '$250,000', deductible: '$2,500' },
     { name: 'Business Income w/ Extra Expense', limit: '$100,000' },
   ],
+  // Community association master policy: property on the common elements plus general liability.
+  'Commercial Package': [
+    { name: 'Building — Common Elements', limit: '$12,500,000', deductible: '$10,000' },
+    { name: 'Wind / Hail', limit: 'Included', deductible: '2% per building' },
+    { name: 'Outdoor Property (fences, signs, lighting)', limit: '$250,000', deductible: '$10,000' },
+    { name: 'Business Personal Property', limit: '$50,000', deductible: '$10,000' },
+    { name: 'Liability — Each Occurrence', limit: '$1,000,000' },
+    { name: 'Liability — General Aggregate', limit: '$2,000,000' },
+    { name: 'Hired & Non-Owned Auto', limit: '$1,000,000' },
+  ],
+  'Commercial Umbrella': [
+    { name: 'Each Occurrence', limit: '$5,000,000' },
+    { name: 'Aggregate', limit: '$5,000,000' },
+    { name: 'Self-Insured Retention', limit: '$10,000' },
+  ],
+  'Directors & Officers': [
+    { name: 'Directors & Officers Liability', limit: '$1,000,000', deductible: '$1,000' },
+    { name: 'Defense Costs', limit: 'Outside the limit' },
+    { name: 'Property Manager as Insured', limit: 'Included' },
+  ],
+  Crime: [
+    { name: 'Employee Theft (incl. board & manager)', limit: '$500,000', deductible: '$1,000' },
+    { name: 'Forgery or Alteration', limit: '$25,000' },
+    { name: 'Computer Fraud', limit: '$25,000' },
+    { name: 'Funds Transfer Fraud', limit: '$25,000' },
+  ],
 };
 
 export const defaultCoverages = (line: LineOfBusiness): Coverage[] => (DEFAULT_COVERAGES[line] ?? []).map((c) => ({ ...c }));

@@ -2,7 +2,7 @@ import { age } from '@/lib/format';
 import type { Carrier, CarrierRate, Coverage, LineOfBusiness } from '@/lib/types';
 import {
   BUSINESS_CLASSES, WC_CLASSES, sectionOf, termFor,
-  type AutoInput, type CAInput, type CommercialInput, type CondoInput, type HomeInput, type QuoteInput, type RentersInput, type UmbrellaInput, type WCInput,
+  type AssocInput, type AutoInput, type CAInput, type CommercialInput, type CondoInput, type HomeInput, type QuoteInput, type RentersInput, type UmbrellaInput, type WCInput,
 } from './inputs';
 
 /**
@@ -182,10 +182,33 @@ const PROFILES: Record<string, Profile> = {
         if (i.commercial.claims_5yr >= 3) return '3+ liability claims in 5 years';
         if (line === 'BOP' && i.commercial.employees > 100) return 'BOP limited to 100 employees';
       }
+      if ((line === 'Commercial Package' || line === 'Commercial Umbrella') && i.assoc) {
+        if (i.assoc.units > 250) return 'Associations over 250 units go to the specialty program';
+        if (i.assoc.max_stories > 4) return 'Mid- and high-rise associations (5+ stories) are outside appetite';
+        if (i.assoc.amenities.includes('Docks / boat slips') || i.assoc.amenities.includes('Golf course')) return 'Docks, marinas and golf courses are outside appetite';
+        if (i.assoc.claims_5yr >= 2) return '2+ losses in 5 years';
+      }
       if (line === 'Commercial Auto' && i.cauto) {
         if (i.cauto.radius.startsWith('Long')) return 'Long-haul operations are ineligible';
         if (i.cauto.vehicles.filter((v) => v.type === 'Heavy Truck').length > 5) return 'More than 5 heavy trucks';
       }
+      return null;
+    },
+  },
+  'Cornerstone Community Assurance': {
+    base: 0.95, incidentWeight: 1.0, youthWeight: 1, bundle: 1.15,
+    line: { 'Directors & Officers': 0.92, Crime: 0.9 },
+    perks: { 'Commercial Package': [{ name: 'Equipment Breakdown', limit: 'Included' }, { name: 'Ordinance or Law', limit: '10% of building' }], 'Directors & Officers': [{ name: 'Fair Housing Defense', limit: '50,000' }] },
+    appetite: (line, i) => {
+      const a = i.assoc;
+      if (!a) return null;
+      if (a.association_type === 'Office Condominium') return 'Residential associations only (office condominiums are referred)';
+      if (line === 'Commercial Package') {
+        if (a.year_built < 1960) return 'Buildings built before 1960 require an inspection — refer to underwriter';
+        if (a.construction === 'Frame' && a.max_stories > 4 && !a.sprinklered) return 'Unsprinklered frame buildings over 4 stories are ineligible';
+      }
+      if (line === 'Directors & Officers' && a.claims_5yr >= 3) return '3+ claims in 5 years';
+      if (line === 'Crime' && !a.cpa_audit && a.crime_limit > 1_000_000) return 'Limits over $1M need an annual CPA audit or review';
       return null;
     },
   },
@@ -549,6 +572,118 @@ function rateCA(c: CAInput, p: Profile): LineResult {
   };
 }
 
+// ── Community association program (HOA / condo) ──
+
+const has = (a: AssocInput, amenity: string) => a.amenities.includes(amenity);
+const fidelityMin = (a: AssocInput) => (a.annual_assessments > 0 ? Math.ceil((a.annual_assessments / 4 + a.reserve_balance) / 25000) * 25000 : 0);
+
+/** Master policy: property on the common elements (per $100 of value) plus per-unit general liability with amenity charges. */
+function rateAssocPackage(a: AssocInput, p: Profile): LineResult {
+  const discounts: string[] = [], surcharges: string[] = [], notes: string[] = [];
+  const constRate = ({ Frame: 0.24, 'Joisted Masonry': 0.18, 'Non-Combustible': 0.15, 'Masonry Non-Combustible': 0.12, 'Modified Fire Resistive': 0.1, 'Fire Resistive': 0.085 } as Record<string, number>)[a.construction] ?? 0.2;
+  const age = thisYear() - a.year_built;
+  const ageF = age > 50 ? 1.25 : age > 30 ? 1.12 : age < 10 ? 0.92 : 1;
+  const roofF = thisYear() - a.roof_year > 20 ? 1.12 : 1;
+  const dedF = ({ 5000: 1.08, 10000: 1, 25000: 0.9, 50000: 0.82 } as Record<number, number>)[a.prop_deductible] ?? 1;
+  const whF = a.wind_hail.startsWith('5') ? 0.84 : a.wind_hail.startsWith('2') ? 0.92 : a.wind_hail.startsWith('1') ? 0.97 : 1.1;
+  const sprF = a.sprinklered ? 0.85 : 1;
+  const coverF = a.unit_coverage.startsWith('All-In') ? 1.12 : a.unit_coverage.startsWith('Single') ? 1.05 : 1;
+  const clF = a.claims_5yr === 0 ? 0.95 : 1 + 0.12 * a.claims_5yr * p.incidentWeight;
+  const tiv = a.building_value + a.outdoor_value + a.bpp_value;
+  const propCommon = constRate * protectionF(a.protection_class) * ageF * roofF * dedF * whF * sprF * coverF * clF * territory(a.state, a.zip, STATE_HOME);
+  const bldg = (a.building_value / 100) * propCommon;
+  const outdoor = (a.outdoor_value / 100) * propCommon * 1.1;
+  const bpp = (a.bpp_value / 100) * propCommon * 1.2;
+  if (a.sprinklered) discounts.push('Sprinklered 15%');
+  if (age > 30) surcharges.push(`Buildings ${age} years old`);
+  if (roofF > 1) surcharges.push(`Roof ${thisYear() - a.roof_year} years old`);
+  if (a.claims_5yr === 0) discounts.push('Loss-free'); else surcharges.push(`${a.claims_5yr} loss(es) in 5 yrs`);
+
+  // GL: per unit, plus the amenities the association owns or maintains.
+  const limF = ({ '500K/1M': 0.85, '1M/2M': 1, '2M/4M': 1.3 } as Record<string, number>)[a.gl_limit] ?? 1;
+  const amenity = a.pools * 425 + (has(a, 'Clubhouse') ? 220 : 0) + (has(a, 'Fitness center') ? 260 : 0) + (has(a, 'Playground') ? 180 : 0)
+    + (has(a, 'Sport courts') ? 120 : 0) + (has(a, 'Lake / pond') ? 380 : 0) + (has(a, 'Docks / boat slips') ? 650 : 0) + (has(a, 'Golf course') ? 1400 : 0)
+    + (has(a, 'Private roads') ? 300 : 0) + (has(a, 'Security patrol') ? 250 : 0) + (has(a, 'Parking garage') ? 400 : 0);
+  const gl = Math.max(350, (a.units * 11 + amenity) * limF * clF * territory(a.state, a.zip, STATE_COMM)) * 0.9;
+  discounts.push('Package credit 10%');
+  const hnoa = a.hnoa ? 95 : 0;
+  const [occ, agg] = a.gl_limit.split('/');
+  if (tiv > 50_000_000) notes.push('Total insured value above $50M usually needs a layered property program');
+  return {
+    annual: bldg + outdoor + bpp + gl + hnoa + 75, discounts, surcharges, notes,
+    coverages: [
+      ...(a.building_value > 0 ? [{ cov: { name: 'Building — Common Elements', limit: k(a.building_value), deductible: money(a.prop_deductible) }, weight: bldg + 75 }] : []),
+      { cov: { name: 'Outdoor Property', limit: k(a.outdoor_value), deductible: money(a.prop_deductible) }, weight: outdoor },
+      { cov: { name: 'Business Personal Property', limit: k(a.bpp_value), deductible: money(a.prop_deductible) }, weight: bpp },
+      { cov: { name: 'Wind / Hail deductible', limit: a.wind_hail }, weight: 0 },
+      { cov: { name: 'Unit coverage', limit: a.unit_coverage }, weight: 0 },
+      { cov: { name: 'Liability — Each Occurrence', limit: occ }, weight: gl * 0.75 },
+      { cov: { name: 'Liability — General Aggregate', limit: agg }, weight: gl * 0.25 },
+      ...(a.hnoa ? [{ cov: { name: 'Hired & Non-Owned Auto', limit: occ }, weight: hnoa }] : []),
+    ],
+  };
+}
+
+/** Directors & officers: by unit count and limit, adjusted for governance risk. */
+function rateAssocDO(a: AssocInput, p: Profile): LineResult {
+  const discounts: string[] = [], surcharges: string[] = [];
+  const limF = ({ 1000000: 1, 2000000: 1.38, 3000000: 1.62, 5000000: 2.05 } as Record<number, number>)[a.do_limit] ?? 1;
+  let annual = (325 + a.units * 2.1) * limF * (STATE_COMM[a.state] ?? 1);
+  if (a.developer_controlled) { annual *= 1.3; surcharges.push('Developer controls the board'); }
+  if (a.high_delinquency) { annual *= 1.15; surcharges.push('16%+ of owners delinquent'); }
+  if (a.self_managed) { annual *= 1.1; surcharges.push('Self-managed'); } else discounts.push('Professionally managed');
+  if (a.claims_5yr > 0) { annual *= 1 + 0.2 * a.claims_5yr * p.incidentWeight; surcharges.push(`${a.claims_5yr} claim(s) in 5 yrs`); }
+  if (a.years_established >= 10) { annual *= 0.95; discounts.push('Established 10+ years'); }
+  return {
+    annual, discounts, surcharges, notes: [],
+    coverages: [
+      { cov: { name: 'Directors & Officers Liability', limit: money(a.do_limit), deductible: '1,000' }, weight: annual },
+      { cov: { name: 'Defense Costs', limit: 'Outside the limit' }, weight: 0 },
+      { cov: { name: 'Property Manager as Additional Insured', limit: 'Included' }, weight: 0 },
+      { cov: { name: 'Non-Monetary Claims Defense', limit: '25,000' }, weight: 0 },
+    ],
+  };
+}
+
+/** Crime / fidelity: by limit, with credits for financial controls. Flags limits below the fidelity minimum. */
+function rateAssocCrime(a: AssocInput): LineResult {
+  const discounts: string[] = [], surcharges: string[] = [], notes: string[] = [];
+  let annual = 140 + (a.crime_limit / 1000) * 1.35;
+  if (a.cpa_audit) { annual *= 0.92; discounts.push('Annual CPA audit 8%'); } else { annual *= 1.15; surcharges.push('No annual CPA audit or review'); }
+  if (a.dual_signatures) { annual *= 0.95; discounts.push('Two signatures on checks 5%'); } else { annual *= 1.1; surcharges.push('Single signature on checks'); }
+  if (a.self_managed) { annual *= 1.1; surcharges.push('Self-managed'); }
+  const min = fidelityMin(a);
+  if (min && a.crime_limit < min) notes.push(`Limit is below the ${money(min)} minimum (3 months of assessments plus reserves) that lenders require`);
+  return {
+    annual, discounts, surcharges, notes,
+    coverages: [
+      { cov: { name: 'Employee Theft (incl. board & manager)', limit: money(a.crime_limit), deductible: '1,000' }, weight: annual * 0.85 },
+      { cov: { name: 'Forgery or Alteration', limit: '25,000' }, weight: annual * 0.05 },
+      { cov: { name: 'Computer Fraud', limit: '25,000' }, weight: annual * 0.05 },
+      { cov: { name: 'Funds Transfer Fraud', limit: '25,000' }, weight: annual * 0.05 },
+    ],
+  };
+}
+
+/** Commercial umbrella over the master policy GL and D&O. */
+function rateAssocUmbrella(a: AssocInput, p: Profile): LineResult {
+  const surcharges: string[] = [], notes: string[] = [];
+  const first = 1150, extra = 600;
+  let annual = (first + (a.umbrella_limit - 1) * extra) * (1 + a.units / 500) * (STATE_COMM[a.state] ?? 1);
+  if (a.pools || has(a, 'Lake / pond') || has(a, 'Docks / boat slips')) { annual *= 1.12; surcharges.push('Water exposures (pools / lakes)'); }
+  if (a.claims_5yr > 0) { annual *= 1 + 0.12 * a.claims_5yr * p.incidentWeight; surcharges.push(`${a.claims_5yr} claim(s) in 5 yrs`); }
+  if (a.gl_limit === '500K/1M') notes.push('Underlying GL should be at least $1M / $2M');
+  return {
+    annual, discounts: [], surcharges, notes,
+    coverages: [
+      { cov: { name: 'Each Occurrence', limit: money(a.umbrella_limit * 1_000_000) }, weight: annual * 0.8 },
+      { cov: { name: 'Aggregate', limit: money(a.umbrella_limit * 1_000_000) }, weight: annual * 0.2 },
+      { cov: { name: 'Self-Insured Retention', limit: '10,000' }, weight: 0 },
+      { cov: { name: 'Required underlying — GL', limit: a.gl_limit }, weight: 0 },
+    ],
+  };
+}
+
 function rateLine(line: LineOfBusiness, input: QuoteInput, p: Profile): LineResult | null {
   switch (sectionOf(line)) {
     case 'auto': return input.auto ? rateAuto(input.auto, p) : null;
@@ -559,6 +694,11 @@ function rateLine(line: LineOfBusiness, input: QuoteInput, p: Profile): LineResu
     case 'commercial': return input.commercial ? (line === 'BOP' ? rateBOP(input.commercial, p) : rateGL(input.commercial, p, false)) : null;
     case 'wc': return input.wc ? rateWC(input.wc, p) : null;
     case 'cauto': return input.cauto ? rateCA(input.cauto, p) : null;
+    case 'assoc': {
+      const a = input.assoc;
+      if (!a) return null;
+      return line === 'Directors & Officers' ? rateAssocDO(a, p) : line === 'Crime' ? rateAssocCrime(a) : line === 'Commercial Umbrella' ? rateAssocUmbrella(a, p) : rateAssocPackage(a, p);
+    }
   }
 }
 

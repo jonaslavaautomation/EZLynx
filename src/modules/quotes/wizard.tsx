@@ -12,6 +12,7 @@ import { accountName, addDays, fmtMoney, today } from '@/lib/format';
 import { href, navigate, useRoute } from '@/lib/router';
 import { US_STATES, type Account, type LineOfBusiness, type Quote } from '@/lib/types';
 import { ComparisonTable, SimulatedNote, TextField } from './components';
+import { isAssociation } from '@/modules/accounts/association';
 import { carriersForLine, loadAccountRisk, saveRiskToAccount } from './data';
 import {
   COMMERCIAL_QUOTE_LINES, QUOTE_LINES, buildDefaultInput, isQuoteLine, mergeInput, pruneInput, readInput, sectionOf, validateRisk,
@@ -85,7 +86,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
           if (!r.account) { setAcctId(null); return; }
           setRisk(r);
           setInput(buildDefaultInput(r));
-          if (!isQuoteLine(line) && r.account.account_type === 'Commercial') setLob('General Liability');
+          if (!isQuoteLine(line) && r.account.account_type === 'Commercial') setLob(isAssociation(r.account) ? 'Commercial Package' : 'General Liability');
         }
       } catch (e) {
         if (live) setLoadError((e as Error).message);
@@ -121,7 +122,7 @@ function QuoteWizardInner({ editId, accountId, line }: { editId: string | null; 
       const r = await loadAccountRisk(id);
       setRisk(r);
       setInput((i) => buildDefaultInput(r, i.carriers));
-      if (account?.account_type === 'Commercial' && !COMMERCIAL_QUOTE_LINES.includes(lob)) setLob('General Liability');
+      if (account?.account_type === 'Commercial' && !COMMERCIAL_QUOTE_LINES.includes(lob)) setLob(isAssociation(account) ? 'Commercial Package' : 'General Liability');
     } catch (e) {
       toast((e as Error).message, 'error');
     }

@@ -70,6 +70,12 @@ export type LeadDetailsConfig = { byAccount: Record<string, LeadDetails> };
 export type CertificateMaster = { id: string; name: string; form: string; policy_ids: string[]; holder: string; remarks: string; created_at: string; created_by: string | null };
 export type CertificateMastersConfig = { byAccount: Record<string, CertificateMaster[]> };
 /** Carrier downloads (simulated IVANS feed): every policy / claim transaction received, matched or waiting. */
+/** Community association (HOA / condo) underwriting profile, per commercial account. */
+export type AssociationDetailsConfig = {
+  byAccount: Record<string, import('@/modules/accounts/association').AssociationProfile>;
+  /** Set once the association program carrier/lines were added to this agency's carriers. */
+  program_installed?: boolean;
+};
 export type CarrierDownloadsConfig = { items: import('@/lib/downloads').DownloadTxn[]; last_run: string | null };
 
 export type ConfigMap = {
@@ -86,6 +92,7 @@ export type ConfigMap = {
   lead_details: LeadDetailsConfig;
   certificate_masters: CertificateMastersConfig;
   carrier_downloads: CarrierDownloadsConfig;
+  association_details: AssociationDetailsConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -107,6 +114,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   lead_details: { byAccount: {} },
   certificate_masters: { byAccount: {} },
   carrier_downloads: { items: [], last_run: null },
+  association_details: { byAccount: {} },
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 

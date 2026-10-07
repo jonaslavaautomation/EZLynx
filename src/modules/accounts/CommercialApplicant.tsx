@@ -13,15 +13,18 @@ import { AssignUserModal, OField, OInput, OSelect, TextBtn, inputCls, type Level
 import { natureOfBusiness, searchNaics, type NaicsClass } from '@/modules/accounts/naics';
 import { APPLICANT_TYPES, LANGUAGES } from '@/modules/accounts/personal-options';
 import { AddressAssistMap } from './address-assist';
+import { AssociationFields } from './association-section';
+import { ASSOCIATION_ENTITY, BLANK_ASSOCIATION, associationIssues, getAssociation, isAssociation, saveAssociation, type AssociationProfile } from './association';
 
 /*
  * Commercial Applicant — business details page for creating (or editing) a commercial customer.
  * Business Name and the primary address (Address, City, State, Postal Code) are required to proceed; the
  * NAICS search fills the business classification used by submissions. "Create submission" saves and opens a
- * commercial quote for the business.
+ * commercial quote for the business. HOA / condo associations (NAICS 813990 or entity type "Association") also get the
+ * Association Info section, and their submission starts on the Commercial Package (master policy) line.
  */
 
-const LEGAL_ENTITY_TYPES = ['Corporation', 'S Corporation', 'LLC', 'Partnership', 'Limited Partnership', 'Sole Proprietor', 'Joint Venture', 'Trust', 'Non-Profit', 'Government Entity', 'Other'];
+const LEGAL_ENTITY_TYPES = ['Corporation', 'S Corporation', 'LLC', 'Partnership', 'Limited Partnership', 'Sole Proprietor', 'Joint Venture', 'Trust', 'Non-Profit', ASSOCIATION_ENTITY, 'Government Entity', 'Other'];
 const ADDRESS_TYPES_CL = ['Business', 'Mailing', 'Billing', 'Location', 'Garaging', 'Previous'];
 const LEAD_PRIORITIES = ['Low', 'Medium', 'High', 'Hot'];
 const PROBABILITIES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => ({ value: String(n), label: `${n}%` }));
@@ -95,7 +98,8 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
   const { toast } = useFeedback();
   const labels = useLabels();
   const [loaded, setLoaded] = useState(!editing);
-  const [open, setOpen] = useState({ business: true, lead: true });
+  const [open, setOpen] = useState({ business: true, assoc: true, lead: true });
+  const [assoc, setAssoc] = useState<AssociationProfile>(BLANK_ASSOCIATION);
   const [labelMenu, setLabelMenu] = useState(false);
   const [assign, setAssign] = useState<'producer' | 'csr' | null>(null);
   const [busy, setBusy] = useState(false);
@@ -119,11 +123,13 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
     if (!accountId) return;
     let live = true;
     (async () => {
-      const [a, ad, cs] = await Promise.all([
+      const [a, ad, cs, ap] = await Promise.all([
         db.get('accounts', accountId),
         db.list('account_addresses', { eq: { account_id: accountId }, order: { column: 'created_at' } }),
         db.list('account_contacts', { eq: { account_id: accountId }, order: { column: 'created_at' } }),
+        getAssociation(accountId).catch(() => null),
       ]);
+      if (ap) setAssoc(ap);
       if (!live || !a) { setLoaded(true); return; }
       setF({
         business_name: a.business_name ?? '', email: a.email ?? '', phone: a.phone ?? '', phone_ext: a.phone_ext ?? '', fax: a.fax ?? '', website: a.website ?? '',
@@ -150,6 +156,7 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
   }, [accountId]);
 
   const primary = addrs.find((a) => a.is_primary) ?? addrs[0];
+  const isAssoc = isAssociation(f);
   const setAddr = (key: string, patch: Partial<Addr>) => setAddrs((l) => l.map((a) => (a.key === key ? { ...a, ...patch } : a)));
 
   const issues = useMemo(() => {
@@ -175,18 +182,20 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
       if (c.email && !EMAIL_RE.test(c.email.trim())) proceed(`c.${c.key}.email`, 'Enter a valid email address');
       if (c.client_center && !c.email.trim()) proceed(`c.${c.key}.email`, 'Client Center access needs an email');
     });
+    if (isAssoc) for (const [k, message] of Object.entries(associationIssues(assoc))) proceed(k, message);
     return m;
-  }, [f, primary, addrs, contacts]);
+  }, [f, primary, addrs, contacts, isAssoc, assoc]);
   const err = (k: string) => issues[k];
   const businessIssues = ['business_name', 'state', 'email', 'phone', 'fax', 'website', 'tax_id', 'date_business_started'].some((k) => issues[k]);
   const addrStatus = (a: Addr) => (Object.keys(issues).some((k) => k.startsWith(`a.${a.key}.`)) ? 'rating' : 'ok');
+  const assocIssues = Object.keys(issues).some((k) => k.startsWith('assoc.'));
   const anyIssue = Object.keys(issues).length > 0;
 
   const save = async (then: 'overview' | 'submission') => {
     if (saving.current) return;
     if (anyIssue) {
       toast('Fix the fields marked in red before saving.', 'error');
-      setOpen({ business: true, lead: true });
+      setOpen({ business: true, assoc: true, lead: true });
       setAddrs((l) => l.map((a) => (Object.keys(issues).some((k) => k.startsWith(`a.${a.key}.`)) ? { ...a, open: true } : a)));
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -232,10 +241,12 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
         if (c.id) await db.update('account_contacts', c.id, row);
         else { const saved = await db.insert('account_contacts', row); setContacts((l) => l.map((y) => (y.key === c.key ? { ...y, id: saved.id } : y))); }
       }
+      // Saved while the applicant is an association; answers stay on file if its class later changes.
+      if (isAssoc) await saveAssociation(account.id, assoc);
       if (!editing) { try { await enqueueAutomation('Applicant Created', { account_id: account.id }); } catch { /* automations never block saving */ } }
       toast(editing ? 'Applicant saved' : `${account.business_name} created`);
       if (then === 'overview') navigate(`/accounts/${account.id}`);
-      else navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent('General Liability')}`);
+      else navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent(isAssoc ? 'Commercial Package' : 'General Liability')}`);
     } catch (e) {
       toast((e as Error).message, 'error');
       saving.current = false;
@@ -355,6 +366,13 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
           </div>
           <TextBtn className="mt-5" onClick={() => setAddrs((l) => [...l.map((x) => ({ ...x, open: false })), newAddr(false, primary?.state ?? '')])}>Add address</TextBtn>
         </Section>
+
+        {/* Association Info (HOA / condo associations) */}
+        {isAssoc && (
+          <Section title="Association Info" status={assocIssues ? 'proceed' : 'ok'} open={open.assoc} onToggle={() => setOpen((o) => ({ ...o, assoc: !o.assoc }))} summary={!open.assoc ? [assoc.association_type, assoc.total_units && `${assoc.total_units} units`].filter(Boolean).join(' · ') : ''}>
+            <AssociationFields value={assoc} onChange={(patch) => setAssoc((p) => ({ ...p, ...patch }))} issues={Object.fromEntries(Object.entries(issues).filter(([k]) => k.startsWith('assoc.')).map(([k, v]) => [k, v.message]))} />
+          </Section>
+        )}
 
         {/* Lead Info */}
         <Section title="Lead Info" status="ok" open={open.lead} onToggle={() => setOpen((o) => ({ ...o, lead: !o.lead }))}>

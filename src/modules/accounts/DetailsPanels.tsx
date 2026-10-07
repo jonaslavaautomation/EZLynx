@@ -8,6 +8,8 @@ import { ADDRESS_TYPES, US_STATES, type Account, type AccountAddress, type Accou
 import { syncContactJson } from '@/modules/accounts/AccountFormModal';
 import { NaicsLookup } from '@/modules/accounts/NaicsLookup';
 import { natureOfBusiness } from '@/modules/accounts/naics';
+import { fmtUsd, isAssociation, minimumFidelity, num as numOf, useAssociation } from '@/modules/accounts/association';
+import { navigate } from '@/lib/router';
 
 /* Overview panels for the data captured by Create Applicant: addresses, contacts & roles, business classification. */
 
@@ -329,5 +331,40 @@ function ClassificationModal({ account, onClose }: { account: Account; onClose: 
         <Field label="Description of primary operations" className="sm:col-span-2"><Textarea value={ops} onChange={(e) => setOps(e.target.value)} rows={3} /></Field>
       </div>
     </Modal>
+  );
+}
+
+// ── Community association (HOA / condo) ──
+
+export function AssociationPanel({ account }: { account: Account }) {
+  const { profile, loading } = useAssociation(account.id);
+  if (!isAssociation(account)) return null;
+  const p = profile;
+  const units = p ? [p.owner_units && `${p.owner_units} owner`, p.rented_units && `${p.rented_units} rented`, p.vacant_units && `${p.vacant_units} vacant`].filter(Boolean).join(' · ') : '';
+  const fidelity = p ? minimumFidelity(p) : null;
+  const tiv = p ? [p.building_value, p.outdoor_value, p.bpp_value].map(numOf).reduce<number>((s, v) => s + (v ?? 0), 0) : 0;
+  return (
+    <Panel title="Community Association" actions={<Button size="sm" icon={<Pencil size={13} />} onClick={() => navigate(`/accounts/${account.id}/edit`)}>{p ? 'Edit' : 'Add details'}</Button>}>
+      {loading ? null : !p ? (
+        <EmptyState icon={<Building2 size={20} />} title="No association details yet" message="Add units, buildings, amenities and financials so the Commercial Package, D&O and Crime submissions can be rated." />
+      ) : (
+        <div data-testid="association-panel">
+          <DescriptionList columns={3} items={[
+            { label: 'Association type', value: p.association_type },
+            { label: 'Total units', value: p.total_units ? `${p.total_units}${units ? ` (${units})` : ''}` : null },
+            { label: 'Year built / established', value: [p.year_built, p.year_established].filter(Boolean).join(' / ') || null },
+            { label: 'Buildings', value: [numOf(p.residential_buildings) && `${p.residential_buildings} residential`, numOf(p.other_buildings) && `${p.other_buildings} other`, numOf(p.max_stories) && `${p.max_stories} ${numOf(p.max_stories) === 1 ? 'story' : 'stories'} max`].filter(Boolean).join(', ') || null },
+            { label: 'Construction', value: [p.construction, p.sprinklers && p.sprinklers !== 'None' && `${p.sprinklers.split(' ')[0]} sprinklers`].filter(Boolean).join(' · ') || null },
+            { label: 'Unit coverage', value: p.unit_coverage },
+            { label: 'Total insured value', value: tiv ? fmtUsd(tiv) : null },
+            { label: 'Management', value: p.management === 'Self-managed' ? 'Self-managed' : [p.management_company, p.manager_designation && p.manager_designation !== 'None' && p.manager_designation].filter(Boolean).join(' · ') || p.management || null },
+            { label: 'Annual budget / reserves', value: [p.annual_assessments && `$${p.annual_assessments}`, p.reserve_balance && `$${p.reserve_balance} reserves`].filter(Boolean).join(' · ') || null },
+            { label: 'Amenities', value: p.amenities.length ? p.amenities.join(', ') : 'None' },
+            { label: 'Minimum fidelity limit', value: fidelity === null ? null : <span className="font-semibold">{fmtUsd(fidelity)}</span> },
+            { label: 'Losses over $10K (3 yrs)', value: p.losses_3yr || null },
+          ]} />
+        </div>
+      )}
+    </Panel>
   );
 }

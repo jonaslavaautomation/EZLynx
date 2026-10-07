@@ -178,7 +178,11 @@ export type LineOfBusiness =
   | 'General Liability'
   | 'BOP'
   | 'Workers Comp'
-  | 'Commercial Property';
+  | 'Commercial Property'
+  | 'Commercial Package'
+  | 'Commercial Umbrella'
+  | 'Directors & Officers'
+  | 'Crime';
 
 export type PolicyStatus = 'Active' | 'Pending' | 'Cancelled' | 'Expired' | 'Non-Renewed';
 
@@ -637,10 +641,12 @@ export type TableName = keyof TableMap;
 export const LINES_OF_BUSINESS: LineOfBusiness[] = [
   'Personal Auto', 'Homeowners', 'Renters', 'Condo', 'Dwelling Fire', 'Umbrella', 'Motorcycle', 'Boat', 'Flood', 'Life',
   'Commercial Auto', 'General Liability', 'BOP', 'Workers Comp', 'Commercial Property',
+  // Community association (HOA / condo) program lines
+  'Commercial Package', 'Commercial Umbrella', 'Directors & Officers', 'Crime',
 ];
 
-export const PERSONAL_LINES: LineOfBusiness[] = LINES_OF_BUSINESS.slice(0, 10);
-export const COMMERCIAL_LINES: LineOfBusiness[] = LINES_OF_BUSINESS.slice(10);
+export const PERSONAL_LINES: LineOfBusiness[] = ['Personal Auto', 'Homeowners', 'Renters', 'Condo', 'Dwelling Fire', 'Umbrella', 'Motorcycle', 'Boat', 'Flood', 'Life'];
+export const COMMERCIAL_LINES: LineOfBusiness[] = LINES_OF_BUSINESS.filter((l) => !PERSONAL_LINES.includes(l));
 
 export const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',

@@ -1,6 +1,7 @@
 import { uuid } from '@/lib/db';
 import { age, fmtMoney } from '@/lib/format';
 import type { Account, Driver, LineOfBusiness, Property, Quote, Vehicle } from '@/lib/types';
+import { num, type AssociationProfile } from '@/modules/accounts/association';
 
 /**
  * Rating input model captured by the quote wizard and stored in `quotes.input`.
@@ -9,8 +10,11 @@ import type { Account, Driver, LineOfBusiness, Property, Quote, Vehicle } from '
 
 export const QUOTE_LINES: LineOfBusiness[] = [
   'Personal Auto', 'Homeowners', 'Renters', 'Condo', 'Umbrella', 'General Liability', 'BOP', 'Workers Comp', 'Commercial Auto',
+  'Commercial Package', 'Directors & Officers', 'Crime', 'Commercial Umbrella',
 ];
-export const COMMERCIAL_QUOTE_LINES: LineOfBusiness[] = ['General Liability', 'BOP', 'Workers Comp', 'Commercial Auto'];
+/** Community association (HOA / condo) program lines, rated from the association profile. */
+export const ASSOCIATION_QUOTE_LINES: LineOfBusiness[] = ['Commercial Package', 'Directors & Officers', 'Crime', 'Commercial Umbrella'];
+export const COMMERCIAL_QUOTE_LINES: LineOfBusiness[] = ['General Liability', 'BOP', 'Workers Comp', 'Commercial Auto', ...ASSOCIATION_QUOTE_LINES];
 
 export const isQuoteLine = (l: string | null | undefined): l is LineOfBusiness => !!l && QUOTE_LINES.includes(l as LineOfBusiness);
 
@@ -80,14 +84,29 @@ export type CAInput = {
   drivers: number; drivers_with_violations: number; years_in_business: number;
 };
 
-export type SectionKey = 'auto' | 'home' | 'renters' | 'condo' | 'umbrella' | 'commercial' | 'wc' | 'cauto';
+/** Community association program: one section shared by the master policy, D&O, crime and umbrella quotes. */
+export type AssocInput = {
+  association_name: string; state: string; zip: string; association_type: string; units: number; years_established: number; claims_5yr: number;
+  // master policy (property + GL)
+  buildings: number; max_stories: number; year_built: number; roof_year: number; construction: string; protection_class: number; sprinklered: boolean;
+  unit_coverage: string; building_value: number; outdoor_value: number; bpp_value: number; prop_deductible: number; wind_hail: string;
+  amenities: string[]; pools: number; gl_limit: string; hnoa: boolean;
+  // D&O
+  do_limit: number; developer_controlled: boolean; high_delinquency: boolean; self_managed: boolean;
+  // crime
+  crime_limit: number; annual_assessments: number; reserve_balance: number; cpa_audit: boolean; dual_signatures: boolean;
+  // umbrella
+  umbrella_limit: number;
+};
+
+export type SectionKey = 'auto' | 'home' | 'renters' | 'condo' | 'umbrella' | 'commercial' | 'wc' | 'cauto' | 'assoc';
 
 export type QuoteInput = {
   v: 1;
   carriers: string[];
   save_to_account?: boolean;
   auto?: AutoInput; home?: HomeInput; renters?: RentersInput; condo?: CondoInput; umbrella?: UmbrellaInput;
-  commercial?: CommercialInput; wc?: WCInput; cauto?: CAInput;
+  commercial?: CommercialInput; wc?: WCInput; cauto?: CAInput; assoc?: AssocInput;
   lost_reason?: string; lost_notes?: string; bound_at?: string; rated_at?: string;
 };
 
@@ -100,6 +119,10 @@ export function sectionOf(line: LineOfBusiness): SectionKey {
     case 'Umbrella': return 'umbrella';
     case 'Workers Comp': return 'wc';
     case 'Commercial Auto': return 'cauto';
+    case 'Commercial Package':
+    case 'Directors & Officers':
+    case 'Crime':
+    case 'Commercial Umbrella': return 'assoc';
     default: return 'commercial';
   }
 }
@@ -133,6 +156,12 @@ export const EL_LIMITS = ['100/500/100', '500/500/500', '1M/1M/1M'];
 export const CA_TYPES = ['Private Passenger', 'Light Truck', 'Medium Truck', 'Heavy Truck'];
 export const CA_RADIUS = ['Local (under 50 mi)', 'Intermediate (50-200 mi)', 'Long haul (200+ mi)'];
 export const CA_CSL = [500000, 1000000, 2000000];
+export const ASSOC_CONSTRUCTION = ['Frame', 'Joisted Masonry', 'Non-Combustible', 'Masonry Non-Combustible', 'Modified Fire Resistive', 'Fire Resistive'];
+export const ASSOC_PROP_DEDUCTIBLES = [5000, 10000, 25000, 50000];
+export const WIND_HAIL = ['Same as all other perils', '1% per building', '2% per building', '5% per building'];
+export const DO_LIMITS = [1000000, 2000000, 3000000, 5000000];
+export const CRIME_LIMITS = [100000, 250000, 500000, 750000, 1000000, 1500000, 2000000, 3000000];
+export const COMMERCIAL_UMBRELLA_LIMITS = [1, 2, 3, 5, 10];
 
 /** Business classes shared by GL, BOP and Commercial Auto (GL rate per $1,000 revenue). */
 export const BUSINESS_CLASSES: { key: string; label: string; glRate: number; propertyFactor: number; autoFactor: number; wcCode: string }[] = [
@@ -211,7 +240,10 @@ export function blankVehicle(zip: string): AutoVehicleInput {
   return { key: newKey(), id: null, year, make: '', model: '', vin: '', usage: 'Commute', annual_miles: 12000, ownership: 'Owned', garaging_zip: zip, value: estimateVehicleValue(year, '') };
 }
 
-export type AccountRisk = { account: Account | null; drivers: Driver[]; vehicles: Vehicle[]; properties: Property[] };
+export type AccountRisk = { account: Account | null; drivers: Driver[]; vehicles: Vehicle[]; properties: Property[]; association?: AssociationProfile | null };
+
+/** Smallest listed crime limit at or above `min` (the largest one when `min` is above them all). */
+export const crimeLimitFor = (min: number | null) => CRIME_LIMITS.find((l) => l >= (min ?? 0)) ?? CRIME_LIMITS[CRIME_LIMITS.length - 1];
 
 /** Builds every section's defaults from the account's stored drivers, vehicles and properties. */
 export function buildDefaultInput(risk: AccountRisk, carriers: string[] = []): QuoteInput {
@@ -225,6 +257,11 @@ export function buildDefaultInput(risk: AccountRisk, carriers: string[] = []): Q
   const hasHome = risk.properties.length > 0;
   const youthful = drivers.filter((d) => (age(d.dob) ?? 30) < 25).length;
   const cls = 'office';
+  const ap = risk.association ?? null;
+  const n0 = (v: string | undefined, d: number) => num(v) ?? d;
+  const assessments = n0(ap?.annual_assessments, (num(ap?.monthly_dues) ?? 0) * 12 * n0(ap?.total_units, 0));
+  const fidelity = assessments ? Math.ceil((assessments / 4 + n0(ap?.reserve_balance, 0)) / 25000) * 25000 : null;
+  const yes = (v: string | undefined) => v === 'Yes';
   return {
     v: 1,
     carriers,
@@ -260,6 +297,19 @@ export function buildDefaultInput(risk: AccountRisk, carriers: string[] = []): Q
     wc: {
       state, classes: [{ key: newKey(), code: '8810', payroll: 250000 }], employees: 6, experience_mod: 1, el_limits: '500/500/500', years_in_business: 5, claims_5yr: 0,
     },
+    assoc: {
+      association_name: a?.business_name ?? '', state, zip, association_type: ap?.association_type || 'Single-Family HOA', units: n0(ap?.total_units, 100),
+      years_established: ap?.year_established ? Math.max(0, thisYear - n0(ap.year_established, thisYear)) : 10, claims_5yr: yes(ap?.losses_3yr) ? 1 : 0,
+      buildings: n0(ap?.residential_buildings, 0) + n0(ap?.other_buildings, 1), max_stories: n0(ap?.max_stories, 1), year_built: n0(ap?.year_built, 2005),
+      roof_year: n0(ap?.roof_year, n0(ap?.year_built, 2005)), construction: ap?.construction || 'Frame', protection_class: n0(ap?.protection_class, 3),
+      sprinklered: !!ap?.sprinklers && ap.sprinklers !== 'None', unit_coverage: ap?.unit_coverage || 'Bare Walls',
+      building_value: n0(ap?.building_value, 1500000), outdoor_value: n0(ap?.outdoor_value, 150000), bpp_value: n0(ap?.bpp_value, 25000),
+      prop_deductible: 10000, wind_hail: '2% per building', amenities: ap?.amenities ?? ['Swimming pool', 'Clubhouse'],
+      pools: n0(ap?.pools, (ap?.amenities ?? ['Swimming pool']).includes('Swimming pool') ? 1 : 0), gl_limit: '1M/2M', hnoa: true,
+      do_limit: 1000000, developer_controlled: yes(ap?.developer_controls_board), high_delinquency: (ap?.delinquency ?? '').startsWith('16'), self_managed: ap?.management === 'Self-managed',
+      crime_limit: crimeLimitFor(fidelity), annual_assessments: assessments, reserve_balance: n0(ap?.reserve_balance, 0),
+      cpa_audit: ap ? yes(ap.cpa_audit) : true, dual_signatures: ap ? yes(ap.dual_signatures) : true, umbrella_limit: 5,
+    },
     cauto: {
       state, class_key: cls, vehicles: [{ key: newKey(), year: thisYear - 3, type: 'Light Truck', value: 38000 }], radius: CA_RADIUS[0], csl: 1000000,
       comp_ded: 1000, coll_ded: 1000, hnoa: true, drivers: 2, drivers_with_violations: 0, years_in_business: 5,
@@ -271,7 +321,7 @@ export function buildDefaultInput(risk: AccountRisk, carriers: string[] = []): Q
 export function mergeInput(stored: Partial<QuoteInput> | null | undefined, defaults: QuoteInput): QuoteInput {
   const s = (stored ?? {}) as Partial<QuoteInput>;
   const out: QuoteInput = { ...defaults, ...s, v: 1, carriers: Array.isArray(s.carriers) ? s.carriers : defaults.carriers };
-  (['auto', 'home', 'renters', 'condo', 'umbrella', 'commercial', 'wc', 'cauto'] as SectionKey[]).forEach((k) => {
+  (['auto', 'home', 'renters', 'condo', 'umbrella', 'commercial', 'wc', 'cauto', 'assoc'] as SectionKey[]).forEach((k) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (out as any)[k] = s[k] ? { ...(defaults[k] as object), ...(s[k] as object) } : defaults[k];
   });
@@ -281,8 +331,8 @@ export function mergeInput(stored: Partial<QuoteInput> | null | undefined, defau
 /** Keeps only the section relevant to `line` (plus bookkeeping fields). */
 export function pruneInput(line: LineOfBusiness, input: QuoteInput): QuoteInput {
   const key = sectionOf(line);
-  const { auto, home, renters, condo, umbrella, commercial, wc, cauto, ...rest } = input;
-  const all = { auto, home, renters, condo, umbrella, commercial, wc, cauto };
+  const { auto, home, renters, condo, umbrella, commercial, wc, cauto, assoc, ...rest } = input;
+  const all = { auto, home, renters, condo, umbrella, commercial, wc, cauto, assoc };
   return { ...rest, [key]: all[key] } as QuoteInput;
 }
 
@@ -368,6 +418,30 @@ export function validateRisk(line: LineOfBusiness, input: QuoteInput): Errors {
       if (bad(c.bpp_value) || c.bpp_value < 0) e['commercial.bpp_value'] = 'Required';
       if (!e['commercial.building_value'] && !e['commercial.bpp_value'] && c.building_value + c.bpp_value <= 0) e['commercial.bpp_value'] = 'A BOP needs building or business property coverage';
       if (bad(c.protection_class) || c.protection_class < 1 || c.protection_class > 10) e['commercial.protection_class'] = '1–10';
+    }
+  } else if (key === 'assoc') {
+    const a = input.assoc!;
+    if (!a.association_name.trim()) e['assoc.association_name'] = 'Required';
+    if (!a.state) e['assoc.state'] = 'Required';
+    if (!ZIP.test(a.zip)) e['assoc.zip'] = '5-digit ZIP';
+    if (bad(a.units) || a.units < 1 || a.units > 20000) e['assoc.units'] = '1–20,000';
+    if (bad(a.years_established) || a.years_established < 0 || a.years_established > 200) e['assoc.years_established'] = '0–200';
+    if (bad(a.claims_5yr) || a.claims_5yr < 0 || a.claims_5yr > 20) e['assoc.claims_5yr'] = '0–20';
+    if (line === 'Commercial Package') {
+      if (bad(a.buildings) || a.buildings < 0 || a.buildings > 2000) e['assoc.buildings'] = '0–2,000';
+      if (bad(a.max_stories) || a.max_stories < 1 || a.max_stories > 80) e['assoc.max_stories'] = '1–80';
+      if (bad(a.year_built) || a.year_built < 1800 || a.year_built > thisYear + 1) e['assoc.year_built'] = `1800–${thisYear + 1}`;
+      if (bad(a.roof_year) || a.roof_year > thisYear + 1 || a.roof_year < (a.year_built || 1800)) e['assoc.roof_year'] = 'Between year built and this year';
+      if (bad(a.protection_class) || a.protection_class < 1 || a.protection_class > 10) e['assoc.protection_class'] = '1–10';
+      if (bad(a.building_value) || a.building_value < 0) e['assoc.building_value'] = 'Enter 0 if the association owns no buildings';
+      if (bad(a.outdoor_value) || a.outdoor_value < 0) e['assoc.outdoor_value'] = 'Required';
+      if (bad(a.bpp_value) || a.bpp_value < 0) e['assoc.bpp_value'] = 'Required';
+      if (!e['assoc.building_value'] && !e['assoc.outdoor_value'] && !e['assoc.bpp_value'] && a.building_value + a.outdoor_value + a.bpp_value <= 0) e['assoc.outdoor_value'] = 'A master policy needs some property to insure';
+      if (bad(a.pools) || a.pools < 0 || a.pools > 50) e['assoc.pools'] = '0–50';
+    }
+    if (line === 'Crime') {
+      if (bad(a.annual_assessments) || a.annual_assessments < 0) e['assoc.annual_assessments'] = 'Required';
+      if (bad(a.reserve_balance) || a.reserve_balance < 0) e['assoc.reserve_balance'] = 'Required';
     }
   } else if (key === 'wc') {
     const w = input.wc!;

@@ -300,6 +300,29 @@ export function InputSummary({ line, input }: { line: LineOfBusiness; input: Par
       </div>
     );
   }
+  if (key === 'assoc' && input.assoc) {
+    const a = input.assoc;
+    return <DescriptionList columns={4} items={[
+      { label: 'Association', value: a.association_name }, { label: 'Type', value: a.association_type }, { label: 'Location', value: `${a.state} ${a.zip}` },
+      { label: 'Units', value: a.units }, { label: 'Years established', value: a.years_established }, { label: 'Losses (5 yrs)', value: a.claims_5yr },
+      ...(line === 'Commercial Package' ? [
+        { label: 'Buildings / stories', value: `${a.buildings} / ${a.max_stories}` }, { label: 'Year built / roof', value: `${a.year_built} / ${a.roof_year}` },
+        { label: 'Construction', value: `${a.construction}${a.sprinklered ? ' · sprinklered' : ''}` }, { label: 'Protection class', value: a.protection_class },
+        { label: 'Building value', value: m(a.building_value) }, { label: 'Outdoor property', value: m(a.outdoor_value) }, { label: 'Business property', value: m(a.bpp_value) },
+        { label: 'Unit coverage', value: a.unit_coverage }, { label: 'Deductible / wind-hail', value: `${m(a.prop_deductible)} / ${a.wind_hail}` },
+        { label: 'GL limits', value: a.gl_limit }, { label: 'Amenities', value: a.amenities.join(', ') || 'None' }, { label: 'Hired & non-owned', value: yes(a.hnoa) },
+      ] : []),
+      ...(line === 'Directors & Officers' ? [
+        { label: 'D&O limit', value: m(a.do_limit) }, { label: 'Developer controlled', value: yes(a.developer_controlled) },
+        { label: '16%+ delinquent', value: yes(a.high_delinquency) }, { label: 'Self-managed', value: yes(a.self_managed) },
+      ] : []),
+      ...(line === 'Crime' ? [
+        { label: 'Employee theft limit', value: m(a.crime_limit) }, { label: 'Annual assessments', value: m(a.annual_assessments) }, { label: 'Reserves', value: m(a.reserve_balance) },
+        { label: 'CPA audit', value: yes(a.cpa_audit) }, { label: 'Two signatures', value: yes(a.dual_signatures) },
+      ] : []),
+      ...(line === 'Commercial Umbrella' ? [{ label: 'Umbrella limit', value: m(a.umbrella_limit * 1_000_000) }, { label: 'Underlying GL', value: a.gl_limit }] : []),
+    ]} />;
+  }
   if (key === 'cauto' && input.cauto) {
     const c = input.cauto;
     return (

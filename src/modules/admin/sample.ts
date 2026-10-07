@@ -83,7 +83,9 @@ export function buildAdminSample(d: { accounts: Account[]; policies: Policy[]; s
 
   // ── Carrier Quoting Setup (appointed carriers; one still needs a login) ──
   const appointed = carriers.filter((c) => c.appointed);
-  const needsLogin = appointed.length > 2 ? appointed[appointed.length - 1].name : null;
+  // One carrier is left needing its login so the setup screen has something to fix (not the association program carrier).
+  const general = appointed.filter((c) => c.name !== 'Cornerstone Community Assurance');
+  const needsLogin = general.length > 2 ? general[general.length - 1].name : null;
   const carrier_rating_setup: CarrierRatingSetup[] = appointed.map((c, i) => {
     const slug = c.name.toLowerCase().replace(/[^a-z]+/g, '').slice(0, 8);
     const ready = c.name !== needsLogin;
