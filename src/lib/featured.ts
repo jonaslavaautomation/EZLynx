@@ -2,9 +2,9 @@ import { db, uuid } from '@/lib/db';
 import { addMonths, today } from '@/lib/format';
 import { OWNER_NAME } from '@/lib/owner';
 import { DEMO_CARRIERS } from '@/lib/seed';
-import type { Account, Coverage, Driver, LineOfBusiness, Policy, PolicyTransaction, Property, Vehicle } from '@/lib/types';
+import type { Account, AutomationWorkflow, Coverage, Driver, LineOfBusiness, Policy, PolicyTransaction, Property, Vehicle } from '@/lib/types';
 import { BLANK_ASSOCIATION, saveAssociation, type AssociationProfile } from '@/modules/accounts/association';
-import { saveAppConfig } from '@/modules/admin/config';
+import { getAppConfig, saveAppConfig } from '@/modules/admin/config';
 
 /*
  * Named practice insureds every agency database gets once: two personal households with Auto + Home policies,
@@ -313,9 +313,47 @@ export async function ensureAssociationCarriers() {
   return changed;
 }
 
+/** Manual workflows for the Workflows panel (top bar): started by a user for one applicant. */
+export const PRACTICE_WORKFLOWS: Omit<AutomationWorkflow, 'id' | 'created_at'>[] = [
+  {
+    name: 'Renewal Folder Automation', trigger: 'Manual', trigger_config: {}, active: true,
+    steps: [
+      { delay_days: 0, action: 'Create Task', subject: 'Set up the renewal folder for {full_name}', body: 'In Documents, add a "Renewal" folder and move in the current declarations, the expiring application and the latest loss runs. Note anything missing on the account.', assign_to: 'csr', priority: 'Normal' },
+      { delay_days: 7, action: 'Create Task', subject: 'Renewal review for {full_name}', body: 'Compare the renewal offer with the expiring terms. Remarket if the premium increase is over 10% or coverage changed, then send the renewal summary to {first_name}.', assign_to: 'producer', priority: 'Normal' },
+    ],
+  },
+  {
+    name: 'Financials Request - Commercial Team', trigger: 'Manual', trigger_config: {}, active: true,
+    steps: [
+      { delay_days: 0, action: 'Send Email', subject: 'Information needed for your renewal', body: 'Hi {first_name},\n\nTo market your renewal we need your most recent financial information: annual revenue (or the annual budget for associations), payroll by employee type, any new locations or vehicles, and your reserve fund balance if you are an association.\n\nReply to this email or call {agent} at {agency}.\n\nThank you!', template_id: null },
+      { delay_days: 5, action: 'Create Task', subject: 'Follow up: financials from {full_name}', body: 'Call if the financials have not come in. Carriers need them before the renewal can be quoted.', assign_to: 'producer', priority: 'High' },
+    ],
+  },
+  {
+    name: 'New Business Onboarding', trigger: 'Manual', trigger_config: {}, active: true,
+    steps: [
+      { delay_days: 0, action: 'Send Email', subject: 'Welcome to {agency}', body: 'Hi {first_name},\n\nThank you for placing your insurance with {agency}. Your policy documents and ID cards will follow shortly. Reach {agent} any time with questions or changes.', template_id: null },
+      { delay_days: 1, action: 'Create Task', subject: 'Send ID cards and policy documents to {full_name}', body: 'Confirm the policy downloaded, attach the declarations in Documents and send ID cards or certificates.', assign_to: 'csr', priority: 'Normal' },
+      { delay_days: 30, action: 'Create Task', subject: '30-day check-in with {full_name}', body: 'Call to confirm everything is in order and ask for a review or referral.', assign_to: 'producer', priority: 'Low' },
+    ],
+  },
+];
+
+/** Adds the practice workflows once per agency database; a workflow the agency later deletes stays deleted. */
+export async function ensurePracticeWorkflows() {
+  const setup = await getAppConfig('practice_setup');
+  if (setup.workflows) return 0;
+  const existing = new Set((await db.list('automation_workflows')).map((w) => w.name.trim().toLowerCase()));
+  const missing = PRACTICE_WORKFLOWS.filter((w) => !existing.has(w.name.toLowerCase()));
+  if (missing.length) await db.insertMany('automation_workflows', missing);
+  await saveAppConfig('practice_setup', { ...setup, workflows: true });
+  return missing.length;
+}
+
 /** Creates any featured insured that isn't in this agency's database yet (matched by email). */
 export async function ensureFeaturedInsureds() {
   await ensureAssociationCarriers().catch(() => 0);
+  await ensurePracticeWorkflows().catch(() => 0);
   const emails = FEATURED.map((f) => f.account.email);
   const [existing, carriers, staff] = await Promise.all([
     db.list('accounts', { in: { column: 'email', values: emails } }),

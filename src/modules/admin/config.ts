@@ -76,6 +76,8 @@ export type AssociationDetailsConfig = {
   /** Set once the association program carrier/lines were added to this agency's carriers. */
   program_installed?: boolean;
 };
+/** One-time setup steps already applied to this agency database (so removed items are not re-added). */
+export type PracticeSetupConfig = { workflows?: boolean };
 export type CarrierDownloadsConfig = { items: import('@/lib/downloads').DownloadTxn[]; last_run: string | null };
 
 export type ConfigMap = {
@@ -93,6 +95,7 @@ export type ConfigMap = {
   certificate_masters: CertificateMastersConfig;
   carrier_downloads: CarrierDownloadsConfig;
   association_details: AssociationDetailsConfig;
+  practice_setup: PracticeSetupConfig;
 };
 export type ConfigKey = keyof ConfigMap;
 
@@ -115,6 +118,7 @@ export const CONFIG_DEFAULTS: { [K in ConfigKey]: ConfigMap[K] } = {
   certificate_masters: { byAccount: {} },
   carrier_downloads: { items: [], last_run: null },
   association_details: { byAccount: {} },
+  practice_setup: {},
   lines: Object.fromEntries(LINES_OF_BUSINESS.map((l) => [l, { enabled: true, default_term: SIX_MONTH_LINES.includes(l) ? 6 : 12 }])) as LinesConfig,
 };
 

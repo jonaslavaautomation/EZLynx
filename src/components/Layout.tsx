@@ -1,10 +1,11 @@
 import {
   AlertTriangle, Bell, Check, ListFilter, Building2, Calculator, CalendarClock, ClipboardList, Database, FileSignature,
-  FolderOpen, HelpCircle, LayoutGrid, Loader2, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, Sparkles, UserPlus, X,
+  FolderOpen, HelpCircle, LayoutGrid, Loader2, Workflow, Menu as MenuIcon, Settings as SettingsIcon, MessageSquare, Plus, Search, ShieldAlert, Sparkles, UserPlus, X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Logo, Wordmark } from '@/components/Logo';
 import { SideNav } from '@/components/SideNav';
+import { WorkflowsDrawer } from '@/components/WorkflowsDrawer';
 import { AutomationTicker } from '@/modules/admin';
 import { SupportChatHost } from '@/modules/support';
 import { Avatar, cx } from '@/components/ui';
@@ -20,13 +21,19 @@ import { usernameOf } from '@/modules/usersettings/tabs-profile';
 export function Layout({ children, onQuickAdd }: { children: ReactNode; onQuickAdd: (kind: QuickAddKind) => void }) {
   const route = useRoute();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [notifOpen, setNotifOpen] = useState(false);
+  // Right-hand docked panel: Notifications or Workflows (one at a time).
+  const [panel, setPanel] = useState<'notif' | 'workflows' | null>(null);
+  const notifOpen = panel === 'notif';
+  const toggle = (p: 'notif' | 'workflows') => setPanel((cur) => (cur === p ? null : p));
+  // Toasts step beside the docked panel instead of covering it.
+  useEffect(() => { document.body.classList.toggle('dock-open', !!panel); return () => document.body.classList.remove('dock-open'); }, [panel]);
   useEffect(() => { setMobileOpen(false); }, [route.path]);
 
   return (
-    <div className={cx('app-shell', notifOpen && 'notif-open')}>
-      <TopBar onMenu={() => setMobileOpen(true)} onQuickAdd={onQuickAdd} notifOpen={notifOpen} onToggleNotif={() => setNotifOpen((v) => !v)} />
-      {notifOpen && <NotificationsPanel onClose={() => setNotifOpen(false)} />}
+    <div className={cx('app-shell', panel && 'notif-open')}>
+      <TopBar onMenu={() => setMobileOpen(true)} onQuickAdd={onQuickAdd} notifOpen={notifOpen} onToggleNotif={() => toggle('notif')} workflowsOpen={panel === 'workflows'} onToggleWorkflows={() => toggle('workflows')} />
+      {notifOpen && <NotificationsPanel onClose={() => setPanel(null)} />}
+      {panel === 'workflows' && <WorkflowsDrawer onClose={() => setPanel(null)} />}
       <SideNav mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       {mobileOpen && <div className="sidebar-scrim" onClick={() => setMobileOpen(false)} />}
       <main className="main-content">{children}</main>
@@ -78,7 +85,7 @@ function StatusFooter() {
 
 export type QuickAddKind = 'account' | 'commercial' | 'quote' | 'policy' | 'activity' | 'claim' | 'message';
 
-function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () => void; onQuickAdd: (k: QuickAddKind) => void; notifOpen: boolean; onToggleNotif: () => void }) {
+function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif, workflowsOpen, onToggleWorkflows }: { onMenu: () => void; onQuickAdd: (k: QuickAddKind) => void; notifOpen: boolean; onToggleNotif: () => void; workflowsOpen: boolean; onToggleWorkflows: () => void }) {
   return (
     <header className="topbar">
       <a className="brand-lockup" href={href('/')} aria-label="Workspace home"><Logo size={32} /><Wordmark height={17} className="brand-wordmark" /></a>
@@ -90,6 +97,7 @@ function TopBar({ onMenu, onQuickAdd, notifOpen, onToggleNotif }: { onMenu: () =
         <QuickAddMenu onPick={onQuickAdd} />
         <a className="top-icon hide-sm" href={href('/activities')} aria-label="My activities" title="My activities"><ClipboardList size={20} /></a>
         <NotificationsButton open={notifOpen} onToggle={onToggleNotif} />
+        <button type="button" className={cx('top-icon hide-sm', workflowsOpen && 'top-icon-on')} aria-label="Workflows" title="Workflows" aria-pressed={workflowsOpen} onClick={onToggleWorkflows}><Workflow size={20} /></button>
         <a className="top-icon hide-sm" href={href('/marketplace/mine')} aria-label="Apps and integrations" title="Apps and integrations"><LayoutGrid size={20} /></a>
         <a className="top-icon hide-sm" href={href('/help')} aria-label="Help & training" title="Help & training"><HelpCircle size={20} /></a>
       </div>

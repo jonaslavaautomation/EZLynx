@@ -78,6 +78,7 @@ button { font: inherit; border: 0; cursor: pointer; } a { color: #374151; text-d
 .avatar-link { display: grid; place-items: center; }
 .top-icon { position: relative; padding: 0; color: #eceff1; width: 28px; height: 28px; }
 .top-icon:hover { color: #ffffff; }
+.top-icon-on { color: #ffffff; background: #ffffff1f; border-radius: 4px; }
 .notification i { position: absolute; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: #a66cd5; top: -5px; right: -7px; border: 1px solid #2d3740; font-size: 9px; font-style: normal; font-weight: 700; color: white; display: grid; place-items: center; line-height: 1; }
 .top-pop { position: absolute; top: calc(100% + 10px); right: -8px; background: white; border: 1px solid #e2e5e9; border-radius: 6px; box-shadow: 0 10px 30px #0f172a30; z-index: 60; padding: 4px 0; color: #1b1e22; }
 
@@ -207,3 +208,6 @@ select option:disabled { color: #9aa5b1; }
 /* Toasts step aside while a right-hand side panel (Reply To Text / Send Email) is open. */
 body.side-panel-open .toast-region { right: 416px; }
 @media (max-width: 639px) { body.side-panel-open .toast-region { right: 16px; bottom: auto; top: 60px; } }
+/* …and beside the docked Notifications / Workflows panel. */
+body.dock-open .toast-region { right: 326px; }
+@media (max-width: 768px) { body.dock-open .toast-region { right: 16px; bottom: auto; top: 60px; } }

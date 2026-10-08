@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, Bot, Clock, Copy, Pencil, Play, Plus, RefreshCw, Trash2, UserPlus, Workflow, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountPicker } from '@/components/pickers';
 import {
   Badge, Button, Checkbox, DataTable, EmptyState, ErrorBanner, Field, IconButton, Input, Menu, Modal, Panel, Pills, Select, StatCard, StatusBadge, Tabs,
@@ -9,7 +9,7 @@ import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { fmtDateTime, fmtRelative } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
-import { href } from '@/lib/router';
+import { href, useRoute } from '@/lib/router';
 import { LINES_OF_BUSINESS, type AutomationAction, type AutomationRun, type AutomationStep, type AutomationTrigger, type AutomationWorkflow, type Priority } from '@/lib/types';
 import { LINE_TRIGGERS, TRIGGERS, describeTrigger, processDueRuns, runAccountName, runAutomationsTick, startWorkflow } from './automation-engine';
 import { AdminHeader, Toggle } from './shared';
@@ -17,6 +17,7 @@ import { AdminHeader, Toggle } from './shared';
 const ACTIONS: AutomationAction[] = ['Create Task', 'Send Email', 'Send Text', 'Add Label'];
 const DAYS_TRIGGERS: AutomationTrigger[] = ['Renewal Approaching', 'Quote Not Bound'];
 const TRIGGER_HINT: Record<AutomationTrigger, string> = {
+  Manual: 'Never starts on its own: start it for an applicant from the Workflows panel (top bar) or with Run for applicant.',
   'Applicant Created': 'Starts when a new applicant (account) is created.',
   'Label Added': 'Starts when a label is added to an applicant.',
   'Renewal Approaching': 'Checked automatically: starts for each Active policy expiring within N days (once per term).',
@@ -37,6 +38,19 @@ export function AutomationPage() {
   const [starting, setStarting] = useState<AutomationWorkflow | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const labelName = (id: string) => labels.data.find((l) => l.id === id)?.name;
+
+  // Deep links from the Workflows panel: ?workflow=<id> opens that workflow, ?new=1 starts a new one.
+  const { params } = useRoute();
+  const linkWorkflow = params.get('workflow');
+  const linkNew = params.get('new') === '1';
+  const opened = useRef<string | null>(null);
+  useEffect(() => {
+    const key = linkWorkflow ?? (linkNew ? 'new' : null);
+    if (!key || opened.current === key) return;
+    if (linkNew) { opened.current = key; setEditing('new'); return; }
+    const wf = workflows.data.find((w) => w.id === linkWorkflow);
+    if (wf) { opened.current = key; setEditing(wf); }
+  }, [linkWorkflow, linkNew, workflows.data]);
 
   const stats = useMemo(() => {
     const m = new Map<string, { pending: number; done: number; failed: number }>();

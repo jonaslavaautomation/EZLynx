@@ -15,7 +15,7 @@ import { isSuppressed } from '@/modules/comm/suppression';
  * - `processDueRuns` executes Pending runs whose `due_at` has passed.
  */
 
-export const TRIGGERS: AutomationTrigger[] = ['Applicant Created', 'Label Added', 'Renewal Approaching', 'Quote Not Bound', 'Claim Reported', 'Policy Cancelled'];
+export const TRIGGERS: AutomationTrigger[] = ['Manual', 'Applicant Created', 'Label Added', 'Renewal Approaching', 'Quote Not Bound', 'Claim Reported', 'Policy Cancelled'];
 export const TIME_TRIGGERS: AutomationTrigger[] = ['Renewal Approaching', 'Quote Not Bound'];
 /** Triggers tied to a policy or quote, where the optional line-of-business filter applies. */
 export const LINE_TRIGGERS: AutomationTrigger[] = ['Renewal Approaching', 'Quote Not Bound', 'Claim Reported', 'Policy Cancelled'];
@@ -318,6 +318,7 @@ export function describeTrigger(wf: Pick<AutomationWorkflow, 'trigger' | 'trigge
   switch (wf.trigger) {
     case 'Renewal Approaching': s = `Renewal within ${c.days ?? 0} days`; break;
     case 'Quote Not Bound': s = `Quote not bound ${c.days ?? 0} days after rating`; break;
+    case 'Manual': s = 'Manual — started from the Workflows panel'; break;
     case 'Label Added': s = c.label_id ? `Label “${labelName?.(c.label_id) ?? 'deleted label'}” added` : 'Any label added'; break;
     default: s = wf.trigger;
   }

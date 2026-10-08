@@ -467,7 +467,8 @@ export type Label = BaseRow & { name: string; color: string; description: string
 
 export type LeadSource = BaseRow & { name: string; is_default: boolean; hidden: boolean };
 
-export type AutomationTrigger = 'Applicant Created' | 'Label Added' | 'Renewal Approaching' | 'Quote Not Bound' | 'Claim Reported' | 'Policy Cancelled';
+/** 'Manual' workflows never start on their own: a user starts them for an applicant from the Workflows panel. */
+export type AutomationTrigger = 'Manual' | 'Applicant Created' | 'Label Added' | 'Renewal Approaching' | 'Quote Not Bound' | 'Claim Reported' | 'Policy Cancelled';
 export type AutomationAction = 'Create Task' | 'Send Email' | 'Send Text' | 'Add Label';
 
 /** One step of an Automation Center workflow; steps run after their delay instead of all at once. */
