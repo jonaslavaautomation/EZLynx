@@ -8,7 +8,7 @@ import { saveAppConfig } from '@/modules/admin/config';
 
 /*
  * Named practice insureds every agency database gets once: two personal households with Auto + Home policies,
- * five commercial insureds and two community associations (an HOA and a condominium association). All people, businesses and numbers are fictional. They are matched by email, so they
+ * six commercial businesses and three community associations (two HOAs and a condominium association). All people, businesses and numbers are fictional. They are matched by email, so they
  * are created only when missing and never duplicated; editing or deleting them later is left alone.
  */
 
@@ -216,6 +216,63 @@ export const FEATURED: Featured[] = [
       { line: 'Crime', carrier: 'Cornerstone Community Assurance', premium: 1880, term: 12, startedMonthsAgo: 9, coverages: CRIME('1,500,000'), number: 'CR-7718342' },
       { line: 'Commercial Umbrella', carrier: 'Cornerstone Community Assurance', premium: 4100, term: 12, startedMonthsAgo: 9, coverages: CUMB('5,000,000'), number: 'CU-7718343' },
       { line: 'Workers Comp', carrier: 'Frontier Workers Group', premium: 2150, term: 12, startedMonthsAgo: 9, coverages: WC, number: 'WC-7718344' },
+    ],
+  },
+  {
+    // Small townhome HOA inside Copperline's appetite (under 250 units, up to 4 stories), so it has two markets.
+    account: {
+      account_type: 'Commercial', business_name: 'Saddlebrook Townhome Association', first_name: 'Teresa', last_name: 'Villanueva', email: 'board@saddlebrooktownhomes.lava-demo.example',
+      phone: '(210) 555-0186', address: '7400 Saddlebrook Trl', city: 'San Antonio', state: 'TX', zip: '78249', policy_type: 'Commercial', legal_entity_type: 'Association',
+      naics_code: '813990', sic_code: '8641', naics_description: "Homeowners' and Condominium Owners' Associations", nature_of_business: 'Condominiums',
+      operations_description: 'Townhome association of 148 units in 37 two-story buildings. Maintains roofs and exteriors, a pool, a playground and private streets.',
+      date_business_started: '2012-03-01', website: 'https://example.com/saddlebrooktownhomes', customer_since: '2024-02-15', tax_id: '74-3529184',
+    },
+    association: {
+      association_type: 'Townhome Association', year_established: '2012', total_units: '148', owner_units: '119', rented_units: '27', vacant_units: '2', developer_units: '0',
+      developer_controls_board: 'No', under_construction: 'No', short_term_rentals: 'No',
+      residential_buildings: '37', other_buildings: '1', max_stories: '2', elevators: '0', year_built: '2013', construction: 'Frame', roof_type: 'Architectural Shingle',
+      roof_year: '2021', protection_class: '2', sprinklers: 'None', unit_coverage: 'Bare Walls', building_value: '18,600,000', outdoor_value: '165,000', bpp_value: '20,000',
+      management: 'Professional management company', management_company: 'Lone Star Community Management LLC', property_manager: 'Rachel Kim', manager_designation: 'CMCA', manager_has_crime: 'Yes',
+      board_members: '5', employees: '0',
+      amenities: ['Swimming pool', 'Playground', 'Private roads'], pools: '1', pool_fenced: 'Yes', lifeguard: 'No', lake_acres: '', road_miles: '2',
+      annual_assessments: '506,160', reserve_balance: '385,000', monthly_dues: '285', delinquency: '0–15% of owners',
+      positive_fund_balance: 'Yes', cpa_audit: 'Yes', dual_signatures: 'Yes', independent_reconciliation: 'Yes', special_assessment: 'No', losses_3yr: 'No', do_claims_5yr: 'No',
+    },
+    policies: [
+      { line: 'Commercial Package', carrier: 'Copperline Commercial', premium: 38400, term: 12, startedMonthsAgo: 3, coverages: assocPackage(18600000, 165000, 20000, '10,000', '1% per building'), number: 'PK-8823516' },
+      { line: 'Directors & Officers', carrier: 'Cornerstone Community Assurance', premium: 1390, term: 12, startedMonthsAgo: 3, coverages: DO('1,000,000'), number: 'DO-8823517' },
+      { line: 'Crime', carrier: 'Cornerstone Community Assurance', premium: 980, term: 12, startedMonthsAgo: 3, coverages: CRIME('750,000'), number: 'CR-8823518' },
+    ],
+  },
+  {
+    // The management company behind several associations: its own office, staff and fidelity exposure.
+    account: {
+      account_type: 'Commercial', business_name: 'Lone Star Community Management LLC', first_name: 'Rachel', last_name: 'Kim', email: 'office@lonestarcm.lava-demo.example',
+      phone: '(512) 555-0164', address: '3801 N Capital of Texas Hwy, Suite 200', city: 'Austin', state: 'TX', zip: '78746', policy_type: 'Commercial', legal_entity_type: 'LLC',
+      naics_code: '531311', sic_code: '6531', naics_description: 'Residential Property Managers', nature_of_business: 'Apartments',
+      operations_description: 'Community association management for 42 HOAs and condominium associations: accounting, collections, vendor management and board meetings. 18 employees.',
+      date_business_started: '2010-08-16', website: 'https://example.com/lonestarcm', customer_since: '2023-06-01', tax_id: '27-4188032',
+    },
+    policies: [
+      { line: 'BOP', carrier: 'Copperline Commercial', premium: 2860, term: 12, startedMonthsAgo: 4, coverages: BOP, number: 'BP-9031742' },
+      { line: 'Workers Comp', carrier: 'Frontier Workers Group', premium: 3240, term: 12, startedMonthsAgo: 4, coverages: WC, number: 'WC-9031743' },
+      { line: 'Crime', carrier: 'Cornerstone Community Assurance', premium: 2450, term: 12, startedMonthsAgo: 4, coverages: CRIME('2,000,000'), number: 'CR-9031744' },
+      { line: 'Commercial Umbrella', carrier: 'Copperline Commercial', premium: 2180, term: 12, startedMonthsAgo: 4, coverages: CUMB('2,000,000'), number: 'CU-9031745' },
+    ],
+  },
+  {
+    account: {
+      account_type: 'Commercial', business_name: 'Summit Ridge Landscaping & Snow Removal', first_name: 'Derek', last_name: 'Lindqvist', email: 'crew@summitridgelandscape.lava-demo.example',
+      phone: '(720) 555-0147', address: '5120 Brighton Blvd', city: 'Denver', state: 'CO', zip: '80216', policy_type: 'Commercial', legal_entity_type: 'S Corporation',
+      naics_code: '561730', sic_code: '0782', naics_description: 'Landscaping Services', nature_of_business: 'Service',
+      operations_description: 'Commercial and HOA landscape maintenance in summer and snow plowing in winter. 14 employees, 9 trucks with plows and trailers.',
+      date_business_started: '2015-04-01', website: 'https://example.com/summitridgelandscape', customer_since: '2022-11-10', tax_id: '84-2290415',
+    },
+    policies: [
+      { line: 'General Liability', carrier: 'Copperline Commercial', premium: 7380, term: 12, startedMonthsAgo: 7, coverages: GL, number: 'GL-5574208' },
+      { line: 'Commercial Auto', carrier: 'Copperline Commercial', premium: 14260, term: 12, startedMonthsAgo: 7, coverages: CA, number: 'CA-5574209' },
+      { line: 'Workers Comp', carrier: 'Frontier Workers Group', premium: 12940, term: 12, startedMonthsAgo: 7, coverages: WC, number: 'WC-5574210' },
+      { line: 'Commercial Umbrella', carrier: 'Copperline Commercial', premium: 3150, term: 12, startedMonthsAgo: 7, coverages: CUMB('2,000,000'), number: 'CU-5574211' },
     ],
   },
 ];
