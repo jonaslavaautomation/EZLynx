@@ -106,6 +106,11 @@ function Routes() {
 
 function Shell() {
   const [quick, setQuick] = useState<QuickAddKind | null>(null);
+  // Sample PDFs for the practice insureds (kept in this browser), built in the background once the app is up.
+  useEffect(() => {
+    const t = window.setTimeout(() => { void import('@/lib/practice-docs').then((m) => m.ensurePracticeDocuments()).catch(() => {}); }, 3000);
+    return () => window.clearTimeout(t);
+  }, []);
   const onQuickAdd = (k: QuickAddKind) => {
     if (k === 'quote') return navigate('/quotes/new');
     if (k === 'account' || k === 'commercial') return navigate(`/accounts/new?type=${k === 'commercial' ? 'Commercial' : 'Personal'}`);
