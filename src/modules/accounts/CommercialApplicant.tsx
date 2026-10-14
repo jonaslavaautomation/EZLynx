@@ -106,6 +106,8 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
   const saving = useRef(false);
   // Id of the account once it exists, so a retry after a later step fails updates it instead of inserting another.
   const savedId = useRef<string | null>(accountId ?? null);
+  // Labels as last saved, so only newly added labels start "Label Added" workflows.
+  const savedLabels = useRef<string[]>([]);
   const [f, setF] = useState({
     business_name: '', email: '', phone: '', phone_ext: '', fax: '', website: '', legal_entity_type: '', customer_since: today(), tax_id: '', gl_code: '',
     account_name: '', applicant_type: 'Prospect/Lead', date_business_started: '', preferred_language: 'English', vip: false, labels: [] as string[],
@@ -140,6 +142,7 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
         operations_description: a.operations_description ?? '', lead_source: a.lead_source ?? '', lead_priority: a.lead_priority ?? '',
         probability_of_sale: a.probability_of_sale?.toString() ?? '', lead_status: a.lead_status ?? '', producer: a.producer, csr: a.csr,
       });
+      savedLabels.current = a.labels ?? [];
       const toAddr = (x: AccountAddress): Addr => ({
         key: uuid(), id: x.id, address_type: x.address_type, street: x.street, unit: x.unit ?? '', street2: x.street2 ?? '', city: x.city ?? '', state: x.state ?? '',
         county: x.county ?? '', zip: x.zip ?? '', zip_suffix: x.zip_suffix ?? '', years: x.years_at_address?.toString() ?? '', months: x.months_at_address?.toString() ?? '',
@@ -244,6 +247,11 @@ export function CommercialApplicant({ accountId }: { accountId?: string }) {
       // Saved while the applicant is an association; answers stay on file if its class later changes.
       if (isAssoc) await saveAssociation(account.id, assoc);
       if (!editing) { try { await enqueueAutomation('Applicant Created', { account_id: account.id }); } catch { /* automations never block saving */ } }
+      // Labels added on this page start their "Label Added" workflows (like adding one from the label menu).
+      for (const label_id of f.labels.filter((id) => !savedLabels.current.includes(id))) {
+        try { await enqueueAutomation('Label Added', { account_id: account.id, label_id }); } catch { /* automations never block saving */ }
+      }
+      savedLabels.current = [...f.labels];
       toast(editing ? 'Applicant saved' : `${account.business_name} created`);
       if (then === 'overview') navigate(`/accounts/${account.id}`);
       else navigate(`/quotes/new?account=${account.id}&line=${encodeURIComponent(isAssoc ? 'Commercial Package' : 'General Liability')}`);

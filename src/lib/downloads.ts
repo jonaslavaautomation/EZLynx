@@ -1,5 +1,6 @@
 import { db, uuid } from '@/lib/db';
 import { addTransaction, createPolicy, logActivity } from '@/lib/domain';
+import { enqueueAutomation } from '@/modules/admin/automation-engine';
 import { addDays, addMonths, today } from '@/lib/format';
 import { COMMERCIAL_LINES, type Account, type Carrier, type Claim, type Coverage, type LineOfBusiness, type Policy } from '@/lib/types';
 
@@ -127,10 +128,11 @@ export async function applyDownload(t: DownloadTxn, account: Account, policy: Po
       await db.update('claims', existing.id, { status: c.status, amount_paid: c.amount_paid, amount_reserved: c.amount_reserved ?? existing.amount_reserved });
       return { policy_id: existing.policy_id, note: `Claim ${c.claim_number} updated to ${c.status}` };
     }
-    await db.insert('claims', {
+    const claim = await db.insert('claims', {
       account_id: account.id, policy_id: pol?.id ?? null, claim_number: c.claim_number, date_of_loss: c.date_of_loss, reported_date: t.received_at.slice(0, 10),
       loss_type: c.loss_type, description: t.description, status: c.status, amount_reserved: c.amount_reserved, amount_paid: c.amount_paid, adjuster_name: null, adjuster_phone: null,
     });
+    try { await enqueueAutomation('Claim Reported', { account_id: account.id, policy_id: claim.policy_id, line: pol?.line_of_business ?? t.line_of_business }); } catch { /* automations never block a download */ }
     return { policy_id: pol?.id ?? null, note: `Claim ${c.claim_number} added` };
   }
   if (!policy) {
@@ -159,6 +161,7 @@ export async function applyDownload(t: DownloadTxn, account: Account, policy: Po
       await db.update('policies', p.id, { status: 'Cancelled', source: 'Download' });
       await addTransaction(p, 'Cancellation', t.effective_date, t.premium_change, `${t.description} (downloaded from ${t.carrier})`);
       await followUp(account, p, `Cancellation downloaded — ${p.policy_number}`, `${t.carrier}: ${t.description}, effective ${t.effective_date}. Call the insured about reinstating or replacing coverage.`, actor);
+      try { await enqueueAutomation('Policy Cancelled', { account_id: account.id, policy_id: p.id, line: p.line_of_business }); } catch { /* automations never block a download */ }
       return { policy_id: p.id, note: 'Policy cancelled; follow-up task created' };
     }
     case 'Reinstatement': {
@@ -221,12 +224,14 @@ export async function removeDownloads(ids: string[]) {
 /** Creates the account a download describes (Create new account and policy from transaction). */
 export async function createAccountFromDownload(t: DownloadTxn, opts: { commercial: boolean; producer: string | null; csr: string | null }) {
   const i = t.insured;
-  return db.insert('accounts', {
+  const account = await db.insert('accounts', {
     first_name: i.first_name, last_name: i.last_name, email: i.email ?? '', phone: i.phone, mobile_phone: i.phone, address: i.address, city: i.city, state: i.state, zip: i.zip,
     dob: opts.commercial ? null : i.dob, ssn_last4: opts.commercial ? null : i.ssn_last4, tax_id: opts.commercial ? i.ein : null,
     account_type: opts.commercial ? 'Commercial' : 'Personal', business_name: opts.commercial ? i.business_name ?? `${i.first_name} ${i.last_name}` : null,
     status: 'Active', producer: opts.producer, csr: opts.csr, lead_source: 'Carrier Download', policy_type: t.line_of_business, customer_since: today(),
   } as never);
+  try { await enqueueAutomation('Applicant Created', { account_id: account.id }); } catch { /* automations never block a download */ }
+  return account;
 }
 
 // ── Simulated daily feed ──

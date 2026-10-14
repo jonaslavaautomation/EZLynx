@@ -146,7 +146,7 @@ function HistoryList({ accountId, runs, loading, byId }: { accountId: string | n
               <Workflow size={15} className="text-ink-400 mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-[13px] text-ink-900 leading-snug">{wf?.name ?? 'Deleted workflow'}</div>
-                <div className="text-[11.5px] text-ink-500">Step {r.step_index + 1}{wf ? ` of ${wf.steps.length}` : ''} · {r.status === 'Pending' ? `due ${fmtDateTime(r.due_at)}` : fmtDateTime(r.due_at)}</div>
+                <div className="text-[11.5px] text-ink-500">Step {r.step_index + 1}{wf ? ` of ${wf.steps.length}` : ''} · {r.status === 'Pending' ? `${wf && !wf.active ? 'paused · ' : ''}due ${fmtDateTime(r.due_at)}` : `ran ${fmtDateTime(r.due_at)}`}</div>
                 {r.result && <div className="text-[11.5px] text-ink-600 mt-0.5">{r.result}</div>}
               </div>
               <span className={cx('text-[11px] font-semibold rounded px-1.5 py-0.5', tone[r.status])}>{r.status}</span>

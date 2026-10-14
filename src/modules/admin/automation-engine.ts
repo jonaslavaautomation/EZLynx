@@ -12,7 +12,8 @@ import { isSuppressed } from '@/modules/comm/suppression';
  *
  * - Event triggers (Applicant Created, Label Added, Claim Reported, Policy Cancelled) call `enqueueAutomation`.
  * - Time-based triggers (Renewal Approaching, Quote Not Bound) are found by `scanAutomations`.
- * - `processDueRuns` executes Pending runs whose `due_at` has passed.
+ * - `processDueRuns` executes Pending runs whose `due_at` has passed. Steps of a paused workflow stay Pending until it
+ *   is turned back on; deleting a workflow removes its runs.
  */
 
 export const TRIGGERS: AutomationTrigger[] = ['Manual', 'Applicant Created', 'Label Added', 'Renewal Approaching', 'Quote Not Bound', 'Claim Reported', 'Policy Cancelled'];
@@ -29,10 +30,20 @@ const dueAt = (delayDays: number, from = Date.now()) => new Date(from + Math.max
 let chain: Promise<unknown> = Promise.resolve();
 let busy = false;
 
+/**
+ * One engine pass at a time across every open tab of this browser (Web Locks API). Without it, two tabs in
+ * browser-storage mode could both claim the same due step (claiming is a separate read and write there) and run it
+ * twice. Supabase mode is also protected across devices by claimRun's conditional update.
+ */
+function withEngineLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  return locks ? locks.request('lava-automation-engine', fn) : fn();
+}
+
 function exclusive<T>(fn: () => Promise<T>): Promise<T> {
   const next = chain.catch(() => {}).then(async () => {
     busy = true;
-    try { return await fn(); } finally { busy = false; }
+    try { return await withEngineLock(fn); } finally { busy = false; }
   });
   chain = next;
   return next;
@@ -77,6 +88,9 @@ export async function enqueueAutomation(trigger: AutomationTrigger, ctx: Enqueue
 /** Manually start one workflow for an account (Automation Center "Run for applicant"). */
 export async function startWorkflow(wf: AutomationWorkflow, account_id: string, policy_id: string | null = null) {
   if (!wf.steps.length) throw new Error('This workflow has no steps');
+  if (!wf.active) throw new Error('This workflow is paused. Turn it on in the Automation Center to start it.');
+  const running = await db.list('automation_runs', { eq: { workflow_id: wf.id, account_id, status: 'Pending' } });
+  if (running.length) throw new Error(`“${wf.name}” is already in progress for this applicant`);
   const run = await db.insert('automation_runs', {
     workflow_id: wf.id, account_id, policy_id, step_index: 0, due_at: dueAt(Number(wf.steps[0].delay_days) || 0), status: 'Pending', result: null,
   });
@@ -253,11 +267,13 @@ async function processOnce(): Promise<ProcessResult> {
 
   for (const run of due) {
     const wf = wfMap.get(run.workflow_id);
-    const mark = (status: AutomationRun['status'], result: string) => db.update('automation_runs', run.id, { status, result });
+    // due_at is set back to the moment the step ran (claiming it had pushed due_at ahead by the lease).
+    const mark = (status: AutomationRun['status'], result: string) => db.update('automation_runs', run.id, { status, result, due_at: new Date().toISOString() });
+    // A paused workflow's steps wait (still Pending) and run once it is turned back on.
+    if (wf && !wf.active) continue;
     try { if (!(await claimRun(run.id))) continue; } catch { continue; } // another tab has it (or the row is gone)
     try {
       if (!wf) { await mark('Skipped', 'Workflow no longer exists'); out.skipped++; continue; }
-      if (!wf.active) { await mark('Skipped', 'Workflow is inactive'); out.skipped++; continue; }
       const step = wf.steps[run.step_index];
       if (!step) { await mark('Skipped', 'Step no longer exists (workflow was edited)'); out.skipped++; continue; }
       if (!run.account_id) throw new Error('Run has no account');

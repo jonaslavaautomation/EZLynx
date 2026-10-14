@@ -9,7 +9,7 @@ import { useAppData } from '@/lib/app-context';
 import { db } from '@/lib/db';
 import { fmtDateTime, fmtRelative } from '@/lib/format';
 import { useTable } from '@/lib/hooks';
-import { href, useRoute } from '@/lib/router';
+import { href, setParam, useRoute } from '@/lib/router';
 import { LINES_OF_BUSINESS, type AutomationAction, type AutomationRun, type AutomationStep, type AutomationTrigger, type AutomationWorkflow, type Priority } from '@/lib/types';
 import { LINE_TRIGGERS, TRIGGERS, describeTrigger, processDueRuns, runAccountName, runAutomationsTick, startWorkflow } from './automation-engine';
 import { AdminHeader, Toggle } from './shared';
@@ -138,7 +138,7 @@ export function AutomationPage() {
           <div className="text-[11px] text-ink-400 px-4 py-3 border-t border-ink-100">The engine checks time-based triggers and runs due steps when the app opens and every 5 minutes while it is open. Emails and texts are simulated: they are written to the applicant’s message history (suppressed addresses are skipped).</div>
         </Panel>
       ) : <RunsLog runs={runs.data} loading={runs.loading} workflows={workflows.data} />}
-      {editing && <WorkflowModal workflow={editing === 'new' ? null : editing} onClose={() => setEditing(null)} />}
+      {editing && <WorkflowModal workflow={editing === 'new' ? null : editing} onClose={() => { setEditing(null); opened.current = null; if (linkWorkflow) setParam('workflow', null); if (linkNew) setParam('new', null); }} />}
       {starting && <StartModal workflow={starting} onClose={() => setStarting(null)} />}
     </div>
   );
@@ -168,11 +168,11 @@ function RunsLog({ runs, loading, workflows }: { runs: AutomationRun[]; loading:
   };
 
   const columns: Column<AutomationRun>[] = [
-    { key: 'due', header: 'Due', sortValue: (r) => r.due_at, render: (r) => <div className="whitespace-nowrap"><div>{fmtDateTime(r.due_at)}</div><div className="text-[11px] text-ink-400">{fmtRelative(r.due_at)}</div></div> },
+    { key: 'due', header: 'Due / ran', sortValue: (r) => r.due_at, render: (r) => <div className="whitespace-nowrap"><div>{fmtDateTime(r.due_at)}</div><div className="text-[11px] text-ink-400">{fmtRelative(r.due_at)}</div></div> },
     { key: 'wf', header: 'Workflow', sortValue: (r) => wm.get(r.workflow_id)?.name ?? '', render: (r) => { const w = wm.get(r.workflow_id); return <div><div className="font-semibold text-ink-900">{w?.name ?? 'Deleted workflow'}</div><div className="text-[11px] text-ink-400">Step {r.step_index + 1}{w?.steps[r.step_index] ? ` · ${w.steps[r.step_index].action}` : ''}</div></div>; } },
     { key: 'acct', header: 'Applicant', sortValue: (r) => runAccountName(am.get(r.account_id ?? '')), render: (r) => (r.account_id && am.get(r.account_id) ? <a className="hover:text-brand-600 hover:underline" href={href(`/accounts/${r.account_id}`)}>{runAccountName(am.get(r.account_id))}</a> : '—') },
     { key: 'status', header: 'Status', sortValue: (r) => r.status, render: (r) => <StatusBadge status={r.status === 'Done' ? 'Completed' : r.status} /> },
-    { key: 'result', header: 'Result', className: 'max-w-[360px]', render: (r) => <span className={cx('text-xs', r.status === 'Failed' ? 'text-red-600' : 'text-ink-500')}>{r.result || (r.status === 'Pending' ? 'Waiting' : '—')}</span> },
+    { key: 'result', header: 'Result', className: 'max-w-[360px]', render: (r) => <span className={cx('text-xs', r.status === 'Failed' ? 'text-red-600' : 'text-ink-500')}>{r.result || (r.status === 'Pending' ? (wm.get(r.workflow_id)?.active === false ? 'Waiting — workflow paused' : 'Waiting') : '—')}</span> },
     {
       key: 'actions', header: '', align: 'right', render: (r) => (r.status === 'Pending'
         ? <Button size="sm" variant="ghost" onClick={() => void cancel(r)}>Skip</Button>
